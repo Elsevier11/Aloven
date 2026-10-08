@@ -1,0 +1,101 @@
+# Aloven — Pianificazione della produzione
+
+Web app in italiano con server Node.js, database SQLite persistente e interfaccia senza dipendenze esterne.
+
+## Avvio
+
+Richiede Node.js **22.13 o successivo** (verificata con 22.20).
+
+```powershell
+cd C:\Dev\Aloven
+npm start
+```
+
+Apri http://127.0.0.1:3000. Al primo accesso crea l'amministratore scegliendo nome utente e password (almeno 10 caratteri). Non ci sono credenziali predefinite. Su un nuovo database sono presenti quattro macchine e quattro tipologie per l'accoppiatura tessile, con 64 attività dimostrative non pianificate: quattro esempi adattati e 60 nuovi.
+
+Il database viene creato in `data/aloven.sqlite`. I dati e gli accessi persistono dopo il riavvio. Per un backup semplice arresta il server e copia la cartella `data` intera.
+
+## Utilizzo
+
+- **Pianificazione**: trascina una scheda da “Da assegnare” sulla sua macchina. Trascina sopra un'altra scheda per inserirla prima; in una zona libera per accodarla. Il giorno su cui viene effettuato il drop non fissa la data: la posizione nella sequenza e il calendario determinano gli orari, senza intervalli arbitrari. Una scheda spostata nella colonna “Da assegnare” torna non pianificata.
+- Il menu **⋯** permette di scegliere la posizione senza trascinare. “Vedi sequenza” mostra tutta la coda, anche oltre i giorni visibili. Puoi cambiare il primo giorno visualizzato e filtrare per macchina.
+- **Attività**: CRUD con macchina obbligatoria, tipologia, attrezzaggio ed esecuzione in minuti, note. Sono obbligatori due componenti consumati e un articolo prodotto, ognuno con codice e descrizione. La ricerca trova titolo, codici e descrizioni. Cambiare macchina a un'attività già pianificata la riporta da assegnare e ricompatta la coda precedente.
+- **Macchine**: CRUD, data/ora di inizio pianificazione e velocità in m lineari/min, m²/min o kg/min. Modificare la velocità ricalcola le attività automatiche non bloccate con anteprima.
+- **Tipologie**: CRUD con colore per riconoscere le lavorazioni.
+- **Articoli**: anagrafica centralizzata con codice univoco, descrizione, unità di misura e uso come componente, prodotto o entrambi. Le attività selezionano gli articoli dall'anagrafica. Le modifiche aggiornano i dati delle attività non bloccate; le attività in corso e completate conservano i dati storici. Gli articoli utilizzati non possono essere eliminati.
+- **Attrezzaggi**: regole per macchina, tipologia precedente e tipologia successiva. Il tempo della regola sostituisce il tempo base dell'attività. Prima attività o passaggio senza regola: tempo base. Un riordino ricalcola anche gli attrezzaggi dei passaggi interessati. Le regole inizialmente sono vuote: inserire valori reali del reparto.
+- **Calendario**: settimana generale con un massimo di due fasce per giorno, applicazione di orari a più giorni, eccezioni per singole date o periodi fino a 366 giorni. Il mese mostra le disponibilità. Le eccezioni delle singole macchine prevalgono sulle eccezioni generali, che prevalgono sulla settimana standard. “Ripristina standard” elimina l'eccezione selezionata.
+- **Utenti**: l'amministratore gestisce utenti, ruoli e password. Gli operatori gestiscono attività, sequenze e avanzamento; macchine, tipologie e calendario sono in sola lettura. Deve rimanere almeno un amministratore.
+
+## Bordo macchina
+
+La seconda interfaccia è disponibile su **http://127.0.0.1:3000/bordo-macchina**, con lo stesso login e database. Si apre anche dal menu “Bordo macchina” o dai dettagli di un'attività. La scelta della macchina e della finestra delle prossime fasi viene ricordata su quel dispositivo.
+
+La fase corrente è la prima attività pianificata non completata della macchina, oppure quella già in corso. L'operatore registra nell'ordine **inizio attrezzaggio → fine attrezzaggio → inizio lavorazione → fine lavorazione**. Se l'attrezzaggio previsto è zero può avviare direttamente la lavorazione. Il primo avvio blocca l'attività in stato “In corso”. Una lavorazione può essere sospesa e ripresa; la sospensione richiede un motivo e non contribuisce al tempo attivo di lavorazione. L'attrezzaggio non è sospendibile in questa versione.
+
+La chiusura richiede la quantità buona, la quantità scartata (anche zero), i controlli qualità e almeno un lotto per ciascuno dei due componenti, con quantità effettivamente consumata. Possono essere dichiarati più lotti/rotoli per componente (massimo 50 righe totali). I codici lotto sono testi liberi; le unità provengono dagli articoli e vengono congelate all'avvio. Una dichiarazione con quantità buona zero richiede una nota di chiusura e comunque i lotti consumati. Il salvataggio è atomico: dichiarazione, qualità, scarti, lotti, evento operatore e completamento vengono registrati insieme. Non vengono aggiornate giacenze o disponibilità di magazzino.
+
+Il campo barcode supporta lettori USB/Bluetooth che scrivono come una tastiera: inserire il codice e premere Invio, oppure “Applica barcode”. Formati: `LOTTO`, `ARTICOLO|LOTTO`, `ARTICOLO|LOTTO|QUANTITÀ`. L'articolo viene confrontato con il componente; la quantità eventualmente presente deve coincidere con quella consumata dichiarata. È sempre possibile inserire manualmente lotto e quantità. La scansione viene conservata insieme alla dichiarazione.
+
+Gli scarti richiedono una motivazione. I controlli di aspetto e adesione richiedono un esito esplicito: regolare, difetto o non applicabile. L'esito complessivo è conforme, non conforme o da verificare; gli ultimi due richiedono note. Non si può dichiarare conforme con un difetto o entrambi i controlli non applicabili. Questi sono controlli generici dell'operatore, da adattare alle specifiche tecniche reali dei prodotti.
+
+Il confronto previsto/effettivo mostra attrezzaggio e lavorazione, scostamenti a fase conclusa, quantità buona e scarti con incidenza sul totale prodotto. I valori previsti sono congelati all'avvio, il tempo di lavorazione esclude le sospensioni. Per le dichiarazioni precedenti qualità e scarti rimangono non rilevati; il previsto viene recuperato dall'attività disponibile durante la migrazione, quindi può non rappresentare il piano originario.
+
+Le date effettive sono generate dal server e visualizzate in Europe/Rome, separate dalle date pianificate. Il registro conserva orario, operatore, azione e motivo. I dati sono condivisi con pianificazione e altri terminali; revisioni concorrenti e doppi tocchi vengono rifiutati. Le attività con rilevazioni si completano da bordo macchina, con dichiarazione obbligatoria.
+
+La finestra iniziale delle prossime fasi è **oggi e prossimo giorno lavorativo della macchina**, rispettando il calendario e le eccezioni. Sono selezionabili anche “oggi e domani” e “prossime 5 attività”. Si mostrano al massimo 5 attività, con attrezzaggio e lavorazione di ognuna; la corrente resta sempre visibile, anche se in ritardo o fuori finestra. In assenza di un prossimo giorno lavorativo nei 366 giorni seguenti viene mostrato soltanto oggi.
+
+Le attività già “In corso” prima di questa versione possono iniziare la rilevazione della fase corrente senza ricostruire orari storici mancanti. Gli orari effettivi non spostano automaticamente le altre attività della pianificazione.
+
+## Accoppiatura tessile
+
+Gli esempi rappresentano quattro processi: hot melt PUR, accoppiatura termica film/web, accoppiatura a fiamma e accoppiatura a polvere. Le coppie di materiali comprendono tessuti, membrane, schiume e supporti non tessuti per outdoor, calzatura, arredamento, automotive e tessuti tecnici. Ogni lotto identifica due materiali in ingresso e un accoppiato in uscita.
+
+I codici, le descrizioni e i tempi sono dati dimostrativi, non distinte base o parametri tecnici validati. I due componenti sono interpretati come i due substrati da accoppiare; adesivi e ausiliari di processo non sono gestiti come consumi aggiuntivi. La quantità da produrre e l'unità dell'articolo consentono il calcolo automatico del tempo. Il bordo macchina registra consumi e lotti dichiarati, senza movimentare magazzino o giacenze.
+
+Il calcolo automatico usa **minuti = arrotondamento per eccesso (quantità / velocità macchina)**, con unità di misura coincidenti. La quantità è quella dell'articolo prodotto, senza aggiungere consumi o scarti. Il tempo di attrezzaggio è aggiunto separatamente. È sempre disponibile il tempo manuale, utile per lavorazioni con velocità specifiche. Le velocità iniziali (10 m/min) sono indicative e vanno impostate sui valori reali. La migrazione mantiene tutte le attività esistenti in modalità manuale, senza modificarne le durate.
+
+Il catalogo iniziale viene costruito dai codici già presenti nelle attività e conserva i riferimenti. Utenti, calendario e pianificazione rimangono nel database esistente. Gli operatori selezionano gli articoli e modificano attività; la gestione diretta di catalogo, velocità e regole è riservata agli amministratori.
+
+L'aggiornamento del database è transazionale e avviene una sola volta. Conserva utenti, calendari, attività personalizzate e pianificazioni. Rinomina solo le macchine/tipologie originali ancora identiche agli esempi iniziali. Le attività iniziali non bloccate vengono adattate mantenendo i tempi e la sequenza; quelle personalizzate e bloccate restano intatte e possono mostrare campi da completare. Le attività dimostrative eliminate o modificate non vengono ricreate ai successivi avvii.
+
+Riferimenti per i processi di esempio: [Monti Antonio — hot melt](https://www.montiantonio.com/en/products/category/bonding/hot-melt-textiles), [film/web](https://www.montiantonio.com/en/products/category/film-web-bonding) e [Aitex — linee hot melt e a fiamma](https://www.aitexsrl.com/a-hot-melt). Le macchine dell'app sono esempi generici, senza attribuzione a modelli commerciali specifici.
+
+## Regole di pianificazione
+
+La vista Giorno mostra una scala oraria verticale e una colonna per macchina; la vista 5 giorni è un Gantt orizzontale. Ogni segmento occupa spazio proporzionale ai minuti previsti, con colore stabile per attività e attrezzaggio tratteggiato. Le fasce non lavorative sono visibili. Mouse e tastiera aprono un riepilogo; il clic apre dettagli e gestione della posizione. Le completate restano nel database, nascoste nel piano salvo selezione di “Mostra completate”.
+
+“Ferma macchina” registra motivo e operatore, sospende l'eventuale lavorazione attiva e blocca avvii/riprese. L'attrezzaggio indivisibile deve essere concluso prima del fermo. “Riattiva macchina” chiude il fermo, senza riprendere automaticamente la lavorazione. I tempi reali sono conservati; le date pianificate non vengono cambiate automaticamente per un fermo di durata ignota e vanno verificate alla ripresa. “Manutenzione programmata” apre le eccezioni del calendario della macchina: selezionare giorni chiusi oppure ridurre le fasce disponibili. Il ricalcolo richiede conferma e rispetta i blocchi delle attività in corso/completate.
+
+L'attrezzaggio avviene una sola volta e non è frazionabile: deve entrare in una singola fascia, senza attraversare la pausa pranzo o la fine giornata. Se non entra nella disponibilità residua, attende la prima fascia sufficientemente lunga. La lavorazione è invece suddivisa in porzioni che riprendono nella prima fascia successiva disponibile, anche saltando weekend e chiusure. Un calendario senza disponibilità o un attrezzaggio impossibile produce un errore esplicito (orizzonte massimo di ricerca: cinque anni).
+
+Gli stati sono **Da assegnare → Pianificata → In corso → Completata**, oltre ad **Annullata**. Una macchina può avere una sola attività in corso; si avvia solo dopo aver completato le precedenti. Le attività in corso e completate sono protette da riordino, modifica ed eliminazione. Le date della sequenza sono pianificate; i tempi effettivi e le dichiarazioni sono registrati separatamente dall'interfaccia bordo macchina. Modifiche al calendario incompatibili con le fasi di un'attività bloccata sono rifiutate.
+
+Inserimenti, eliminazioni e modifiche ai tempi ricalcolano le attività della macchina coinvolta. Le modifiche al calendario possono influenzare tutte le macchine. L'anteprima mostra le variazioni di inizio/fine e richiede conferma prima di salvarle. Le scritture sono transazionali; una revisione evita di sovrascrivere modifiche di altri utenti. L'interfaccia controlla gli aggiornamenti ogni 15 secondi e non aggiorna mentre una finestra di modifica è aperta.
+
+Gli orari sono quelli civili di **Europe/Rome**, memorizzati al minuto senza conversioni nel fuso del computer server. I turni sono contenuti nello stesso giorno; i turni notturni non sono previsti in questa versione.
+
+## Test
+
+```powershell
+npm test
+```
+
+Test unitari del calendario e del motore, più test HTTP su database temporaneo: CRUD, sequenze, conferma, blocco attività, permessi, concorrenza e persistenza dopo riavvio.
+
+`ui-check.mjs` è una verifica browser facoltativa: richiede Playwright installato e Microsoft Edge. Si può specificare il percorso del modulo Playwright tramite `PLAYWRIGHT_PATH`. Usa un database temporaneo e salva le schermate in `.artifacts`. Verifica primo accesso, drag-and-drop, inserimento confermato, CRUD, selezione degli articoli, calcolo automatico, regole di attrezzaggio, eccezioni e vista mobile.
+
+## Configurazione del server
+
+Variabili d'ambiente: `PORT` (3000), `HOST` (127.0.0.1), `DATA_DIR` (cartella data), `COOKIE_SECURE` (1 per cookie HTTPS).
+
+Per l'accesso da altri PC della rete del reparto:
+
+```powershell
+$env:HOST='0.0.0.0'
+npm start
+```
+
+Apri la porta solo nella rete di reparto e usa l'indirizzo del server. Per la pubblicazione configura HTTPS con un reverse proxy e `COOKIE_SECURE=1`, inoltrando l'header Host originale. Questa consegna avvia l'app soltanto in locale, senza pubblicarla.
+
+Le password sono protette con scrypt e salt individuale; le sessioni scadono dopo 12 ore. SQLite è adatto a una singola istanza del server, con più utenti collegati. Non eseguire più istanze server sullo stesso database: le anteprime di conferma sono conservate nella memoria della singola istanza.
