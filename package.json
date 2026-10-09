@@ -3,6 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.mjs", "test": "node --test *.test.mjs", "test:ui": "node ui-check.mjs", "test:operational": "node operational-check.mjs", "test:resilience": "node resilience-check.mjs", "test:operator": "node operator-check.mjs", "test:statistics": "node statistics-check.mjs" },
-  "engines": { "node": ">=22.13" }
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test *.test.mjs",
+    "test:ui": "node ui-check.mjs",
+    "test:operational": "node operational-check.mjs",
+    "test:resilience": "node resilience-check.mjs",
+    "test:operator": "node operator-check.mjs",
+    "test:statistics": "node statistics-check.mjs",
+    "test:planner": "node planner-check.mjs",
+    "test:interface": "node interface-check.mjs",
+    "test:premium": "node premium-check.mjs",
+    "test:dispatch": "node dispatch-check.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
 }

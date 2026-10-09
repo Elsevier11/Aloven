@@ -7,6 +7,9 @@
 /* I blocchi minuti conservano la misura nativa; quelli corti mostrano solo il codice. */
 .time-block strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.time-block.compact span{display:none}.plan-warning{position:absolute;right:3px;top:3px;width:15px;height:15px;border-radius:50%;background:#ad5b00;color:white;font:700 10px/15px sans-serif;text-align:center}.time-tooltip .tooltip-warning{color:#ffd79e}
 
+/* Leggibilità e accessibilità della console di pianificazione. */
+.temporal-machine>strong{font-size:13px}.temporal-machine>div{gap:4px}.temporal-machine .button{min-height:32px;padding:6px 8px;font-size:11px;line-height:1.2}.temporal-machine small{font-size:11px;line-height:1.35}.machine-stopped{font-size:11px;font-weight:700;color:#8d2f29}.time-block strong{font-size:12px}.time-block span{font-size:10px;line-height:1.3}.time-block.selected{z-index:3;outline:3px solid #102f58;outline-offset:2px;box-shadow:0 0 0 2px #fff}.time-block.selected:focus-visible{outline-color:#102f58;outline-offset:2px}.time-tooltip{box-sizing:border-box;max-height:calc(100vh - 16px);overflow:auto;pointer-events:auto}.time-tooltip[hidden]{display:none;pointer-events:none}
+
 /* Ora corrente di Roma. */
 .hour-axis>span:first-child{transform:none}
 .now-marker{position:absolute;z-index:4;pointer-events:none;background:#d2473f}.now-marker[hidden]{display:none}.now-marker span{position:absolute!important;z-index:1!important;right:2px!important;top:2px!important;transform:none!important;padding:1px 4px;background:#d2473f;color:white!important;border-radius:2px;font-size:8px!important;line-height:1.4;white-space:nowrap}.day-temporal .now-marker{left:0;right:0;height:2px}.gantt-temporal .now-marker{top:0;bottom:0;width:2px}.gantt-temporal .now-marker span{right:auto!important;left:3px!important}.hour-axis .now-marker span{display:none}

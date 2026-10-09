@@ -26,13 +26,14 @@ async function test(name,fn){
   catch(error){let image=null;try{image=await screenshot(`failure-${name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`);}catch{}results.push({name,status:'failed',durationMs:Date.now()-started,error:error.stack||String(error),screenshot:image});console.error(`FAIL ${name}: ${error.message}`);}
 }
 const state=async(target=page)=>target.evaluate(async()=>{const response=await fetch('/api/state');if(!response.ok)throw new Error(`state ${response.status}`);return response.json();});
-const nav=async(name,target=page)=>target.locator(`[data-nav="${name}"]`).click();
+const navGroups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};
+const nav=async(name,target=page)=>{if(navGroups[name])await target.locator(`[data-nav-group="${navGroups[name]}"]`).click();await target.locator(`[data-nav="${name}"]`).click();};
 async function openTask(task,target=page){
-  await nav('tasks',target);
+  await nav('tasks',target);await target.getByLabel('Cerca attività',{exact:true}).fill(task.title);
   await target.getByRole('row').filter({hasText:task.title}).getByRole('button',{name:'Apri'}).click();
 }
 async function editTask(task,target=page){
-  await nav('tasks',target);
+  await nav('tasks',target);await target.getByLabel('Cerca attività',{exact:true}).fill(task.title);
   await target.getByRole('row').filter({hasText:task.title}).getByRole('button',{name:'Modifica'}).click();
 }
 async function waitMutation(target=page){

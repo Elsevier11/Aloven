@@ -7,6 +7,7 @@ import {once} from 'node:events';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_PATH?pathToFileURL(process.env.PLAYWRIGHT_PATH).href:'playwright');
 const temp=mkdtempSync(path.join(tmpdir(),'aloven-statistics-'));
+const itNumber=new Intl.NumberFormat('it-IT',{maximumFractionDigits:2});
 const server=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
 let browser;
 const passed=[];
@@ -19,10 +20,17 @@ try {
  await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
  const seed=spawn(process.execPath,['seed-history.mjs'],{env:{...process.env,DATA_DIR:temp},stdio:['ignore','ignore','pipe']});let seedError='';seed.stderr.on('data',b=>seedError+=b);assert.equal((await once(seed,'exit'))[0],0,seedError);
  await page.getByRole('button',{name:'Aggiorna',exact:false}).click();
- await page.waitForFunction(()=>Number(document.querySelector('.nav-count')?.textContent)>2000);
- await page.locator('[data-nav="statistics"]').click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();
+ const seededState=await (await page.request.get(base+'/api/state')).json();await page.waitForFunction(revision=>document.querySelector('.shell')?.dataset.revision===String(revision),seededState.revision);
+ await page.locator('[data-nav="statistics"]').click();await page.locator('.statistics-chart-grid').waitFor();
  const report=await (await page.request.get(base+'/api/statistics')).json();
- assert.ok(report.totals.count>2000);assert.equal(report.monthly.length,10);assert.equal(await page.locator('tbody tr').count(),10);passed.push('Storico completo e tabella mensile');
+ assert.ok(report.totals.count>2000);assert.equal(report.monthly.length,10);assert.equal(await page.locator('#statisticsTableDetails').getAttribute('open'),null);
+ const monthlyUnits=[...new Set(report.monthly.map(row=>row.unit))].sort((a,b)=>String(a).localeCompare(String(b),'it')),activeUnit=monthlyUnits[0],monthlyRows=report.monthly.filter(row=>row.unit===activeUnit);
+ assert.equal(await page.locator('#monthly-production .statistics-bar-group').count(),monthlyRows.length);
+ assert.equal(await page.locator('#monthly-production .statistics-bar-mark').first().getAttribute('aria-label'),`${monthlyRows[0].month}, Buona: ${itNumber.format(monthlyRows[0].goodQuantity)}`);
+ const unitButtons=page.locator('[data-chart-unit="monthly"]');if(await unitButtons.count()>1){await unitButtons.nth(1).click();assert.equal(await unitButtons.nth(1).getAttribute('aria-pressed'),'true');}
+ const firstBar=page.locator('#monthly-production .statistics-bar-mark').first();await firstBar.focus();assert.equal(await firstBar.locator('.statistics-chart-tooltip').isVisible(),true);await firstBar.press('Escape');assert.equal(await firstBar.locator('.statistics-chart-tooltip').isVisible(),false);
+ await firstBar.hover();await page.locator('#statistics-export').focus();assert.equal(await firstBar.locator('.statistics-chart-tooltip').isVisible(),true);await page.locator('#statistics-export').press('Escape');assert.equal(await firstBar.locator('.statistics-chart-tooltip').isVisible(),false);passed.push('Grafici coerenti con la sorgente, unità e tastiera');
+ await page.locator('#statisticsTablesToggle').click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();assert.equal(await page.locator('tbody tr').count(),10);passed.push('Storico completo e tabella mensile su richiesta');
  for(const tab of ['machines','products','scrapReasons','stopReasons','details']){await page.locator(`[data-statistics-tab="${tab}"]`).click();assert.ok(await page.locator('tbody tr').count()>0);}
  await page.locator('#statistics-next').click();assert.match(await page.locator('.statistics-pagination').innerText(),/Pagina 2/);passed.push('Sei tabelle e paginazione');
  await page.getByLabel('Dal',{exact:true}).fill('2026-02-01');await page.getByLabel('Al',{exact:true}).fill('2026-02-28');
@@ -31,10 +39,14 @@ try {
  const filtered=await (await page.request.get(`${base}/api/statistics?from=2026-02-01&to=2026-02-28&machineId=${machine.id}`)).json();assert.ok(filtered.totals.count<report.totals.count);assert.ok(filtered.details.every(x=>x.machineId===machine.id));
  assert.ok((await page.locator('tbody').innerText()).includes(machine.name));passed.push('Filtro mese e macchina');
  const downloaded=page.waitForEvent('download');await page.locator('#statistics-export').click();const download=await downloaded;const target=path.join(temp,'statistics.xlsx');await download.saveAs(target);const workbook=readFileSync(target);assert.equal(workbook.subarray(0,2).toString(),'PK');assert.ok(workbook.length>10000);assert.match(download.suggestedFilename(),/2026-02-01.*2026-02-28.*xlsx$/);passed.push('Download Excel dei dati filtrati');
- await page.getByLabel('Dal',{exact:true}).fill('2025-01-01');await page.getByLabel('Al',{exact:true}).fill('2025-01-31');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();assert.match(await page.locator('tbody').innerText(),/Nessun dato/);passed.push('Periodo senza dati');
+ const synthetic=structuredClone(filtered);synthetic.monthly.forEach(row=>{row.goodQuantity=0;});synthetic.machines.forEach(row=>{row.plannedRunHours=null;});synthetic.totals.actualSetupHours=null;
+ await page.route('**/api/statistics?*',route=>route.fulfill({json:synthetic}));await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-chart-grid').waitFor();
+ assert.ok(await page.locator('#monthly-production .statistics-bar-mark.is-zero').count()>0);assert.ok(await page.locator('#machine-hours .statistics-bar-mark.is-missing').count()>0);assert.equal(await page.locator('.statistics-metrics>div').nth(2).locator('strong').innerText(),'—');
+ await page.locator('#machine-hours .statistics-bar-mark.is-missing').first().focus();assert.match(await page.locator('#machine-hours .statistics-bar-mark.is-missing').first().getAttribute('aria-label'),/dato non disponibile/);await page.unroute('**/api/statistics?*');passed.push('Zero e dati mancanti restano distinti');
+ await page.getByLabel('Dal',{exact:true}).fill('2025-01-01');await page.getByLabel('Al',{exact:true}).fill('2025-01-31');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();assert.match(await page.locator('tbody').innerText(),/Nessun dato/);assert.equal(await page.locator('.statistics-chart-empty').count(),4);passed.push('Periodo senza dati nei grafici e nelle tabelle');
  await page.route('**/api/statistics?*',route=>route.abort());await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-error').waitFor();await page.unroute('**/api/statistics?*');await page.getByRole('button',{name:'Riprova',exact:true}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();passed.push('Errore di rete e recupero');
- await page.getByLabel('Dal',{exact:true}).fill('2025-12-01');await page.getByLabel('Al',{exact:true}).fill('2026-09-30');await page.getByLabel('Macchina',{exact:true}).selectOption('');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();await page.locator('[data-statistics-tab="monthly"]').click();
- mkdirSync('.artifacts',{recursive:true});await page.screenshot({path:'.artifacts/statistics-desktop.png',fullPage:false});
- await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'.artifacts/statistics-mobile.png',fullPage:false});passed.push('Layout desktop e mobile');
+ await page.getByLabel('Dal',{exact:true}).fill('2025-12-01');await page.getByLabel('Al',{exact:true}).fill('2026-09-30');await page.getByLabel('Macchina',{exact:true}).selectOption('');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();await page.locator('[data-statistics-tab="monthly"]').click();await page.locator('#statisticsTablesToggle').click();await page.evaluate(()=>scrollTo(0,0));
+ mkdirSync('.artifacts',{recursive:true});await page.screenshot({path:'.artifacts/statistics-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:'.artifacts/statistics-mobile.png',fullPage:true});passed.push('Layout desktop e mobile');
  assert.deepEqual(errors,[]);writeFileSync('.artifacts/statistics-report.json',JSON.stringify({passed,downloadBytes:workbook.length},null,2));console.log('PASS statistiche browser:',passed.length,'scenari');
 } finally {await browser?.close();server.kill();await once(server,'exit').catch(()=>{});rmSync(temp,{recursive:true,force:true});}

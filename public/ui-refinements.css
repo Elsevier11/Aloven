@@ -1,0 +1,299 @@
+/* Shared console rules. Timeline segment dimensions remain tied to duration. */
+:root{--muted:#53677d;--green:#116b50;--amber:#875609;--focus:#215aa5;--line:#d8e1eb}
+body{line-height:1.5}
+::selection{background:#cfe2fb;color:#172b42}
+input,textarea{caret-color:var(--blue)}
+.page-heading .eyebrow{display:none}
+.workspace{font-size:14px}
+.button{min-height:40px;font-size:13px}
+.icon-button{min-width:36px;min-height:36px}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.sidebar button:focus-visible,.sidebar a:focus-visible{outline-color:#a6d7ff;outline-offset:-3px}
+.sidebar nav button{font-size:14px;min-height:44px}
+.sidebar .nav-caption{color:#afc3d8;font-size:10px}
+.sidebar .live-dot,.sidebar .user small{color:#b4c8da;font-size:12px}
+.sidebar .user strong{font-size:12px}
+.sidebar .user .icon-button{min-width:36px}
+.topbar,.today{font-size:12px}
+.page-heading p:not(.eyebrow){font-size:14px;line-height:1.65}
+.metrics span,.metrics small{font-size:12px}
+.metrics strong{font-variant-numeric:tabular-nums}
+label{font-size:14px;line-height:1.5}
+input,select,textarea{font-size:14px;min-height:40px}
+input[type=checkbox]{min-height:20px;width:20px;height:20px;flex-shrink:0}
+.notice,.empty-small,.panel-heading small,.dialog-heading p,.detail-grid span,.change-list small{font-size:13px}
+.table-toolbar{flex-wrap:wrap}
+.table-toolbar input,.table-toolbar select{font-size:14px;max-width:100%}
+table{font-size:13px;line-height:1.6;font-variant-numeric:tabular-nums}
+th{font-size:12px;text-transform:none;letter-spacing:0;font-weight:650;color:#435a73}
+td small,.materials-column small{font-size:12px}
+.row-actions{gap:8px}
+.row-actions .button{font-size:12px;min-height:36px}
+.badge{font-size:12px;font-weight:600}
+.badge.completed{color:#526479}.badge.cancelled{color:#9b3838}.badge.unplanned{color:#815700}.badge.planned{color:#295699}
+.detail-actions .button,.weekly-actions .button{font-size:12px}
+.dialog-body .form-grid{min-width:0}
+.dialog-footer{position:sticky;bottom:0;z-index:2;flex-wrap:wrap}
+.dialog-error,#auth-error{color:#923232;font-size:14px}
+.material-details>div>span,.material-details p,.materials-column strong{font-size:12px}
+.calendar-layout{grid-template-columns:minmax(390px,.8fr) minmax(0,1.2fr)}
+.weekly-labels,.weekday,.calendar-legend{font-size:12px}
+.check-label{min-height:40px;font-size:13px}
+.shift-inputs input{font-size:13px;min-height:36px;width:96px}
+.shift-inputs span{color:var(--muted)}
+.weekly-actions{flex-wrap:wrap;gap:10px}
+.calendar-day{min-height:100px}
+.calendar-day>span{font-size:14px}
+.calendar-day small{font-size:11px;white-space:normal;color:#526b83;line-height:1.5}
+.calendar-day.off,.calendar-day.off small{color:#607187;font-size:11px}
+.calendar-day.exception em{color:#795005;font-size:11px}
+.month-toolbar select{font-size:13px}
+.calendar-legend{flex-wrap:wrap}
+.backlog>p,.queue-hint,.machine-label,.card-bottom,.plan-legend{font-size:12px}
+.backlog .search,.plan-toolbar>select,.date-controls input,.zoom-control select,.density-control select{font-size:13px;min-height:36px}
+.type-label{font-size:11px;color:var(--ink)}
+.card-menu{min-width:32px;min-height:32px}
+.material-flow>div,.material-flow small{font-size:11px;color:#53677d}
+.plan-legend>span:last-child,.load-summary small,.planning-alert p{font-size:12px}
+.auth-form small,.auth-form form>p:not(.eyebrow){font-size:13px}
+.auth-brand>small{color:#b4c8da;font-size:12px}
+@media(max-width:1200px){.calendar-layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:800px){
+ .sidebar nav button{font-size:12px;min-height:40px}.sidebar .brand{flex-shrink:0}
+ .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 0}.metrics>div:nth-child(2){border-right:0}.metrics span{font-size:12px}
+ .page-heading{flex-wrap:wrap;gap:14px}.page-heading p:not(.eyebrow){font-size:13px}
+ .date-controls{flex-wrap:wrap}.plan-toolbar>select{max-width:100%}.plan-view-switch{flex-wrap:wrap}
+ .calendar-day{padding:6px;min-height:106px}.calendar-day small,.calendar-day.off small,.calendar-day.exception em{font-size:10px;overflow-wrap:anywhere}
+ .weekly-row{gap:10px}.weekly-row>.check-label{width:100px}.weekly-row .shift-inputs{min-width:0}
+ .form-grid{grid-template-columns:minmax(0,1fr)}.dialog-body,.dialog-heading{padding:20px}.dialog-footer{padding:16px 20px}
+ .table-toolbar>*{min-width:0}.table-toolbar select{flex:1}
+}
+
+/* Assignment desk: compact work queue, scalable resources, selected machine. */
+.compact-task{display:flex;align-items:center;gap:4px;padding:8px 10px!important;min-height:64px;border-left-width:2px;position:relative;background:white}
+.compact-task .task-select{flex:1;min-width:0;margin:0;text-align:left;padding:2px;background:transparent}
+.compact-task-title{display:block;font-size:13px;font-weight:600;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.compact-task-meta{display:flex;gap:10px;font-size:11px;color:#52677e;margin-top:5px;font-weight:400;font-variant-numeric:tabular-nums;white-space:nowrap}
+.compact-task .card-menu{flex:none;margin:0}
+.dispatch-area{position:relative!important;display:block!important;min-height:0}
+.dispatch-grid{display:grid;grid-template-columns:minmax(260px,30%) 240px minmax(0,1fr);gap:14px;height:100%;min-height:0}
+.dispatch-grid>section{min-width:0;min-height:0;border:1px solid var(--line);border-radius:10px;background:white;overflow:hidden}
+.dispatch-grid h2{font-size:16px;margin:0;line-height:1.4}
+.dispatch-backlog.backlog{width:auto;max-width:none;padding:14px;display:flex;flex-direction:column;gap:10px;background:white}
+.dispatch-backlog .backlog-title,.dispatch-resources .backlog-title{margin:0}
+.dispatch-backlog .backlog-cards{gap:0;padding:0 3px 0 0;flex:1;min-height:0;overflow:auto}
+.dispatch-backlog .compact-task{border:0;border-bottom:1px solid var(--line);border-left:1px solid transparent;border-radius:0;box-shadow:none;margin:0;min-height:72px;padding:10px 9px!important;background:white}
+.dispatch-backlog .compact-task-title{font-size:14px;font-weight:600}
+.dispatch-backlog .compact-task-meta{font-size:13px;gap:10px;flex-wrap:wrap;white-space:normal}
+.dispatch-backlog .task-quantity{font-weight:600;color:#40566d}
+.dispatch-backlog .task-select:hover{text-decoration:none}
+.dispatch-backlog .compact-task:hover{background:#f3f6fa}
+.dispatch-backlog .compact-task.selected{outline:none;background:#e8f1ff;border-left-color:#2563eb}
+.dispatch-backlog .queue-hint{font-size:11px;line-height:1.5;margin:0;padding-top:8px}
+.dispatch-filter{display:flex;flex-direction:row;align-items:center;gap:7px;font-size:13px;color:#40566d}
+.dispatch-filter input{width:16px;height:16px;margin:0}
+.dispatch-resources{padding:14px;display:flex;flex-direction:column;gap:10px}
+.resource-list{overflow:auto;min-height:0;display:flex;flex-direction:column;gap:8px;scrollbar-gutter:stable}
+.resource-choice{display:flex;flex-direction:column;text-align:left;gap:6px;border:1px solid var(--line);border-radius:7px;background:white;padding:12px;color:var(--ink);cursor:pointer;font-size:13px;flex:none}
+.resource-choice strong{font-size:14px;line-height:1.5}.resource-choice.selected{border-color:#2563eb;background:#edf4ff;box-shadow:inset 0 0 0 1px #2563eb}
+.resource-choice:hover{background:#f2f6fc}.resource-status{color:#52677e}.resource-status.stopped{color:#92400e}
+.resource-choice meter{width:100%;height:7px;accent-color:#2563eb}
+.dispatch-plan{display:flex;flex-direction:column}
+.dispatch-plan-header{padding:14px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+.dispatch-plan-header>div:first-child{flex:1;min-width:160px}.dispatch-plan-header span{font-size:13px;color:#52677e;display:block;margin-top:5px}
+.dispatch-machine-actions{padding:8px 14px;display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.dispatch-machine-actions .button{font-size:13px;padding:7px 9px;min-height:34px}
+.dispatch-plan .timeline-scroll{flex:1;min-height:0;border:0;border-radius:0;width:100%}
+.planning-workspace .dispatch-plan .temporal-machine{display:block;padding:0;border:0;min-height:0;height:0;overflow:hidden}
+.dispatch-sequence{position:relative;flex:1;overflow:auto;min-height:0;padding:0 14px 14px}
+.sequence-column-head{display:flex;flex-wrap:wrap;gap:5px 12px;justify-content:space-between;position:sticky;top:0;z-index:2;background:#f6f8fb;padding:10px 8px;font-size:13px;color:#52677e}
+.sequence-row{position:relative;display:flex;align-items:center;gap:10px;padding:14px 6px;border-bottom:1px solid var(--line);min-height:86px;background:white}
+.sequence-row.in-period{background:#f0f6ff}
+.sequence-row:hover{background:#e8f1ff}
+.sequence-position{color:#52677e;width:22px;flex:none;text-align:center;font-size:12px;font-variant-numeric:tabular-nums}
+.sequence-row .task-select{border:0;background:transparent;text-align:left;min-width:0;flex:1;padding:4px 8px;margin:0;border-left:1px solid var(--task-color)}
+.sequence-row .task-select strong{font-size:14px;line-height:1.5;display:block}.sequence-row .task-select span{font-weight:400;font-size:13px;display:block;color:#40566d;margin-top:5px}
+.sequence-row .task-select[aria-pressed=true]{background:#dceaff}.sequence-dates{font-size:13px;color:#40566d;display:flex;flex-direction:column;gap:6px;flex:none;font-variant-numeric:tabular-nums}
+.sequence-dates>span{display:flex;align-items:baseline;gap:8px}.sequence-dates small{font-size:12px;min-width:34px;color:#52677e}
+.sequence-tail{font-size:11px;color:#52677e;padding:24px 10px;line-height:1.5;border:1px dashed #b7c7d8;margin-top:12px;border-radius:6px}
+.dispatch-backlog .other-machine{border-left-color:transparent;background:white}.dispatch-backlog .compatible{border-left-color:var(--task-color);background:#f6f9fd}
+.dispatch-area .planning-selection{position:absolute!important;right:0;top:0;bottom:0;width:min(390px,100%);max-height:100%;z-index:25;box-shadow:-10px 8px 25px #152e4824;background:white;overflow:auto}
+.dispatch-area .planning-selection[hidden]{display:none!important}
+.dispatch-switch{display:flex;gap:4px}
+.dispatch-overview{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:7px;background:white;font-size:12px;margin-bottom:10px;flex:none;color:#52677e}
+.dispatch-overview strong{color:var(--ink);font-variant-numeric:tabular-nums}.dispatch-overview-period{margin-left:auto;font-size:11px}
+.planning-workspace .dispatch-backlog .search{margin:0}
+@media(min-width:801px) and (max-width:1200px){.dispatch-grid{grid-template-columns:minmax(240px,30%) 190px minmax(0,1fr);gap:10px}.dispatch-grid>section{padding-left:10px;padding-right:10px}.dispatch-plan-header{padding:10px}.sequence-row{gap:4px;flex-wrap:wrap}.sequence-row .task-select{flex-basis:calc(100% - 58px)}.sequence-dates{margin-left:26px;flex-direction:row;flex-wrap:wrap;font-size:13px}.dispatch-plan-header .button{font-size:13px;padding:8px}.dispatch-switch .button{padding:8px;font-size:12px}}
+@media(max-width:800px){.dispatch-grid{display:flex;flex-direction:column;height:auto}.dispatch-resources{order:-1;max-height:245px}.resource-list{flex-direction:row}.resource-choice{width:210px}.dispatch-backlog.backlog{height:360px;flex:none}.dispatch-backlog .backlog-cards{display:block}.dispatch-backlog .task-card{width:100%;margin-bottom:0}.dispatch-plan{height:550px}.dispatch-area .planning-selection{position:fixed!important;top:60px;right:10px;bottom:10px;width:min(390px,calc(100vw - 20px))}.dispatch-switch{width:100%}.sequence-row{flex-wrap:wrap}.sequence-row .task-select{flex-basis:calc(100% - 58px)}.sequence-dates{margin-left:26px;flex-direction:row;flex-wrap:wrap}}
+
+/* Six primary destinations, with local navigation for occasional configuration. */
+.sidebar nav{overflow:visible;flex:0 0 auto;gap:5px}
+.sidebar .nav-caption{margin:16px 12px 12px}
+.sidebar .brand{padding-bottom:22px}
+.section-navigation{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.section-navigation button{min-height:40px;padding:8px 14px;border:1px solid var(--line);background:white;color:var(--ink);font-size:13px;font-weight:600}
+.section-navigation button:hover{background:#edf4ff}
+.section-navigation button.active{background:#eaf2ff;color:#174d9d;border-color:#83a8de;box-shadow:inset 0 -2px var(--blue)}
+.planning-overview{display:flex;align-items:stretch;gap:16px;margin-bottom:12px;background:white;border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.planning-overview .metrics{flex:1;min-width:0;padding:0;margin:0;border:0;border-radius:0;gap:0;background:none}
+.planning-overview .metrics>div{padding:0 14px}
+.planning-overview .metrics>div:first-child{padding-left:0}
+.planning-overview .metrics strong{font-size:22px;margin-top:2px;gap:6px}
+.planning-overview .metrics small{display:none}
+.planning-overview .load-summary{flex:0 1 330px;padding:0 0 0 18px;margin:0;border:0;border-left:1px solid var(--line);border-radius:0;gap:3px;align-content:center;font-size:12px}
+.planning-overview .load-summary strong{font-size:12px}
+.planning-overview .load-summary small{font-size:11px;line-height:1.4}
+.planning-alert{padding:8px 12px;margin:0 0 10px;font-size:12px}
+.planning-alert summary{color:#774907;font-weight:650;min-height:24px}
+.planning-alert p{margin:6px 0 2px}
+.plan-toolbar{gap:8px;margin-bottom:10px}
+.plan-toolbar .date-controls{margin-left:0}
+.plan-toolbar .plan-view-switch .button{min-height:36px}
+.plan-toolbar #machine-filter{flex:1;max-width:280px}
+.planning-options{position:relative;margin-left:auto;border:0;padding:0;flex:none;font-size:13px}
+.planning-options>summary{min-height:36px;padding:8px 12px;color:var(--ink);border:1px solid var(--line);border-radius:6px;background:white}
+.planning-options-body{position:absolute;right:0;top:calc(100% + 8px);width:300px;padding:18px;border:1px solid #b9cadd;border-radius:8px;background:white;box-shadow:0 8px 24px #172b4224;z-index:30;display:flex;flex-direction:column;gap:16px}
+.planning-options-body label{justify-content:space-between;font-size:13px}
+.planning-options-body .completed-toggle{justify-content:flex-start}
+.planning-options-body .notice{margin:0;padding:0;font-size:12px}
+.planning-workspace .temporal-machine{padding:10px}
+.planning-workspace .temporal-machine>div{gap:4px;margin-top:6px}
+.planning-workspace .temporal-machine .button{min-height:32px;padding:4px 6px;font-size:12px;line-height:1.3}
+@media(min-width:801px){
+ .planning-main .topbar{height:56px}
+ .planning-workspace{height:calc(100dvh - 56px);max-height:calc(100dvh - 56px);padding:16px 22px;display:flex;flex-direction:column;overflow:hidden}
+ .planning-workspace .page-heading{margin-bottom:12px;gap:12px;flex:none}
+ .planning-workspace .page-heading h1{font-size:27px;letter-spacing:-.6px}
+ .planning-workspace .page-heading p:not(.eyebrow){margin-top:3px;font-size:12px}
+ .planning-overview,.planning-workspace .planning-alert,.planning-workspace .plan-toolbar{flex-shrink:0}
+ .planning-workspace .planner-area{flex:1;min-height:0}
+ .planning-workspace .planner{height:100%;min-height:0}
+ .planning-workspace .backlog{height:100%;align-self:stretch;padding:12px;min-height:0}
+ .planning-workspace .backlog-cards{min-height:0;max-height:none;overflow:auto}
+ .planning-workspace .backlog .search{margin:10px 0;flex-shrink:0}
+ .planning-workspace .queue-hint{margin-top:10px;padding-top:8px;flex-shrink:0}
+ .planning-workspace .timeline-scroll{height:100%;min-height:0;max-height:none}
+ .planning-workspace .planning-selection{position:static;max-height:100%;height:100%;min-height:0}
+ .planning-workspace .planner-area.has-selection{grid-template-rows:minmax(0,1fr)}
+}
+@media(min-width:801px) and (max-width:1100px){
+ .planning-workspace .planner-area.has-selection{display:block;position:relative}
+ .planning-workspace .planning-selection{position:absolute;top:0;right:0;width:340px;max-width:calc(100% - 12px);z-index:25;box-shadow:-8px 0 24px #172b4220}
+ .planning-workspace .selection-body{display:block}
+ .planning-overview{gap:10px;padding:10px}
+ .planning-overview .metrics>div{padding:0 8px}
+ .planning-overview .load-summary{flex-basis:260px;padding-left:10px}
+}
+@media(max-width:800px){
+ .sidebar nav{overflow:auto;flex:1;gap:4px}.sidebar .brand{padding-bottom:0}
+ .planning-overview{flex-direction:column;padding:14px;gap:12px}
+ .planning-overview .metrics{gap:12px 0}.planning-overview .metrics>div:nth-child(odd){padding-left:0}
+ .planning-overview .load-summary{flex:auto;padding:10px 0 0;border-left:0;border-top:1px solid var(--line)}
+ .planning-options{margin-left:0}.planning-options-body{left:0;right:auto;width:min(300px,calc(100vw - 30px))}
+ .planning-workspace .timeline-scroll{height:500px;min-height:0}
+ .section-navigation{gap:6px}.section-navigation button{padding:8px 10px;font-size:12px}
+}
+
+/* Office console: persistent context, bounded work areas and predictable forms. */
+.shell main .topbar{height:56px}
+.console-workspace{padding:18px 22px}
+.console-workspace .page-heading{margin-bottom:16px;gap:14px}
+.console-workspace .page-heading h1{font-size:28px;letter-spacing:-.6px}
+.console-workspace .page-heading p:not(.eyebrow){font-size:13px;margin-top:4px;max-width:75ch}
+.console-workspace .section-navigation{margin-bottom:16px;padding-bottom:12px;gap:6px}
+.console-workspace .section-navigation button{min-height:36px;padding:7px 12px}
+.console-content{min-width:0;min-height:0}
+.list-content{display:flex;flex-direction:column;gap:12px}
+.list-content>.table-toolbar{margin:0;gap:10px}
+.list-content>.table-wrap{min-height:0;overflow:auto;scrollbar-gutter:stable}
+.list-content table{line-height:1.5}
+.list-content th{position:sticky;top:0;z-index:3;padding:12px 14px;background:#f6f8fb}
+.list-content td{padding:12px 14px;vertical-align:top}
+.list-content tbody tr:hover td{background:#f4f8fe}
+.list-content td:first-child{max-width:300px;white-space:normal;min-width:150px}
+.list-content td strong{line-height:1.5}
+.list-content td small{margin-top:4px;line-height:1.4}
+.list-content .row-actions{gap:4px;flex-wrap:nowrap}
+.list-content .row-actions .button{min-height:34px;padding:6px 9px}
+.list-content .materials-column{min-width:180px;max-width:230px}
+.list-content .materials-column strong:not(:first-child){margin-top:6px}
+.list-content>.notice{margin:0;padding:0;font-size:12px;max-width:90ch}
+.list-pagination{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;flex:none;font-variant-numeric:tabular-nums;padding:10px 0 0;border-top:1px solid var(--line)}
+.list-pagination>span:first-child{margin-right:auto;color:var(--muted)}
+.list-pagination label{flex-direction:row;align-items:center;gap:6px;font-size:12px}
+.list-pagination select{min-height:34px;padding:5px 8px;width:70px;font-size:12px}
+.list-pagination .button{min-height:34px;padding:6px 10px;font-size:12px}
+.table-wrap:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+body:has(.shell) #modal{width:760px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 40px);border-radius:10px}
+body:has(.shell) #modal .dialog-heading{padding:18px 22px;position:sticky;top:0;z-index:3;background:white}
+body:has(.shell) #modal .dialog-heading h2{font-size:22px}
+body:has(.shell) #modal>form{display:flex;flex-direction:column;max-height:calc(100dvh - 140px);min-height:0;overflow:hidden}
+body:has(.shell) #modal .dialog-body{padding:18px 22px;overflow:auto;min-height:0}
+body:has(.shell) #modal>form>.dialog-body{flex:1}
+body:has(.shell) #modal .dialog-footer{padding:14px 22px;flex-shrink:0;position:static;background:#f8fafc}
+body:has(.shell) #modal .dialog-body>label,body:has(.shell) #modal .dialog-body>.form-grid{margin-bottom:14px}
+body:has(.shell) #modal .form-grid{gap:14px}
+body:has(.shell) #modal .material-form,body:has(.shell) #modal .production-form{margin:14px 0;padding:14px 0}
+body:has(.shell) #modal .product-identity{margin-bottom:14px;padding:14px}
+body:has(.shell) #modal .notice{padding:0;margin-top:8px;font-size:12px}
+.console-workspace[data-view=calendar] .console-content{display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.console-workspace .calendar-layout{gap:14px;grid-template-columns:minmax(320px,.8fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr);align-items:stretch;min-height:0;flex:1}
+.console-workspace .calendar-layout>.panel{padding:16px;overflow:auto;min-height:0;height:100%;max-height:100%}
+.console-workspace .panel-heading{margin-bottom:12px}
+.console-workspace .weekly-labels{font-size:11px;margin:10px 0}
+.console-workspace .weekly-row{padding:6px 0;gap:10px}
+.console-workspace .weekly-row .shift-inputs{flex-direction:column}
+.console-workspace .weekly-row>.check-label{width:auto;font-size:12px;min-height:32px}
+.console-workspace .shift-inputs input{min-height:32px;padding:5px;width:82px;font-size:12px}
+.console-workspace .weekly-actions{margin-top:14px;position:sticky;bottom:-16px;background:white;padding:10px 0;z-index:2}
+.console-workspace .weekly .notice{padding:0;margin:8px 0 0;font-size:12px}
+.console-workspace .month-toolbar{margin-bottom:12px;gap:6px}
+.console-workspace .month-toolbar h2{font-size:16px}
+.console-workspace .month-toolbar select{max-width:210px}
+.console-workspace .weekday{font-size:11px;padding:6px}
+.console-workspace .calendar-day{min-height:60px;padding:6px}
+.console-workspace .calendar-day>span{font-size:13px}
+.console-workspace .calendar-day small{font-size:10px;margin-top:3px;line-height:1.35}
+.console-workspace .calendar-legend{margin-top:10px;font-size:11px;gap:12px}
+.console-workspace .exceptions-panel{margin:0;padding:0;flex:none;max-height:210px;overflow:auto}
+.console-workspace .exceptions-panel>summary{padding:12px 16px;min-height:44px;font-size:13px;font-weight:650;color:var(--ink)}
+.console-workspace .exceptions-panel>.notice{padding:0 16px;margin:0 0 10px;font-size:12px}
+.console-workspace .exceptions-panel>.table-wrap{margin:0 16px 16px}
+.list-content .table-materials{border:0;padding:0;font-size:12px}
+.table-materials summary{color:var(--ink);line-height:1.5}
+.table-materials summary span{display:block;font-family:Consolas,monospace;margin-left:14px}
+.table-materials summary span:first-child{display:inline;margin-left:0}
+.table-materials p{margin:6px 0;font-size:12px;line-height:1.5;color:var(--muted);white-space:normal}
+.list-content td:first-child{min-width:230px;max-width:280px}
+.list-content th:last-child,.list-content td:last-child{background:white}
+.list-pagination:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+@media(min-width:801px){
+ .console-workspace{height:calc(100dvh - 56px);display:flex;flex-direction:column;overflow:hidden}
+ .console-workspace>.page-heading,.console-workspace>.section-navigation{flex:none}
+ .console-content{flex:1;overflow:auto;scrollbar-gutter:stable}
+ .list-content{overflow:hidden}.list-content>.table-wrap{flex:1}
+ .list-content th:first-child,.list-content td:first-child{position:sticky;left:0;background:white;z-index:1}
+ .list-content th:first-child{z-index:5;background:#f6f8fb}
+ .list-content th:last-child,.list-content td:last-child{position:sticky;right:0;z-index:2;border-left:1px solid var(--line)}
+ .list-content th:last-child{z-index:5;background:#f6f8fb}
+ .console-workspace .weekly{display:flex;flex-direction:column;overflow:hidden}
+ .console-workspace .weekly #weekly-form{flex:1;min-height:0;display:flex;flex-direction:column}
+ .console-workspace .weekly fieldset{flex:1;min-height:0;display:flex;flex-direction:column}
+ .console-workspace .weekly-days{flex:1;min-height:0;overflow:auto;padding-right:5px;scrollbar-gutter:stable}
+ .console-workspace .weekly-actions{position:static;flex:none;margin:0;padding:12px 0 4px}
+ .console-workspace .weekly>.notice{flex:none}
+}
+@media(min-width:801px) and (max-width:1000px){
+ .console-workspace[data-view=calendar] .console-content{overflow:auto;display:block}
+ .console-workspace .calendar-layout{grid-template-columns:1fr;grid-template-rows:none}
+ .console-workspace .calendar-layout>.panel{height:450px;max-height:450px;margin-bottom:14px}
+}
+@media(max-width:800px){
+ .console-workspace{padding:18px 15px}.console-workspace .page-heading h1{font-size:25px}
+ .console-workspace .calendar-layout{grid-template-columns:1fr;grid-template-rows:none}
+ .console-workspace .calendar-layout>.panel{height:auto;max-height:none}
+ .console-workspace[data-view=calendar] .console-content{overflow:visible}
+ .list-content>.table-wrap{max-height:65vh}.list-pagination{gap:8px}.list-pagination>span:first-child{width:100%}
+ body:has(.shell) #modal .dialog-heading,body:has(.shell) #modal .dialog-body{padding:16px 18px}
+ body:has(.shell) #modal .dialog-footer{padding:12px 18px}
+}
