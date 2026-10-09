@@ -85,6 +85,19 @@ Test unitari del calendario e del motore, più test HTTP su database temporaneo:
 
 `ui-check.mjs` è una verifica browser facoltativa: richiede Playwright installato e Microsoft Edge. Si può specificare il percorso del modulo Playwright tramite `PLAYWRIGHT_PATH`. Usa un database temporaneo e salva le schermate in `.artifacts`. Verifica primo accesso, drag-and-drop, inserimento confermato, CRUD, selezione degli articoli, calcolo automatico, regole di attrezzaggio, eccezioni e vista mobile.
 
+`operational-check.mjs` esegue 18 scenari da form reali: creazione/modifica, assegnazione, riordino primo/centro/coda, annullamento dell'anteprima, ritorno in attesa, annullamento/ripristino, cambio macchina, validazioni, calendario su attività già pianificate, lavorazioni su più giorni e chiusure, attrezzaggi impossibili, conflitti tra due pagine e permessi. La suite non invoca direttamente API di scrittura: legge lo stato per verificare gli effetti dei comandi impartiti dall'interfaccia. Il server e il database temporanei sono isolati dai dati reali; vengono rimossi alla fine. Esiti e schermate vengono salvati in `.artifacts/operational-report.json` e `.artifacts/operational-*.png`. Il comando termina con errore se una prova fallisce.
+
+```powershell
+$env:HEADFUL='1' # mostra Microsoft Edge durante le prove
+npm run test:ui
+npm run test:operational
+npm run test:resilience
+```
+
+`test:resilience` verifica in Edge perdita di connessione, risposta persa dopo un commit, doppio clic di conferma, due pagine sulla stessa sequenza e sessione invalidata durante la modifica. Report e schermate in `.artifacts/resilience-report.json` e `.artifacts/resilience-*.png`; utilizza un database temporaneo. I test in `npm test` includono inoltre scadenza reale della sessione, richieste HTTP incomplete, arresto brusco prima/dopo commit, festività consecutive, fine mese/anno, cambio ora con fusi host differenti e limiti delle dichiarazioni di bordo macchina. Una dichiarazione finale inferiore alla quantità prevista completa comunque l'attività; i consuntivi incrementali non sono implementati. Le prove di arresto coprono i confini della transazione, senza simulare guasti fisici del disco.
+
+Le viste temporali dispongono di zoom compatto/normale/dettaglio, intestazioni persistenti e indicatore dell'ora di Roma. Il trascinamento mostra punto di inserimento e inizio stimato; la conferma mostra gli orari realmente calcolati dal server. I contatori seguono il filtro macchina, mentre il carico segue macchine e giorni visualizzati. Fermi aperti e attività ancora in corso oltre la fine prevista segnalano il piano da verificare, senza spostamenti automatici. Nelle nuove schede il titolo viene ricavato dal prodotto, selezionato una sola volta; i titoli esistenti restano conservati fino a un cambio del prodotto.
+
 ## Configurazione del server
 
 Variabili d'ambiente: `PORT` (3000), `HOST` (127.0.0.1), `DATA_DIR` (cartella data), `COOKIE_SECURE` (1 per cookie HTTPS).
