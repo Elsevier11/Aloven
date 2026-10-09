@@ -4,6 +4,11 @@ const ARTICLE_ROLES = [
   ['product', 'product'],
 ];
 
+// Optional catalogue translation; task and execution snapshots stay unchanged.
+export function migrateArticleLanguages(db) {
+  addColumn(db, 'articles', "descriptionEn TEXT NOT NULL DEFAULT ''");
+}
+
 function hasColumn(db, table, column) {
   return db.prepare(`PRAGMA table_info(${table})`).all().some(item => item.name === column);
 }

@@ -81,3 +81,21 @@ La sequenza rimane completa, con conteggio delle attività nel periodo e righe e
 ## Quantità degli esempi — 9 ottobre 2026
 
 Completate le quantità ordine mancanti su 64 attività dimostrative già presenti nel DB. Formula: runMinutes × velocità macchina, escludendo attrezzaggio e pause di calendario. Le quattro macchine demo sono a 10 m/min: 180 minuti corrispondono a 1.800 m. Storico statistico già dotato di quantità, valori inseriti dall'utente, tempi, sequenze, date e consuntivi preservati. Backup in data/backups prima dell'aggiornamento; verifica atomica dei campi delle attività, dei consuntivi e delle relazioni. Script ripetibile seed-demo-quantities.mjs, non eseguito automaticamente all'avvio. Controllo finale: nessuna attività senza quantità e nessun esempio aggiornato incoerente con la velocità macchina.
+
+## Finitura console operatore touch e lingue — 9 ottobre 2026
+
+Lingue confermate dal cliente: italiano e inglese. Nella dichiarazione finale i lotti sono compilati un componente alla volta, con due pulsanti grandi che mostrano codice e stato di compilazione. Avanti valida il componente corrente, poi passa al secondo; Indietro e la selezione diretta conservano tutti i dati. Prima della qualità entrambi i componenti sono validati. Barcode applicato con Invio o uscita dal campo; componenti errati, duplicati e quantità non valide bloccano la conclusione. Errori rimossi durante la correzione; nessuna conferma aggiuntiva. Quantità ordine proposta come prima; controlli qualità espliciti, senza risposte preimpostate.
+
+Descrizione inglese facoltativa nell'anagrafica articoli, persistita nel DB e visualizzata nella console in lingua inglese quando la descrizione italiana corrisponde allo snapshot della lavorazione. In assenza di traduzione resta il testo originale: non sono inventate traduzioni ERP. Titoli prodotto/lotto riconoscibili possono utilizzare la descrizione inglese; nomi propri e testo libero restano originali. Causali tabellate restano bilingui, inclusa la segnalazione del fermo corrente. Rimossa la notifica ripetitiva dei dati condivisi, già visibile nella testata.
+
+Backup del DB prima della migrazione additiva. Attività, esecuzioni, eventi e scarichi preservati. Verifiche su DB temporaneo: suite operatore con ciclo completo, doppio tap, fermi, annullamento, validazioni, barcode, navigazione fra componenti e traduzioni persistenti; campi lotti visibili sopra il footer su tablet 1024×768, layout 768×1024 e 390×844. Test unitario dedicato alla migrazione ripetibile delle traduzioni.
+
+Corretto anche un aggiornamento asincrono della schermata di accesso al cambio lingua che poteva svuotare il nome utente durante la digitazione. Cambio lingua ora sincrono sul form. Risultato finale: 43/43 test unitari/HTTP e 6/6 scenari browser operatore superati.
+
+## Schermata principale tablet — finitura del 9 ottobre 2026
+
+Ridotte le ripetizioni fra testata, prodotto, stato e istruzioni. Vista essenziale: codice e titolo prodotto/lotto, due componenti con descrizioni, quantità prevista e tempo effettivo solo quando una fase è stata avviata. Preparazione e lavorazione guidate da istruzioni brevi IT/EN specifiche per fase. Tempo preparazione conservato nella fase pronta per produrre; timer fermo durante pausa. Tempi previsti, descrizione completa e note accessibili tramite Dettagli lavorazione, con pulsante touch da 64 px. Pannelli aperti conservati durante aggiornamenti della stessa sessione.
+
+Prossime attività ridotte a riepilogo apribile, con anteprima della prima in orizzontale e apertura esplicita su tablet verticale. Icone più visibili sul comando principale, fermo macchina distinto dalla pausa; nessuna conferma aggiunta. Controlli qualità con icone di esito e messaggio che elenca i controlli mancanti; nessuna selezione automatica. Verifica browser con titolo realistico, dimensioni 1024×768, 768×1024 e 390×844, apertura/chiusura dettagli, aggiornamento, IT/EN, tutti gli stati operativi e dichiarazione completa. Nessuna modifica al DB operativo in questo intervento.
+
+Logo ufficiale fornito dall'utente inserito in alto a sinistra nella console touch, come immagine originale senza alterazioni, su fondo bianco e con proporzioni conservate. Asset locale public/aloven-logo.png.

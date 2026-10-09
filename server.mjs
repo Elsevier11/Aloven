@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { scheduleMachine, validateCalendar } from './scheduler.mjs';
 import { migrateTextile } from './textile.mjs';
-import { migrateProduction } from './production.mjs';
+import { migrateProduction, migrateArticleLanguages } from './production.mjs';
 import { migrateShopfloor, performShopfloorAction, shopfloorExecutions } from './shopfloor.mjs';
 import { migrateQuality } from './quality.mjs';
 import { machineStops, migrateDowntime, performMachineStopAction } from './downtime.mjs';
@@ -46,6 +46,7 @@ if (!db.prepare('SELECT 1 FROM meta WHERE key=?').get('revision')) {
 }
 migrateTextile(db,`${today}T08:00`);
 migrateProduction(db);
+migrateArticleLanguages(db);
 migrateShopfloor(db);
 migrateQuality(db);
 migrateDowntime(db);
@@ -147,7 +148,7 @@ function applyAction(state,action,actorRole='admin') {
     const existing=action.id?articleById(action.id):null;
     if(action.remove){if(!existing)fail('Articolo non trovato.',404);if(state.tasks.some(t=>['component1ArticleId','component2ArticleId','productArticleId'].some(field=>t[field]===existing.id)))fail('L’articolo è utilizzato da attività.');state.articles=state.articles.filter(a=>a.id!==existing.id);}
     else {
-      const clean={code:text(action.values?.code,'Codice articolo',80),description:text(action.values?.description,'Descrizione articolo',200),unit:action.values?.unit,kind:action.values?.kind};if(!units.includes(clean.unit))fail('Unità articolo non valida.');if(!articleKinds.includes(clean.kind))fail('Tipo articolo non valido.');
+      const clean={code:text(action.values?.code,'Codice articolo',80),description:text(action.values?.description,'Descrizione articolo',200),descriptionEn:String(action.values?.descriptionEn??existing?.descriptionEn??'').trim().slice(0,200),unit:action.values?.unit,kind:action.values?.kind};if(!units.includes(clean.unit))fail('Unità articolo non valida.');if(!articleKinds.includes(clean.kind))fail('Tipo articolo non valido.');
       if(state.articles.some(a=>a.id!==existing?.id&&a.code.toLowerCase()===clean.code.toLowerCase()))fail('Esiste già un articolo con questo codice.');
       if(existing&&clean.kind==='component'&&state.tasks.some(t=>t.productArticleId===existing.id))fail('L’articolo è utilizzato come prodotto.');
       if(existing&&clean.kind==='product'&&state.tasks.some(t=>t.component1ArticleId===existing.id||t.component2ArticleId===existing.id))fail('L’articolo è utilizzato come componente.');
@@ -186,7 +187,7 @@ function save(state) {
   db.exec('DELETE FROM tasks; DELETE FROM setupRules; DELETE FROM articles; DELETE FROM types; DELETE FROM machines;');
   const m=db.prepare('INSERT INTO machines(id,name,description,anchor,speed,speedUnit) VALUES (?,?,?,?,?,?)');state.machines.forEach(x=>m.run(x.id,x.name,x.description,x.anchor,x.speed,x.speedUnit));
   const y=db.prepare('INSERT INTO types VALUES (?,?,?)');state.types.forEach(x=>y.run(x.id,x.name,x.color));
-  const a=db.prepare('INSERT INTO articles(id,code,description,unit,kind) VALUES (?,?,?,?,?)');state.articles.forEach(x=>a.run(x.id,x.code,x.description,x.unit,x.kind));
+  const a=db.prepare('INSERT INTO articles(id,code,description,unit,kind,descriptionEn) VALUES (?,?,?,?,?,?)');state.articles.forEach(x=>a.run(x.id,x.code,x.description,x.unit,x.kind,x.descriptionEn||''));
   const r=db.prepare('INSERT INTO setupRules(id,machineId,fromTypeId,toTypeId,minutes) VALUES (?,?,?,?,?)');state.setupRules.forEach(x=>r.run(x.id,x.machineId,x.fromTypeId,x.toTypeId,x.minutes));
   const t=db.prepare(`INSERT INTO tasks(id,title,typeId,machineId,setupMinutes,runMinutes,status,position,start,end,segments,notes,component1Code,component1Description,component2Code,component2Description,productCode,productDescription,quantity,calculationMode,effectiveSetupMinutes,component1ArticleId,component2ArticleId,productArticleId) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   state.tasks.forEach(x=>t.run(x.id,x.title,x.typeId,x.machineId,x.setupMinutes,x.runMinutes,x.status,x.position??null,x.start??null,x.end??null,JSON.stringify(x.segments),x.notes,x.component1Code||'',x.component1Description||'',x.component2Code||'',x.component2Description||'',x.productCode||'',x.productDescription||'',x.quantity??null,x.calculationMode||'manual',x.effectiveSetupMinutes??null,x.component1ArticleId??null,x.component2ArticleId??null,x.productArticleId??null));
@@ -207,7 +208,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
