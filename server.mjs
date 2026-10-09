@@ -11,6 +11,7 @@ import { migrateShopfloor, performShopfloorAction, shopfloorExecutions } from '.
 import { migrateQuality } from './quality.mjs';
 import { machineStops, migrateDowntime, performMachineStopAction } from './downtime.mjs';
 import { migrateReasonCatalogs, reasonCatalog, updateReasonCatalog } from './scrap-reasons.mjs';
+import { buildStatisticsReport, buildStatisticsWorkbook } from './statistics.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
@@ -196,6 +197,7 @@ function publicUsers() {return db.prepare('SELECT id,name,username,role FROM use
 const previews=new Map(),attempts=new Map();
 async function body(req) {let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>1048576)fail('Richiesta troppo grande.',413);}try{return JSON.parse(raw||'{}');}catch{fail('Richiesta non valida.');}}
 function send(res,status,data,headers={}) {res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...headers});res.end(JSON.stringify(data));}
+function sendFile(res,status,data,headers={}) {res.writeHead(status,{'Cache-Control':'no-store','Content-Length':data.length,...headers});res.end(data);}
 function session(req) {const token=req.headers.cookie?.split(';').map(s=>s.trim()).find(s=>s.startsWith('aloven_session='))?.slice(15);if(!token)return null;return db.prepare('SELECT u.id,u.name,u.username,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires>?').get(hash(token),Date.now());}
 function cookie(token,req,clear=false) {return `aloven_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${clear?0:43200}${process.env.COOKIE_SECURE==='1'?'; Secure':''}`;}
 const server=http.createServer(async(req,res)=>{
@@ -205,7 +207,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/statistics.js':['statistics.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
@@ -226,6 +228,14 @@ const server=http.createServer(async(req,res)=>{
     if(!user)fail('Accedi per continuare.',401);
     if(url.pathname==='/api/logout'&&req.method==='POST') {const token=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('aloven_session='))?.slice(15);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));send(res,200,{ok:true},{'Set-Cookie':cookie('',req,true)});return;}
     if(url.pathname==='/api/state'&&req.method==='GET') {send(res,200,{...snapshot(),user,users:user.role==='admin'?publicUsers():[]});return;}
+    if(url.pathname==='/api/statistics'&&req.method==='GET') {
+      send(res,200,buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined}));return;
+    }
+    if(url.pathname==='/api/statistics/export'&&req.method==='GET') {
+      const report=buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined});
+      const workbook=buildStatisticsWorkbook(report);
+      sendFile(res,200,workbook,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="statistiche-${report.filters.from}-${report.filters.to}.xlsx"`});return;
+    }
     if(url.pathname==='/api/shopfloor/action'&&req.method==='POST') {send(res,200,performShopfloorAction(db,payload,user,uid));return;}
     if(url.pathname==='/api/machine-stop'&&req.method==='POST') {send(res,200,performMachineStopAction(db,payload,user,uid));return;}
     if(url.pathname==='/api/scrap-reasons'&&req.method==='POST') {if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,updateReasonCatalog(db,'scrap',payload,uid));return;}

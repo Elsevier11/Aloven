@@ -1,0 +1,40 @@
+import {spawn} from 'node:child_process';
+import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {once} from 'node:events';
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.PLAYWRIGHT_PATH?pathToFileURL(process.env.PLAYWRIGHT_PATH).href:'playwright');
+const temp=mkdtempSync(path.join(tmpdir(),'aloven-statistics-'));
+const server=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+let browser;
+const passed=[];
+try {
+ const base=await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error('Server timeout')),15000);server.stdout.on('data',b=>{output+=b;const m=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(m){clearTimeout(timer);resolve(m[0]);}});server.on('exit',()=>reject(new Error('Server exit')));});
+ browser=await chromium.launch({channel:'msedge',headless:process.env.HEADFUL!=='1'});
+ const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base);
+ await page.getByLabel('Nome e cognome').fill('Admin statistiche');await page.getByLabel('Nome utente',{exact:true}).fill('statistics-test');await page.getByLabel('Password',{exact:true}).fill('StatisticsTest123!');await page.getByRole('button',{name:'Crea amministratore'}).click();
+ await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
+ const seed=spawn(process.execPath,['seed-history.mjs'],{env:{...process.env,DATA_DIR:temp},stdio:['ignore','ignore','pipe']});let seedError='';seed.stderr.on('data',b=>seedError+=b);assert.equal((await once(seed,'exit'))[0],0,seedError);
+ await page.getByRole('button',{name:'Aggiorna',exact:false}).click();
+ await page.waitForFunction(()=>Number(document.querySelector('.nav-count')?.textContent)>2000);
+ await page.locator('[data-nav="statistics"]').click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();
+ const report=await (await page.request.get(base+'/api/statistics')).json();
+ assert.ok(report.totals.count>2000);assert.equal(report.monthly.length,10);assert.equal(await page.locator('tbody tr').count(),10);passed.push('Storico completo e tabella mensile');
+ for(const tab of ['machines','products','scrapReasons','stopReasons','details']){await page.locator(`[data-statistics-tab="${tab}"]`).click();assert.ok(await page.locator('tbody tr').count()>0);}
+ await page.locator('#statistics-next').click();assert.match(await page.locator('.statistics-pagination').innerText(),/Pagina 2/);passed.push('Sei tabelle e paginazione');
+ await page.getByLabel('Dal',{exact:true}).fill('2026-02-01');await page.getByLabel('Al',{exact:true}).fill('2026-02-28');
+ const state=await (await page.request.get(base+'/api/state')).json(),machine=state.machines[0];
+ await page.getByLabel('Macchina',{exact:true}).selectOption(machine.id);await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();
+ const filtered=await (await page.request.get(`${base}/api/statistics?from=2026-02-01&to=2026-02-28&machineId=${machine.id}`)).json();assert.ok(filtered.totals.count<report.totals.count);assert.ok(filtered.details.every(x=>x.machineId===machine.id));
+ assert.ok((await page.locator('tbody').innerText()).includes(machine.name));passed.push('Filtro mese e macchina');
+ const downloaded=page.waitForEvent('download');await page.locator('#statistics-export').click();const download=await downloaded;const target=path.join(temp,'statistics.xlsx');await download.saveAs(target);const workbook=readFileSync(target);assert.equal(workbook.subarray(0,2).toString(),'PK');assert.ok(workbook.length>10000);assert.match(download.suggestedFilename(),/2026-02-01.*2026-02-28.*xlsx$/);passed.push('Download Excel dei dati filtrati');
+ await page.getByLabel('Dal',{exact:true}).fill('2025-01-01');await page.getByLabel('Al',{exact:true}).fill('2025-01-31');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();assert.match(await page.locator('tbody').innerText(),/Nessun dato/);passed.push('Periodo senza dati');
+ await page.route('**/api/statistics?*',route=>route.abort());await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-error').waitFor();await page.unroute('**/api/statistics?*');await page.getByRole('button',{name:'Riprova',exact:true}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();passed.push('Errore di rete e recupero');
+ await page.getByLabel('Dal',{exact:true}).fill('2025-12-01');await page.getByLabel('Al',{exact:true}).fill('2026-09-30');await page.getByLabel('Macchina',{exact:true}).selectOption('');await page.getByRole('button',{name:'Applica filtri'}).click();await page.locator('.statistics-results[aria-busy="false"]').waitFor();await page.locator('[data-statistics-tab="monthly"]').click();
+ mkdirSync('.artifacts',{recursive:true});await page.screenshot({path:'.artifacts/statistics-desktop.png',fullPage:false});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:'.artifacts/statistics-mobile.png',fullPage:false});passed.push('Layout desktop e mobile');
+ assert.deepEqual(errors,[]);writeFileSync('.artifacts/statistics-report.json',JSON.stringify({passed,downloadBytes:workbook.length},null,2));console.log('PASS statistiche browser:',passed.length,'scenari');
+} finally {await browser?.close();server.kill();await once(server,'exit').catch(()=>{});rmSync(temp,{recursive:true,force:true});}
