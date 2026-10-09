@@ -130,7 +130,15 @@ export function migrateShopfloor(db) {
 export function shopfloorExecutions(db, at = new Date().toISOString()) {
   const events = db.prepare('SELECT * FROM executionEvents ORDER BY rowid').all();
   const lots = db.prepare('SELECT * FROM executionLots ORDER BY rowid').all();
-  const byTask = (rows, taskId) => rows.filter(row => row.taskId === taskId);
+  const groupByTask = rows => {
+    const grouped = new Map();
+    for (const row of rows) {
+      if (!grouped.has(row.taskId)) grouped.set(row.taskId, []);
+      grouped.get(row.taskId).push(row);
+    }
+    return grouped;
+  };
+  const eventsByTask = groupByTask(events), lotsByTask = groupByTask(lots);
   return db.prepare('SELECT * FROM execution ORDER BY taskId').all().map(execution => {
     const metrics = executionMetrics(execution, at);
     return {
@@ -139,8 +147,8 @@ export function shopfloorExecutions(db, at = new Date().toISOString()) {
       setupActualSeconds: metrics.actualSetupSeconds,
       runActualSeconds: metrics.actualRunSeconds,
       metrics,
-      events: byTask(events, execution.taskId),
-      lots: byTask(lots, execution.taskId),
+      events: eventsByTask.get(execution.taskId) || [],
+      lots: lotsByTask.get(execution.taskId) || [],
     };
   });
 }
