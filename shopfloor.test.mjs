@@ -53,6 +53,7 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     base=await start();await request('setup',{name:'Amministratore',username:'admin',password:'PasswordTest123!'});const adminCookie=cookie;
     await request('users',{name:'Operatrice Reparto',username:'operator',password:'PasswordTest123!',role:'operator'});
     let state=await request('state');assert.deepEqual(state.executions,[]);
+    const scrapReason=state.scrapReasons.find(item=>item.code==='fabric-defect');
     const machine=state.machines[0], candidates=state.tasks.filter(task=>task.machineId===machine.id&&task.status==='unplanned').slice(0,2);
     assert.equal(candidates.length,2);
     const first=candidates[0], legacy=candidates[1];
@@ -104,9 +105,13 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     await shopfloor(first.id,'finish_run',{producedQuantity:12.5,scrapQuantity:0,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:[{...validLots[0],barcode:'CODICE-ESTRANEO'},validLots[2]]},400,beforeAtomicFailure);
     const afterAtomicFailure=await request('state'), failedExecution=afterAtomicFailure.executions.find(item=>item.taskId===first.id);
     assert.equal(afterAtomicFailure.revision,beforeAtomicFailure,'una chiusura non valida viene annullata interamente');assert.equal(failedExecution.phase,'run_running');assert.deepEqual(failedExecution.lots,[]);
-    await shopfloor(first.id,'finish_run',{producedQuantity:12.5,scrapQuantity:0,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots,at:'1900-01-01T00:00:00.000Z'});
+    const beforeMissingScrapReason=(await request('state')).revision;
+    await shopfloor(first.id,'finish_run',{producedQuantity:12,scrapQuantity:.5,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots},400,beforeMissingScrapReason);
+    assert.equal((await request('state')).revision,beforeMissingScrapReason,'la causale mancante non salva lotti o dichiarazione');
+    await shopfloor(first.id,'finish_run',{producedQuantity:12,scrapQuantity:.5,scrapReasonId:scrapReason.id,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots,at:'1900-01-01T00:00:00.000Z'});
     state=await request('state');execution=state.executions.find(item=>item.taskId===first.id);
-    assert.equal(execution.phase,'completed');assert.equal(execution.producedQuantity,12.5);assert.equal(execution.lots.length,3);
+    assert.equal(execution.phase,'completed');assert.equal(execution.producedQuantity,12);assert.equal(execution.scrapQuantity,.5);assert.equal(execution.lots.length,3);
+    assert.deepEqual({id:execution.scrapReasonId,code:execution.scrapReasonCode,label:execution.scrapReason},{id:scrapReason.id,code:scrapReason.code,label:scrapReason.description});
     assert.deepEqual(execution.events.map(event=>event.action),['start_setup','finish_setup','start_run','pause_run','resume_run','finish_run']);
     assert.equal(execution.events[3].reason,'Cambio bobina');assert.ok(execution.events.every(event=>event.userName==='Operatrice Reparto'));
     assert.ok(execution.runActualSeconds>=pausedSeconds);assert.ok(execution.runEndedAt);assert.equal(execution.lastRunStartedAt,null);
@@ -114,8 +119,17 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     for(const lot of execution.lots){const prefix=lot.component;assert.equal(lot.articleCode,execution[`${prefix}Code`]);assert.equal(lot.unit,execution[`${prefix}Unit`]);}
     assert.deepEqual(execution.lots.map(lot=>lot.barcode),validLots.map(lot=>lot.barcode));
 
-    await shopfloor(zero.id,'start_run');await delay(10);await shopfloor(zero.id,'pause_run',{reason:'Fine turno'});
+    cookie=adminCookie;state=await request('state');
+    await request('scrap-reasons',{revision:state.revision,id:scrapReason.id,code:scrapReason.code,description:'Etichetta modificata',descriptionEn:'Changed label',active:false});
+    state=await request('state');execution=state.executions.find(item=>item.taskId===first.id);
+    assert.equal(execution.scrapReason,scrapReason.description,'modifica e disattivazione non cambiano lo storico');
+    await request('scrap-reasons',{revision:state.revision,id:scrapReason.id,remove:true},400);
+
+    cookie=operatorCookie;await shopfloor(zero.id,'start_run');await delay(10);await shopfloor(zero.id,'pause_run',{reason:'Fine turno'});
     state=await request('state');const zeroPaused=state.executions.find(item=>item.taskId===zero.id), zeroSeconds=zeroPaused.runActualSeconds;
+    const beforeInactiveReason=state.revision;
+    await shopfloor(zero.id,'finish_run',{producedQuantity:0,scrapQuantity:1,scrapReasonId:scrapReason.id,reason:'Prova scarto',qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:[{component:'component1',lot:'Z1',quantity:1},{component:'component2',lot:'Z2',quantity:1}]},400,beforeInactiveReason);
+    assert.equal((await request('state')).revision,beforeInactiveReason,'una causale disattivata non modifica dichiarazione o revisione');
     await shopfloor(zero.id,'finish_run',{producedQuantity:0,lots:[{component:'component1',lot:'Z1',quantity:1},{component:'component2',lot:'Z2',quantity:1}]},400);
     await delay(15);await shopfloor(zero.id,'finish_run',{producedQuantity:0,scrapQuantity:0,reason:'Prova senza produzione',qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:[{component:'component1',lot:'Z1',quantity:1},{component:'component2',lot:'Z2',quantity:1}]});
     const zeroDone=(await request('state')).executions.find(item=>item.taskId===zero.id);assert.equal(zeroDone.runActualSeconds,zeroSeconds,'chiudere da pausa non aggiunge tempo');assert.equal(zeroDone.setupStartedAt,null);assert.equal(zeroDone.setupEndedAt,null);

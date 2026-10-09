@@ -12,7 +12,7 @@ function declaration(overrides={}) {
   return {
     producedQuantity:10,
     scrapQuantity:0,
-    scrapReason:null,
+    scrapReasonId:null,
     qualityStatus:'conforming',
     qualityNotes:'',
     qualityChecks:{appearance:'pass',bonding:'pass'},
@@ -33,8 +33,8 @@ test('valida scarti, qualità e barcode rispetto allo snapshot',()=>{
   assert.throws(()=>validateFinishDeclaration(declaration({qualityStatus:'conforming',qualityChecks:{appearance:'na',bonding:'na'}}),execution()),/conforme/);
   assert.throws(()=>validateFinishDeclaration(declaration({qualityStatus:'review',qualityNotes:' '}),execution()),/note qualità/);
   assert.throws(()=>validateFinishDeclaration(declaration({qualityStatus:'nonconforming',qualityNotes:null}),execution()),/note qualità/);
-  assert.throws(()=>validateFinishDeclaration(declaration({scrapQuantity:1}),execution()),/motivazione per lo scarto/);
-  assert.throws(()=>validateFinishDeclaration(declaration({producedQuantity:1e9,scrapQuantity:1,scrapReason:'Difetto'}),execution()),/somma/);
+  assert.throws(()=>validateFinishDeclaration(declaration({scrapQuantity:1}),execution()),/causale di scarto/);
+  assert.throws(()=>validateFinishDeclaration(declaration({producedQuantity:1e9,scrapQuantity:1,scrapReasonId:'scrap-other'}),execution()),/somma/);
   assert.throws(()=>validateFinishDeclaration(declaration({lots:[{component:'component1',lot:'LOT-A',quantity:2,barcode:'ALTRO|LOT-A|2'},{component:'component2',lot:'LOT-B',quantity:3}]}),execution()),/articolo/);
   assert.throws(()=>validateFinishDeclaration(declaration({lots:[{component:'component1',lot:'LOT-A',quantity:2,barcode:'ART-A|LOT-X|2'},{component:'component2',lot:'LOT-B',quantity:3}]}),execution()),/lotto/);
   assert.throws(()=>validateFinishDeclaration(declaration({lots:[{component:'component1',lot:'LOT-A',quantity:2,barcode:'ART-A|LOT-A|3'},{component:'component2',lot:'LOT-B',quantity:3}]}),execution()),/quantità/);

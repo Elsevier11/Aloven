@@ -42,7 +42,7 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
   }
   async function change(action,expected=200){const state=await request('state');const preview=await request('preview',{revision:state.revision,action},expected);if(expected!==200)return preview;await request('commit',{token:preview.token});return request('state');}
   async function shopfloor(taskId,action,expected=200){const state=await request('state');return request('shopfloor/action',{revision:state.revision,taskId,action},expected);}
-  async function machineStop(machineId,action,reason,expected=200,forcedRevision){const state=forcedRevision===undefined?await request('state'):null;return request('machine-stop',{revision:forcedRevision??state.revision,machineId,action,...(reason===undefined?{}:{reason})},expected);}
+  async function machineStop(machineId,action,reasonId,expected=200,forcedRevision){const state=forcedRevision===undefined?await request('state'):null;return request('machine-stop',{revision:forcedRevision??state.revision,machineId,action,...(reasonId===undefined?{}:{reasonId})},expected);}
   async function login(username){await request('login',{username,password:'PasswordTest123!'});return cookie;}
   async function stop(){if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}}
   try {
@@ -53,12 +53,15 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
     const task=state.tasks.find(item=>item.status==='unplanned'&&item.setupMinutes>0), machineId=task.machineId;
     state=await change({kind:'plan',id:task.id});
 
-    cookie='';await request('machine-stop',{revision:state.revision,machineId,action:'stop',reason:'Guasto'},401);
-    cookie=await login('operator');
+    const breakdown=state.machineStopReasons.find(reason=>reason.code==='breakdown').id;
+    const maintenance=state.machineStopReasons.find(reason=>reason.code==='maintenance').id;
+    const materials=state.machineStopReasons.find(reason=>reason.code==='materials').id;
+    cookie='';await request('machine-stop',{revision:state.revision,machineId,action:'stop',reasonId:breakdown},401);
+    const operatorCookie=await login('operator');
     const beforeInvalid=(await request('state')).revision;
     await machineStop(machineId,'stop','',400,beforeInvalid);
     assert.equal((await request('state')).revision,beforeInvalid);
-    await machineStop(machineId,'stop','Sensore non disponibile');
+    await machineStop(machineId,'stop',breakdown);
     state=await request('state');
     assert.equal(state.machineStops.length,1);assert.equal(state.machineStops[0].endedAt,null);assert.equal(state.machineStops[0].userName,'Operatore Fermi');
     await shopfloor(task.id,'start_setup',409);
@@ -67,20 +70,20 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
     await machineStop(machineId,'resume');
 
     await shopfloor(task.id,'start_setup');
-    const setupStop=await machineStop(machineId,'stop','Guasto durante setup',400);
+    const setupStop=await machineStop(machineId,'stop',breakdown,400);
     assert.match(setupStop.error,/Termina prima l.attrezzaggio.*non può essere interrotto/);
     await shopfloor(task.id,'finish_setup');
-    await machineStop(machineId,'stop','Pressione insufficiente');
+    await machineStop(machineId,'stop',materials);
     await shopfloor(task.id,'start_run',409);
     await machineStop(machineId,'resume');
     await shopfloor(task.id,'start_run');
     await new Promise(resolve=>setTimeout(resolve,20));
 
-    await machineStop(machineId,'stop','Arresto di emergenza');
+    await machineStop(machineId,'stop',maintenance);
     state=await request('state');
     let execution=state.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'run_paused');assert.ok(execution.runActualSeconds>0);
-    assert.deepEqual(execution.events.slice(-1).map(event=>[event.action,event.reason]),[['pause_run','Fermo macchina: Arresto di emergenza']]);
+    assert.deepEqual(execution.events.slice(-1).map(event=>[event.action,event.reason]),[['pause_run','Fermo macchina: Manutenzione']]);
     await machineStop(machineId,'resume');
     state=await request('state');execution=state.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'run_paused','la ripresa macchina non riprende automaticamente la lavorazione');
@@ -88,6 +91,14 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
 
     assert.equal(state.machineStops.length,3);
     assert.ok(state.machineStops.every(item=>item.endedAt&&item.endedByUserName==='Operatore Fermi'));
+    const maintenanceStop=state.machineStops.find(item=>item.reasonId===maintenance);
+    assert.deepEqual({reason:maintenanceStop.reason,code:maintenanceStop.reasonCode},{reason:'Manutenzione',code:'maintenance'});
+    cookie=adminCookie;let catalogState=await request('state');const maintenanceReason=catalogState.machineStopReasons.find(item=>item.id===maintenance);
+    await request('machine-stop-reasons',{revision:catalogState.revision,id:maintenance,code:maintenanceReason.code,description:'Manutenzione modificata',descriptionEn:'Changed maintenance',active:false});
+    catalogState=await request('state');
+    assert.equal(catalogState.machineStops.find(item=>item.id===maintenanceStop.id).reason,'Manutenzione','lo storico del fermo resta uno snapshot');
+    await request('machine-stop-reasons',{revision:catalogState.revision,id:maintenance,remove:true},400);
+    state=catalogState;cookie=operatorCookie;
     const beforeRestart=structuredClone(state.machineStops);
     await stop();base=await start();state=await request('state');
     assert.deepEqual(state.machineStops,beforeRestart);

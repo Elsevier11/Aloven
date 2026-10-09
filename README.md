@@ -61,7 +61,17 @@ L'aggiornamento del database è transazionale e avviene una sola volta. Conserva
 
 Riferimenti per i processi di esempio: [Monti Antonio — hot melt](https://www.montiantonio.com/en/products/category/bonding/hot-melt-textiles), [film/web](https://www.montiantonio.com/en/products/category/film-web-bonding) e [Aitex — linee hot melt e a fiamma](https://www.aitexsrl.com/a-hot-melt). Le macchine dell'app sono esempi generici, senza attribuzione a modelli commerciali specifici.
 
+## Vista operatore per tablet
+
+Apri `/operatore`, oppure premi **Vista touch** nella maschera bordo macchina. La vista originale resta disponibile. La nuova interfaccia utilizza gli stessi utenti, dati e regole di reparto: preparazione, produzione, pausa/ripresa e dichiarazione finale. Lingua italiano/inglese e postazione vengono ricordate sul dispositivo. I nomi e le descrizioni del catalogo conservano il testo originale: non vengono tradotti automaticamente.
+
+Il comando principale resta visibile nella barra inferiore. Avvio/fine preparazione, avvio/ripresa produzione e chiusura del fermo si registrano direttamente, senza finestre di conferma. Pausa e segnalazione fermo richiedono solo il motivo. La dichiarazione finale ha tre passi: quantità, lotti dei due componenti e controlli qualità. La quantità prevista è proposta quando presente, con scarti inizialmente a zero; note e motivi compaiono solo per quantità buona zero o scarti positivi. Il riepilogo è consultabile facoltativamente nell'ultimo passo. “Completa attività” salva e chiude direttamente, senza checkbox o altra conferma. Sono supportati più lotti e lettori barcode che inviano testo come una tastiera, oltre all'inserimento manuale. Le prossime tre attività sono mostrate in ordine di sequenza. La segnalazione del fermo registra lo stato nel gestionale; non comanda fisicamente la macchina. Chiudere il fermo non riprende automaticamente la lavorazione.
+
+`npm run test:operator` esegue la verifica browser dedicata con Playwright e Microsoft Edge su database temporaneo; `HEADFUL=1` mostra il browser. Report e schermate in `.artifacts/operator-report.json` e `.artifacts/operator-*.png`. La comprensibilità senza spiegazioni va validata anche con gli operatori reali e nelle loro lingue.
+
 ## Regole di pianificazione
+
+Le sezioni **Causali scarto** e **Causali fermo** gestiscono due tabelle distinte nel database. Gli amministratori possono creare, modificare, attivare/disattivare ed eliminare le causali non utilizzate. Una causale utilizzata va disattivata: il codice e la descrizione della registrazione vengono conservati come snapshot e non cambiano se l'anagrafica viene aggiornata. Sono incluse causali iniziali modificabili per l'accoppiatura tessuti, con descrizioni italiane e inglesi. Lo scarto positivo e la segnalazione del fermo richiedono una causale attiva selezionata; non è proposta automaticamente. I motivi storici inseriti come testo restano conservati.
 
 La vista Giorno mostra una scala oraria verticale e una colonna per macchina; la vista 5 giorni è un Gantt orizzontale. Ogni segmento occupa spazio proporzionale ai minuti previsti, con colore stabile per attività e attrezzaggio tratteggiato. Le fasce non lavorative sono visibili. Mouse e tastiera aprono un riepilogo; il clic apre dettagli e gestione della posizione. Le completate restano nel database, nascoste nel piano salvo selezione di “Mostra completate”.
 

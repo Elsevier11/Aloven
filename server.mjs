@@ -10,6 +10,7 @@ import { migrateProduction } from './production.mjs';
 import { migrateShopfloor, performShopfloorAction, shopfloorExecutions } from './shopfloor.mjs';
 import { migrateQuality } from './quality.mjs';
 import { machineStops, migrateDowntime, performMachineStopAction } from './downtime.mjs';
+import { migrateReasonCatalogs, reasonCatalog, updateReasonCatalog } from './scrap-reasons.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
@@ -47,8 +48,9 @@ migrateProduction(db);
 migrateShopfloor(db);
 migrateQuality(db);
 migrateDowntime(db);
+migrateReasonCatalogs(db);
 function snapshot() {
-  return {revision:Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),tasks:db.prepare('SELECT * FROM tasks').all().map(t=>({...t,segments:JSON.parse(t.segments)})),executions:shopfloorExecutions(db),machineStops:machineStops(db),calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
+  return {revision:Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),scrapReasons:reasonCatalog(db,'scrap'),machineStopReasons:reasonCatalog(db,'machineStop'),tasks:db.prepare('SELECT * FROM tasks').all().map(t=>({...t,segments:JSON.parse(t.segments)})),executions:shopfloorExecutions(db),machineStops:machineStops(db),calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
 }
 function text(value,label,max=200) { if(typeof value!=='string'||!value.trim()||value.length>max) fail(`${label}: inserisci un valore valido (massimo ${max} caratteri).`); return value.trim(); }
 function duration(value,label,zero=false) { if(!Number.isInteger(value)||value<(zero?0:1)||value>525600) fail(`${label}: inserisci minuti interi ${zero?'non negativi':'maggiori di zero'} (massimo 525600).`); return value; }
@@ -203,7 +205,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
@@ -226,6 +228,8 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname==='/api/state'&&req.method==='GET') {send(res,200,{...snapshot(),user,users:user.role==='admin'?publicUsers():[]});return;}
     if(url.pathname==='/api/shopfloor/action'&&req.method==='POST') {send(res,200,performShopfloorAction(db,payload,user,uid));return;}
     if(url.pathname==='/api/machine-stop'&&req.method==='POST') {send(res,200,performMachineStopAction(db,payload,user,uid));return;}
+    if(url.pathname==='/api/scrap-reasons'&&req.method==='POST') {if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,updateReasonCatalog(db,'scrap',payload,uid));return;}
+    if(url.pathname==='/api/machine-stop-reasons'&&req.method==='POST') {if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,updateReasonCatalog(db,'machineStop',payload,uid));return;}
     if(url.pathname==='/api/preview'&&req.method==='POST') {
       if(['machine','type','calendar','article','setupRule'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
       const old=snapshot();if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);

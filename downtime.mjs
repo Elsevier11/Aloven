@@ -10,13 +10,6 @@ function revision(db) {
   return Number(db.prepare("SELECT value FROM meta WHERE key='revision'").get()?.value);
 }
 
-function cleanReason(value) {
-  if (typeof value !== 'string' || !value.trim() || value.length > 500) {
-    fail('Inserisci una motivazione valida (massimo 500 caratteri).');
-  }
-  return value.trim();
-}
-
 /** Creates the unexpected machine-stop schema once, without physical references to rewritten planning tables. */
 export function migrateDowntime(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') throw new TypeError('Database SQLite non valido.');
@@ -71,7 +64,10 @@ export function performMachineStopAction(db, payload, user, makeId, now = new Da
     const activeStop = db.prepare('SELECT * FROM machineStops WHERE machineId=? AND endedAt IS NULL').get(payload.machineId);
 
     if (payload.action === 'stop') {
-      const reason = cleanReason(payload.reason);
+      if (typeof payload.reasonId !== 'string' || !payload.reasonId) fail('Seleziona una causale di fermo macchina attiva.');
+      const selectedReason = db.prepare('SELECT id,code,description FROM machineStopReasons WHERE id=? AND active=1').get(payload.reasonId);
+      if (!selectedReason) fail('Seleziona una causale di fermo macchina attiva.');
+      const reason = selectedReason.description;
       if (activeStop) fail('La macchina è già ferma.',409);
       const execution = db.prepare("SELECT * FROM execution WHERE machineId=? AND phase IN ('setup_running','run_running') LIMIT 1").get(payload.machineId);
       if (execution?.phase === 'setup_running') {
@@ -84,8 +80,8 @@ export function performMachineStopAction(db, payload, user, makeId, now = new Da
         db.prepare('INSERT INTO executionEvents(id,taskId,action,at,userId,userName,reason) VALUES (?,?,?,?,?,?,?)')
           .run(makeId(),execution.taskId,'pause_run',now,user.id,user.name,`Fermo macchina: ${reason}`);
       }
-      db.prepare('INSERT INTO machineStops(id,machineId,startedAt,endedAt,reason,userId,userName,endedByUserId,endedByUserName) VALUES (?,?,?,NULL,?,?,?,?,NULL)')
-        .run(makeId(),payload.machineId,now,reason,user.id,user.name,null);
+      db.prepare('INSERT INTO machineStops(id,machineId,startedAt,endedAt,reason,userId,userName,endedByUserId,endedByUserName,reasonId,reasonCode) VALUES (?,?,?,NULL,?,?,?,?,NULL,?,?)')
+        .run(makeId(),payload.machineId,now,reason,user.id,user.name,null,selectedReason.id,selectedReason.code);
     } else {
       if (!activeStop) fail('La macchina non risulta ferma.',409);
       db.prepare('UPDATE machineStops SET endedAt=?,endedByUserId=?,endedByUserName=? WHERE id=?')

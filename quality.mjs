@@ -58,7 +58,7 @@ export function validateFinishDeclaration(payload, execution) {
   const goodQuantity = finiteQuantity(payload.producedQuantity, 'Quantità prodotta');
   const scrapQuantity = finiteQuantity(payload.scrapQuantity, 'Quantità scartata');
   if (goodQuantity + scrapQuantity > 1e9) fail('La somma tra quantità buona e scartata supera 1000000000.');
-  const scrapReason = nullableText(payload.scrapReason, 'una motivazione per lo scarto', 500, scrapQuantity > 0);
+  const scrapReasonId = scrapQuantity > 0 ? nullableText(payload.scrapReasonId, 'una causale di scarto', 200, true) : null;
 
   if (!QUALITY_STATUSES.has(payload.qualityStatus)) fail('Esito qualità non valido.');
   const qualityStatus = payload.qualityStatus;
@@ -90,7 +90,7 @@ export function validateFinishDeclaration(payload, execution) {
     lots.push({component:item.component,lot,quantity,barcode:cleanBarcode(item.barcode,lot,quantity,articleCode)});
   }
   if (![...COMPONENTS].every(component => roles.has(component))) fail('Inserisci almeno un lotto per entrambi i componenti.');
-  return {goodQuantity,scrapQuantity,scrapReason,qualityStatus,qualityNotes,qualityChecks:{appearance:checks.appearance,bonding:checks.bonding},lots};
+  return {goodQuantity,scrapQuantity,scrapReasonId,qualityStatus,qualityNotes,qualityChecks:{appearance:checks.appearance,bonding:checks.bonding},lots};
 }
 
 function elapsedSeconds(from, to) {

@@ -192,13 +192,17 @@ export function performShopfloorAction(db, payload, user, makeId, now = new Date
     } else {
       if (!execution || !['run_running','run_paused'].includes(execution.phase)) fail('L’esecuzione non può essere completata in questo stato.',409);
       const declaration = validateFinishDeclaration(payload,execution); reason = cleanReason(payload.reason,declaration.goodQuantity === 0);
+      const scrapReason = declaration.scrapQuantity > 0
+        ? db.prepare('SELECT id,code,description FROM scrapReasons WHERE id=? AND active=1').get(declaration.scrapReasonId)
+        : null;
+      if (declaration.scrapQuantity > 0 && !scrapReason) fail('Seleziona una causale di scarto attiva.');
       const total = execution.runActiveSeconds + (execution.phase === 'run_running' ? elapsedSeconds(execution.lastRunStartedAt,now) : 0);
       const insert = db.prepare('INSERT INTO executionLots(id,taskId,component,articleCode,lot,quantity,unit,barcode) VALUES (?,?,?,?,?,?,?,?)');
       for (const lot of declaration.lots) {
         const prefix = lot.component;
         insert.run(makeId(),task.id,lot.component,execution[`${prefix}Code`],lot.lot,lot.quantity,execution[`${prefix}Unit`],lot.barcode);
       }
-      db.prepare("UPDATE execution SET phase='completed',runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,qualityStatus=?,qualityNotes=?,qualityChecks=? WHERE taskId=?").run(now,total,declaration.goodQuantity,declaration.scrapQuantity,declaration.scrapReason,declaration.qualityStatus,declaration.qualityNotes,JSON.stringify(declaration.qualityChecks),task.id);
+      db.prepare("UPDATE execution SET phase='completed',runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=? WHERE taskId=?").run(now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,declaration.qualityStatus,declaration.qualityNotes,JSON.stringify(declaration.qualityChecks),task.id);
       db.prepare("UPDATE tasks SET status='completed' WHERE id=?").run(task.id);
     }
 
