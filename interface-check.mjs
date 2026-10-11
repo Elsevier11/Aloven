@@ -15,6 +15,7 @@ try{
  browser=await chromium.launch({channel:'msedge',headless:process.env.HEADFUL!=='1'});
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
+ await page.addInitScript(()=>localStorage.setItem('aloven-dispatch-mode','overview'));
  await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica interfacce');await page.getByLabel('Nome utente',{exact:true}).fill('interface');await page.getByLabel('Password',{exact:true}).fill('InterfaceTest123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
  mkdirSync('.artifacts',{recursive:true});
  const groups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};
@@ -26,7 +27,7 @@ try{
  assert.deepEqual((await primary.allTextContents()).map(text=>text.trim()),['Pianificazione','Attività','Bordo macchina','Statistiche','Anagrafiche','Configurazione']);
  const childForms={machines:'Nuova macchina',types:'Nuova tipologia',articles:'Nuovo articolo',setupRules:'Nuova regola',scrapReasons:'Nuova causale',machineStopReasons:'Nuova causale',calendar:'Imposta periodo',users:'Nuovo utente'};
  for(const [view,action] of Object.entries(childForms)){
-  await navigate(view);assert.equal(await page.locator('.section-navigation [data-nav]').count(),groups[view]==='catalogues'?6:2,`${view}: menu secondario`);
+  await navigate(view);assert.equal(await page.locator('.section-navigation [data-nav]').count(),groups[view]==='catalogues'?6:4,`${view}: menu secondario`);
   const trigger=page.getByRole('button',{name:action,exact:true});assert.equal(await trigger.count(),1,`${view}: form raggiungibile`);await trigger.click();await page.locator('#modal').waitFor({state:'visible'});await page.getByRole('button',{name:'Chiudi',exact:true}).click();
  }
  for(const profile of [{width:1920,height:1080},{width:1366,height:768}])for(const zoom of [1,1.25]){

@@ -297,3 +297,4 @@ body:has(.shell) #modal .notice{padding:0;margin-top:8px;font-size:12px}
  body:has(.shell) #modal .dialog-heading,body:has(.shell) #modal .dialog-body{padding:16px 18px}
  body:has(.shell) #modal .dialog-footer{padding:12px 18px}
 }
+@media(min-width:801px){.planning-workspace:has(.timeline-scroll){overflow-y:auto}.planning-workspace:has(.timeline-scroll) .planner-area{flex:1 0 280px;min-height:280px}}

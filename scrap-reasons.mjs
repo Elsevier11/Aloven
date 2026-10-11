@@ -99,7 +99,7 @@ export function reasonCatalog(db, kind) {
 }
 
 /** Performs an admin catalog mutation with optimistic revision control. */
-export function updateReasonCatalog(db, kind, payload, makeId) {
+export function updateReasonCatalog(db, kind, payload, makeId, auditHook) {
   const config = CATALOGS[kind];
   if (!config) throw new TypeError('Catalogo causali non valido.');
   if (!payload || !Number.isInteger(payload.revision)) fail('Revisione non valida.');
@@ -133,6 +133,7 @@ export function updateReasonCatalog(db, kind, payload, makeId) {
       }
     }
     db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();
+    if(auditHook)auditHook(reasonCatalog(db,kind));
     db.exec('COMMIT');
     return {ok:true};
   } catch (error) {

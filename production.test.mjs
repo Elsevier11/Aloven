@@ -46,7 +46,7 @@ test('catalogo, calcolo automatico, velocità e regole setup usano preview/commi
   }
   async function request(endpoint,data,expected=200){const response=await fetch(`${base}/api/${endpoint}`,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json','X-Aloven-Request':'1'}:{}),...(cookie?{Cookie:cookie}:{})},body:data?JSON.stringify(data):undefined});const json=await response.json();assert.equal(response.status,expected,JSON.stringify(json));if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];return json;}
   async function preview(action,state){return request('preview',{revision:(state??await request('state')).revision,action});}
-  async function change(action){const state=await request('state');const result=await preview(action,state);await request('commit',{token:result.token});return request('state');}
+  async function change(action){let state=await request('state');if(action.kind==='status'&&action.status==='in_progress'&&state.planning?.hasDraftChanges){await request('planning/release',{revision:state.revision});state=await request('state');}const result=await preview(action,state);await request('commit',{token:result.token});return request('state');}
   async function stop(){if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}}
   const taskValues=(title,machineId,typeId,componentId,productId,overrides={})=>({title,machineId,typeId,setupMinutes:20,runMinutes:30,quantity:null,calculationMode:'manual',notes:'',component1ArticleId:componentId,component2ArticleId:componentId,productArticleId:productId,...overrides});
   try {

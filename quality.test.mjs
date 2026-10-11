@@ -94,3 +94,10 @@ test('metriche confrontano snapshot e tempi reali, inclusi valori zero',()=>{
   assert.equal(live.runDeltaSeconds,null);
   assert.equal(live.setupDeltaSeconds,null);
 });
+
+test('metriche preparazione escludono pause chiuse e aperte',()=>{
+  const closed=executionMetrics({phase:'setup_running',setupStartedAt:'2026-10-11T08:00:00.000Z',setupEndedAt:null,setupPausedAt:null,setupPausedSeconds:120,runActiveSeconds:0,plannedSetupMinutes:10},'2026-10-11T08:05:00.000Z');
+  assert.equal(closed.actualSetupSeconds,180);
+  const open=executionMetrics({phase:'setup_running',setupStartedAt:'2026-10-11T08:00:00.000Z',setupEndedAt:null,setupPausedAt:'2026-10-11T08:03:00.000Z',setupPausedSeconds:60,runActiveSeconds:0,plannedSetupMinutes:10},'2026-10-11T08:08:00.000Z');
+  assert.equal(open.actualSetupSeconds,120);
+});

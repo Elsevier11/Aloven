@@ -142,3 +142,41 @@ Le password sono protette con scrypt e salt individuale; le sessioni scadono dop
 La pianificazione si apre nella vista **Per macchina**, con tre pannelli: lavorazioni da assegnare, macchine e sequenza della macchina selezionata. **Timeline** mostra la durata proporzionale nel giorno/periodo; **Panoramica reparto** mostra il Gantt complessivo. La selezione di una lavorazione segue la sua macchina obbligatoria. Verifica browser dedicata: `npm run test:dispatch`, con database temporaneo e prova su 12 macchine.
 
 Per completare le quantità mancanti delle attività tessili dimostrative: `node seed-demo-quantities.mjs` (rispetta `DATA_DIR`). La quantità è calcolata come minuti di lavorazione × velocità macchina, nell'unità dell'articolo. Il comando crea un backup SQLite, aggiorna soltanto le quantità mancanti degli esempi riconosciuti e verifica che pianificazione e consuntivi rimangano invariati.
+
+
+## Controllo MES e continuità operativa
+
+In **Attività** sono disponibili **Lavorazioni**, **Tracciabilità** e **Verifiche qualità**. La scheda permette riferimenti manuali ordine/ERP, cliente, consegna e lotto prodotto previsto. Nella dichiarazione finale il lotto prodotto effettivo è obbligatorio se la quantità buona è positiva; nessun lotto viene estratto automaticamente dal titolo. Lo storico precedente conserva i dati originali e può non avere lotto prodotto o decisione qualità.
+
+Gli amministratori possono rettificare un consuntivo con motivazione: quantità, qualità, lotti consumati e lotto prodotto. La registrazione precedente resta nel **Registro modifiche** in Configurazione. Le rettifiche richiedono una nuova decisione qualità. Rilascio, destinazione a scarto e rilavorazione sono decisioni tracciate, senza movimentazioni di magazzino o cambi automatici delle quantità/sequenze.
+
+Un fermo può essere registrato anche durante preparazione. Dopo la riattivazione della macchina l’operatore sceglie **Riprendi preparazione**; il tempo sospeso non entra nel tempo attivo.
+
+Le statistiche offrono esclusione esplicita dello storico demo, delta attrezzaggio, velocità buona/totale per prodotto e macchina e ore attive giornaliere. Le quantità restano attribuite alla chiusura; i tempi giornalieri sono ricostruiti dagli eventi, con indicazione della copertura mancante. Export XLSX a nove fogli.
+
+### Backup
+
+Il server crea una copia coerente prima delle migrazioni di un database esistente e poi ogni 24 ore. Ogni copia viene verificata e sottoposta a prova di recupero temporaneo. Configurazione→Backup mostra stato/errori e permette una copia manuale.
+
+- BACKUP_DIR: destinazione (default data/backups). Configurare un dispositivo separato nell’installazione operativa.
+- BACKUP_INTERVAL_HOURS: intervallo positivo in ore, default 24.
+- BACKUP_RETENTION: numero di copie conservate, default 14; file estranei non eliminati.
+
+Verifica: node backup-cli.mjs verify <file.sqlite>. Prova recupero: node backup-cli.mjs restore-test <file.sqlite>. Ripristino: node backup-cli.mjs restore <file.sqlite> --stopped --target-dir <directory-nuova>. Arrestare il server; il comando crea una destinazione nuova e rifiuta sovrascritture. Verificare il database recuperato prima di configurarlo come DATA_DIR. Il flag --stopped è una dichiarazione dell’operatore, non una rilevazione automatica dei processi.
+
+### Verifiche MES
+
+- npm test: test unitari e HTTP, inclusi atomicità, concorrenza, migrazioni e recupero backup.
+- npm run test:mes: nove scenari browser dedicati, report .artifacts/mes-report.json e schermate desktop/mobile.
+- Suite operatore, statistiche, operative, UI e interfaccia restano disponibili. I runner browser richiedono Edge e Playwright, individuabile tramite PLAYWRIGHT_PATH come nei runner esistenti.
+
+Arca Evolution e le regole delle due fasi restano rinviati: nessun connettore, semilavorato o avanzamento parziale è assunto.
+### Pianificazione e rilascio
+
+La vista principale separa attività disponibili, sequenza macchina e rilascio al reparto. Le modifiche salvate aggiornano la **bozza**; solo **Rilascia piano / Rilascia modifiche** aggiorna il bordo macchina. La versione rilasciata resta disponibile agli operatori finché il pianificatore non pubblica quella successiva. Attrezzaggi e produzioni avviati sono protetti e gli avvii concorrenti invalidano le conferme obsolete.
+
+**Prepara il piano del periodo** propone attività selezionate entro il calendario disponibile, con consegne, attrezzaggi, esclusioni motivate e capacità residua. La proposta è modificabile e non viene rilasciata automaticamente. La scheda attività distingue macchina di destinazione, macchine compatibili e preferita; non è attivo un bilanciamento automatico tra alternative.
+
+Per interrompere un'attività avviata, l'amministratore invia una richiesta motivata. L'operatore conferma il fermo fisico e gli eventuali consuntivi, oppure rifiuta con motivo. La sospensione permette di fermare il timer prima della compilazione del consuntivo. Tempi, quantità parziali, lotti, qualità e audit restano conservati.
+
+Test dedicati: `npm run test:planning-workflow`, `npm run test:release-operator` e `npm test`. Tutti usano database temporanei. La migrazione conserva il piano esistente come prima versione rilasciata e viene preceduta da un backup verificato.

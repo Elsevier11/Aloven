@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { scheduleMachine, validateCalendar } from './scheduler.mjs';
@@ -12,11 +12,19 @@ import { migrateQuality } from './quality.mjs';
 import { machineStops, migrateDowntime, performMachineStopAction } from './downtime.mjs';
 import { migrateReasonCatalogs, reasonCatalog, updateReasonCatalog } from './scrap-reasons.mjs';
 import { buildStatisticsReport, buildStatisticsWorkbook } from './statistics.mjs';
+import { migrateMesRecords, decorateMesExecutions, correctFinishedExecution, decideQualityDisposition, traceLots, listMesAudit, recordMesAudit, validateOutputLot } from './mes-records.mjs';
+import { backupConfig, createConsistentBackup, startBackupSchedule, testRestore } from './backup.mjs';
+import { migratePlanningCompatibility, compatibilityFields, proposePeriod } from './planning-proposal.mjs';
+import { migratePlanningRelease, decoratePlanningTasks, releasedTasks, planningInfo, interruptionRequests, releasePlanning, requestExecutionInterruption, respondExecutionInterruption } from './planning-release.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
 mkdirSync(dataDir, { recursive: true });
+const databaseExisted = existsSync(path.join(dataDir, 'aloven.sqlite'));
 const db = new DatabaseSync(path.join(dataDir, 'aloven.sqlite'));
+const backupOptions = backupConfig(process.env,{dataDir});
+const initialBackup=databaseExisted?await createConsistentBackup(db,backupOptions):null;
+if(initialBackup)testRestore(initialBackup.file,{tempRoot:backupOptions.backupDir});
 db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,username TEXT NOT NULL UNIQUE,password TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('admin','operator')));
@@ -51,8 +59,24 @@ migrateShopfloor(db);
 migrateQuality(db);
 migrateDowntime(db);
 migrateReasonCatalogs(db);
-function snapshot() {
-  return {revision:Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),scrapReasons:reasonCatalog(db,'scrap'),machineStopReasons:reasonCatalog(db,'machineStop'),tasks:db.prepare('SELECT * FROM tasks').all().map(t=>({...t,segments:JSON.parse(t.segments)})),executions:shopfloorExecutions(db),machineStops:machineStops(db),calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
+migrateMesRecords(db);
+migratePlanningCompatibility(db);
+migratePlanningRelease(db,uid);
+const backups = startBackupSchedule(db,{...backupOptions,initialBackup});
+function auditDifference(before,after){
+  const result={before:{},after:{}};
+  for(const key of ['tasks','machines','types','articles','setupRules','scrapReasons','machineStopReasons']){
+    const left=new Map((before[key]||[]).map(row=>[row.id,row])),right=new Map((after[key]||[]).map(row=>[row.id,row]));
+    const ids=[...new Set([...left.keys(),...right.keys()])].filter(id=>JSON.stringify(left.get(id))!==JSON.stringify(right.get(id)));
+    if(ids.length){result.before[key]=ids.map(id=>left.get(id)||{id,missing:true});result.after[key]=ids.map(id=>right.get(id)||{id,missing:true});}
+  }
+  if(JSON.stringify(before.calendar)!==JSON.stringify(after.calendar)){result.before.calendar=before.calendar;result.after.calendar=after.calendar;}
+  return result;
+}
+function snapshot(viewRole='admin') {
+  const rawTasks=db.prepare('SELECT * FROM tasks').all().map(t=>({...t,segments:JSON.parse(t.segments),compatibleMachineIds:JSON.parse(t.compatibleMachineIds||'[]')}));
+  const tasks=viewRole==='operator'?releasedTasks(rawTasks):decoratePlanningTasks(rawTasks);
+  return {revision:Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),scrapReasons:reasonCatalog(db,'scrap'),machineStopReasons:reasonCatalog(db,'machineStop'),tasks,planning:planningInfo(db,rawTasks),interruptionRequests:interruptionRequests(db),executions:decorateMesExecutions(db,shopfloorExecutions(db)),machineStops:machineStops(db),calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
 }
 function text(value,label,max=200) { if(typeof value!=='string'||!value.trim()||value.length>max) fail(`${label}: inserisci un valore valido (massimo ${max} caratteri).`); return value.trim(); }
 function duration(value,label,zero=false) { if(!Number.isInteger(value)||value<(zero?0:1)||value>525600) fail(`${label}: inserisci minuti interi ${zero?'non negativi':'maggiori di zero'} (massimo 525600).`); return value; }
@@ -60,10 +84,20 @@ function positiveNumber(value,label) {if(typeof value!=='number'||!Number.isFini
 function checkDate(value) { if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+'Z'))||new Date(value+'Z').toISOString().slice(0,16)!==value) fail('Data e ora non valide.'); return value; }
 function calendarFor(state,id) { return {weekly:state.calendar.weekly,exceptions:{...state.calendar.exceptions,...(state.calendar.machineExceptions[id]||{})}}; }
 const locked = t => ['in_progress','completed'].includes(t.status);
+function optionalReference(value,label,max=120){if(value===undefined||value===null||value==='')return null;return text(value,label,max);}
+function orderFields(values,existing={}) {
+  const result={};
+  for(const [key,label,max] of [['orderReference','Riferimento ordine',120],['erpReference','Riferimento ERP',120],['customer','Cliente',200]])result[key]=values[key]===undefined?(existing[key]??null):optionalReference(values[key],label,max);
+  result.outputLot=values.outputLot===undefined?(existing.outputLot??null):validateOutputLot(values.outputLot,{required:false});
+  result.dueDate=values.dueDate===undefined?(existing.dueDate??null):optionalReference(values.dueDate,'Consegna prevista',10);
+  if(result.dueDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(result.dueDate)||!Number.isFinite(Date.parse(result.dueDate+'T12:00Z'))||new Date(result.dueDate+'T12:00Z').toISOString().slice(0,10)!==result.dueDate))fail('Consegna prevista non valida.');
+  return result;
+}
 const units=['m','m2','kg'],articleKinds=['component','product','both'];
 const supportsRole=(article,role)=>article.kind===role||article.kind==='both';
 function applyAction(state,action,actorRole='admin') {
   const affected = new Set();
+  const releasedValue=(task,key)=>{if(!task.releasedPayload)return null;try{return JSON.parse(task.releasedPayload)?.[key]??null;}catch{return null;}};
   const taskById = id => {const t=state.tasks.find(x=>x.id===id); if(!t) fail('Attività non trovata.',404); return t;};
   const machineById = id => {const m=state.machines.find(x=>x.id===id); if(!m) fail('Macchina non trovata.',404); return m;};
   const articleById = id => {const a=state.articles.find(x=>x.id===id);if(!a)fail('Articolo non trovato.',404);return a;};
@@ -91,7 +125,15 @@ function applyAction(state,action,actorRole='admin') {
   };
   if(action.kind==='plan') {
     const t=taskById(action.id); if(locked(t)||t.status==='cancelled') fail('Questa attività non può essere spostata.');
-    const machine=machineById(t.machineId); const oldSequence=state.tasks.filter(x=>x.machineId===machine.id&&x.position!==null).sort((a,b)=>a.position-b.position);
+    const oldMachineId=t.machineId,targetMachineId=action.machineId??t.machineId;
+    if(!(t.compatibleMachineIds||[t.machineId]).includes(targetMachineId))fail('La macchina selezionata non è compatibile con questa attività.');
+    const machine=machineById(targetMachineId);affected.add(oldMachineId);t.machineId=targetMachineId;
+    if(targetMachineId!==oldMachineId&&t.calculationMode==='automatic'){
+      const product=t.productArticleId?articleById(t.productArticleId):null;
+      if(!product||product.unit!==machine.speedUnit)fail(`L'unità del prodotto (${product?.unit||'non disponibile'}) non coincide con quella della macchina (${machine.speedUnit}).`);
+      t.runMinutes=duration(Math.ceil(t.quantity/machine.speed),'Esecuzione');
+    }
+    const oldSequence=state.tasks.filter(x=>x.machineId===machine.id&&x.position!==null).sort((a,b)=>a.position-b.position);
     const sequence=oldSequence.filter(x=>x.id!==t.id);
     if(action.unplan) { t.position=null;t.start=null;t.end=null;t.segments=[];t.status='unplanned';t.effectiveSetupMinutes=null; }
     else {
@@ -104,7 +146,8 @@ function applyAction(state,action,actorRole='admin') {
   } else if(action.kind==='task') {
     const existing=action.id?taskById(action.id):null;
     if(existing&&locked(existing)) fail('Le attività in corso o completate sono protette da modifiche e cancellazione.');
-    if(action.remove) { state.tasks=state.tasks.filter(x=>x.id!==existing.id);affected.add(existing.machineId); }
+    if(existing&&state.executions?.some(execution=>execution.taskId===existing.id&&execution.interruptedAt))fail('Le attività interrotte restano nello storico e non possono essere modificate o eliminate.');
+    if(action.remove) {if(existing.releasedVersion!=null)fail('Ritira l’attività dal piano e rilascia la modifica prima di eliminarla.');state.tasks=state.tasks.filter(x=>x.id!==existing.id);affected.add(existing.machineId); }
     else {
       const v=action.values||{},machine=machineById(v.machineId); if(!state.types.some(x=>x.id===v.typeId)) fail('Seleziona una tipologia valida.');
       const calculationMode=v.calculationMode??existing?.calculationMode??'manual';if(!['manual','automatic'].includes(calculationMode))fail('Modalità di calcolo non valida.');
@@ -114,7 +157,7 @@ function applyAction(state,action,actorRole='admin') {
         if(!product)fail('Seleziona un articolo prodotto per il calcolo automatico.');if(product.unit!==machine.speedUnit)fail(`L'unità del prodotto (${product.unit}) non coincide con quella della macchina (${machine.speedUnit}).`);
         runMinutes=Math.ceil(quantity/machine.speed);duration(runMinutes,'Esecuzione');
       } else {if(quantity!==null)quantity=positiveNumber(quantity,'Quantità');runMinutes=duration(v.runMinutes,'Esecuzione');}
-      const clean={title:text(v.title,'Titolo'),typeId:v.typeId,machineId:v.machineId,setupMinutes:duration(v.setupMinutes,'Attrezzaggio',true),runMinutes,quantity,calculationMode,notes:typeof v.notes==='string'?v.notes.slice(0,2000):'',...articleFields};
+      const clean={title:text(v.title,'Titolo'),typeId:v.typeId,machineId:v.machineId,setupMinutes:duration(v.setupMinutes,'Attrezzaggio',true),runMinutes,quantity,calculationMode,notes:typeof v.notes==='string'?v.notes.slice(0,2000):'',...articleFields,...orderFields(v,existing||{}),...compatibilityFields(v,existing,state.machines)};
       // Validate even unplanned activities: the setup must fit an available shift.
       scheduleMachine([{id:'validation',...clean,status:'planned'}],machineById(v.machineId).anchor,calendarFor(state,v.machineId));
       if(existing) { affected.add(existing.machineId); if(existing.machineId!==clean.machineId) Object.assign(existing,{position:null,start:null,end:null,segments:[],status:'unplanned',effectiveSetupMinutes:null});Object.assign(existing,clean); }
@@ -126,6 +169,8 @@ function applyAction(state,action,actorRole='admin') {
     if(state.executions?.some(execution=>execution.taskId===t.id))fail('Usa le azioni di reparto per aggiornare questa attività.');
     if(!allowed[t.status]?.includes(action.status)) fail('Cambio di stato non consentito.');
     if(action.status==='in_progress') {
+      if(t.releasedVersion==null)fail('Rilascia il piano prima di avviare l’attività.');
+      if(t.planningState&&t.planningState!=='released')fail('Questa attività ha modifiche in bozza. Avviala dal bordo macchina sul piano rilasciato.');
       if(state.machineStops?.some(stop=>stop.machineId===t.machineId&&stop.endedAt===null)) fail('La macchina è ferma. Registra la ripresa della macchina prima di avviare l’attività.');
       if(state.tasks.some(x=>x.machineId===t.machineId&&x.status==='in_progress')) fail('La macchina ha già un’attività in corso.');
       if(state.tasks.some(x=>x.machineId===t.machineId&&x.position!==null&&x.position<t.position&&x.status!=='completed')) fail('Completa prima le attività precedenti della macchina.');
@@ -136,7 +181,7 @@ function applyAction(state,action,actorRole='admin') {
   } else if(action.kind==='machine') {
     const existing=action.id?machineById(action.id):null;
     if(action.remove) {
-      if(state.tasks.some(x=>x.machineId===existing.id)) fail('La macchina è utilizzata da attività. Elimina o trasferisci prima le attività.');
+      if(state.tasks.some(x=>x.machineId===existing.id||x.preferredMachineId===existing.id||(x.compatibleMachineIds||[]).includes(existing.id)||releasedValue(x,'machineId')===existing.id||releasedValue(x,'preferredMachineId')===existing.id||(releasedValue(x,'compatibleMachineIds')||[]).includes(existing.id))) fail('La macchina è utilizzata da attività in bozza o rilasciate. Aggiorna compatibilità e piano prima di eliminarla.');
       if(state.setupRules.some(x=>x.machineId===existing.id))fail('La macchina è utilizzata da regole di attrezzaggio.');
       state.machines=state.machines.filter(x=>x.id!==existing.id);delete state.calendar.machineExceptions[existing.id];
     } else {
@@ -146,13 +191,13 @@ function applyAction(state,action,actorRole='admin') {
     }
   } else if(action.kind==='article') {
     const existing=action.id?articleById(action.id):null;
-    if(action.remove){if(!existing)fail('Articolo non trovato.',404);if(state.tasks.some(t=>['component1ArticleId','component2ArticleId','productArticleId'].some(field=>t[field]===existing.id)))fail('L’articolo è utilizzato da attività.');state.articles=state.articles.filter(a=>a.id!==existing.id);}
+    if(action.remove){if(!existing)fail('Articolo non trovato.',404);if(state.tasks.some(t=>['component1ArticleId','component2ArticleId','productArticleId'].some(field=>t[field]===existing.id||releasedValue(t,field)===existing.id)))fail('L’articolo è utilizzato da attività in bozza o rilasciate.');state.articles=state.articles.filter(a=>a.id!==existing.id);}
     else {
       const clean={code:text(action.values?.code,'Codice articolo',80),description:text(action.values?.description,'Descrizione articolo',200),descriptionEn:String(action.values?.descriptionEn??existing?.descriptionEn??'').trim().slice(0,200),unit:action.values?.unit,kind:action.values?.kind};if(!units.includes(clean.unit))fail('Unità articolo non valida.');if(!articleKinds.includes(clean.kind))fail('Tipo articolo non valido.');
       if(state.articles.some(a=>a.id!==existing?.id&&a.code.toLowerCase()===clean.code.toLowerCase()))fail('Esiste già un articolo con questo codice.');
       if(existing&&clean.kind==='component'&&state.tasks.some(t=>t.productArticleId===existing.id))fail('L’articolo è utilizzato come prodotto.');
       if(existing&&clean.kind==='product'&&state.tasks.some(t=>t.component1ArticleId===existing.id||t.component2ArticleId===existing.id))fail('L’articolo è utilizzato come componente.');
-      if(existing&&existing.unit!==clean.unit&&state.tasks.some(t=>['component1ArticleId','component2ArticleId','productArticleId'].some(field=>t[field]===existing.id)))fail('Non puoi cambiare l’unità di un articolo utilizzato da attività.');
+      if(existing&&existing.unit!==clean.unit&&state.tasks.some(t=>['component1ArticleId','component2ArticleId','productArticleId'].some(field=>t[field]===existing.id||releasedValue(t,field)===existing.id)))fail('Non puoi cambiare l’unità di un articolo utilizzato da attività in bozza o rilasciate.');
       if(existing){Object.assign(existing,clean);for(const task of state.tasks){if(locked(task))continue;for(const prefix of ['component1','component2','product'])if(task[`${prefix}ArticleId`]===existing.id){task[`${prefix}Code`]=clean.code;task[`${prefix}Description`]=clean.description;}}}
       else state.articles.push({id:uid(),...clean});
     }
@@ -162,7 +207,7 @@ function applyAction(state,action,actorRole='admin') {
     else {const clean={machineId:action.values?.machineId,fromTypeId:action.values?.fromTypeId,toTypeId:action.values?.toTypeId,minutes:duration(action.values?.minutes,'Attrezzaggio',true)};machineById(clean.machineId);if(!state.types.some(type=>type.id===clean.fromTypeId)||!state.types.some(type=>type.id===clean.toTypeId))fail('Seleziona tipologie valide.');if(state.setupRules.some(rule=>rule.id!==existing?.id&&rule.machineId===clean.machineId&&rule.fromTypeId===clean.fromTypeId&&rule.toTypeId===clean.toTypeId))fail('Esiste già una regola per questa transizione.');if(existing){affected.add(existing.machineId);Object.assign(existing,clean);}else state.setupRules.push({id:uid(),...clean});affected.add(clean.machineId);}
   } else if(action.kind==='type') {
     const existing=state.types.find(x=>x.id===action.id); if(action.id&&!existing) fail('Tipologia non trovata.',404);
-    if(action.remove) {if(state.tasks.some(x=>x.typeId===existing.id)) fail('Tipologia utilizzata da attività.');if(state.setupRules.some(x=>x.fromTypeId===existing.id||x.toTypeId===existing.id))fail('Tipologia utilizzata da regole di attrezzaggio.');state.types=state.types.filter(x=>x.id!==existing.id);}
+    if(action.remove) {if(state.tasks.some(x=>x.typeId===existing.id||releasedValue(x,'typeId')===existing.id)) fail('Tipologia utilizzata da attività in bozza o rilasciate.');if(state.setupRules.some(x=>x.fromTypeId===existing.id||x.toTypeId===existing.id))fail('Tipologia utilizzata da regole di attrezzaggio.');state.types=state.types.filter(x=>x.id!==existing.id);}
     else {
       const clean={name:text(action.values?.name,'Nome tipologia'),color:action.values?.color};if(!/^#[0-9a-fA-F]{6}$/.test(clean.color||'')) fail('Colore non valido.');
       if(state.types.some(x=>x.id!==existing?.id&&x.name.toLowerCase()===clean.name.toLowerCase())) fail('Tipologia già esistente.');
@@ -191,6 +236,10 @@ function save(state) {
   const r=db.prepare('INSERT INTO setupRules(id,machineId,fromTypeId,toTypeId,minutes) VALUES (?,?,?,?,?)');state.setupRules.forEach(x=>r.run(x.id,x.machineId,x.fromTypeId,x.toTypeId,x.minutes));
   const t=db.prepare(`INSERT INTO tasks(id,title,typeId,machineId,setupMinutes,runMinutes,status,position,start,end,segments,notes,component1Code,component1Description,component2Code,component2Description,productCode,productDescription,quantity,calculationMode,effectiveSetupMinutes,component1ArticleId,component2ArticleId,productArticleId) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   state.tasks.forEach(x=>t.run(x.id,x.title,x.typeId,x.machineId,x.setupMinutes,x.runMinutes,x.status,x.position??null,x.start??null,x.end??null,JSON.stringify(x.segments),x.notes,x.component1Code||'',x.component1Description||'',x.component2Code||'',x.component2Description||'',x.productCode||'',x.productDescription||'',x.quantity??null,x.calculationMode||'manual',x.effectiveSetupMinutes??null,x.component1ArticleId??null,x.component2ArticleId??null,x.productArticleId??null));
+  const references=db.prepare('UPDATE tasks SET outputLot=?,orderReference=?,erpReference=?,customer=?,dueDate=? WHERE id=?');
+  state.tasks.forEach(x=>references.run(x.outputLot??null,x.orderReference??null,x.erpReference??null,x.customer??null,x.dueDate??null,x.id));
+  const planning=db.prepare('UPDATE tasks SET compatibleMachineIds=?,preferredMachineId=?,releasedPayload=?,releasedVersion=? WHERE id=?');
+  state.tasks.forEach(x=>planning.run(JSON.stringify(x.compatibleMachineIds||[x.machineId]),x.preferredMachineId??null,x.releasedPayload??null,x.releasedVersion??null,x.id));
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(JSON.stringify(state.calendar),'calendar');
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(String(state.revision+1),'revision');
 }
@@ -208,7 +257,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/mes-console.js':['mes-console.js','text/javascript'],'/mes-console.css':['mes-console.css','text/css'],'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
@@ -228,29 +277,44 @@ const server=http.createServer(async(req,res)=>{
     }
     if(!user)fail('Accedi per continuare.',401);
     if(url.pathname==='/api/logout'&&req.method==='POST') {const token=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('aloven_session='))?.slice(15);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));send(res,200,{ok:true},{'Set-Cookie':cookie('',req,true)});return;}
-    if(url.pathname==='/api/state'&&req.method==='GET') {send(res,200,{...snapshot(),user,users:user.role==='admin'?publicUsers():[]});return;}
+    if(url.pathname==='/api/state'&&req.method==='GET') {send(res,200,{...snapshot(user.role),user,users:user.role==='admin'?publicUsers():[]});return;}
     if(url.pathname==='/api/statistics'&&req.method==='GET') {
-      send(res,200,buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined}));return;
+      send(res,200,buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined,excludeDemo:url.searchParams.get('excludeDemo')??undefined}));return;
     }
     if(url.pathname==='/api/statistics/export'&&req.method==='GET') {
-      const report=buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined});
+      const report=buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined,excludeDemo:url.searchParams.get('excludeDemo')??undefined});
       const workbook=buildStatisticsWorkbook(report);
       sendFile(res,200,workbook,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="statistiche-${report.filters.from}-${report.filters.to}.xlsx"`});return;
     }
+    if(url.pathname==='/api/mes/trace'&&req.method==='GET'){send(res,200,traceLots(db,{lot:url.searchParams.get('lot')??'',articleCode:url.searchParams.get('articleCode')||undefined,direction:url.searchParams.get('direction')||undefined}));return;}
+    if(url.pathname==='/api/mes/correction'&&req.method==='POST'){send(res,200,correctFinishedExecution(db,payload,user,uid));return;}
+    if(url.pathname==='/api/mes/quality'&&req.method==='POST'){send(res,200,decideQualityDisposition(db,payload,user,uid));return;}
+    if(url.pathname==='/api/mes/audit'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,listMesAudit(db,{entityType:url.searchParams.get('entityType')||undefined,entityId:url.searchParams.get('entityId')||url.searchParams.get('taskId')||undefined,limit:Number(url.searchParams.get('limit')||25),offset:Number(url.searchParams.get('offset')||0)}));return;}
+    if(url.pathname==='/api/backups'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,backups.getStatus());return;}
+    if(url.pathname==='/api/backups/run'&&req.method==='POST'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);await backups.runNow();send(res,200,backups.getStatus());return;}
     if(url.pathname==='/api/shopfloor/action'&&req.method==='POST') {send(res,200,performShopfloorAction(db,payload,user,uid));return;}
+    if(url.pathname==='/api/shopfloor/interruption'&&req.method==='POST') {send(res,200,respondExecutionInterruption(db,payload,user,uid));return;}
+    if(url.pathname==='/api/planning/interruption-request'&&req.method==='POST') {send(res,200,requestExecutionInterruption(db,payload,user,uid));return;}
+    if(url.pathname==='/api/planning/release'&&req.method==='POST') {send(res,200,releasePlanning(db,payload,user,uid));return;}
     if(url.pathname==='/api/machine-stop'&&req.method==='POST') {send(res,200,performMachineStopAction(db,payload,user,uid));return;}
-    if(url.pathname==='/api/scrap-reasons'&&req.method==='POST') {if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,updateReasonCatalog(db,'scrap',payload,uid));return;}
-    if(url.pathname==='/api/machine-stop-reasons'&&req.method==='POST') {if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,updateReasonCatalog(db,'machineStop',payload,uid));return;}
+    if(['/api/scrap-reasons','/api/machine-stop-reasons'].includes(url.pathname)&&req.method==='POST'){
+      if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      const kind=url.pathname==='/api/scrap-reasons'?'scrap':'machineStop',before=reasonCatalog(db,kind);
+      // Catalog function owns its transaction; audit hook passed to it for atomic persistence.
+      send(res,200,updateReasonCatalog(db,kind,payload,uid,(after)=>recordMesAudit(db,{entityType:kind+'Reason',entityId:payload.id||after.find(x=>!before.some(b=>b.id===x.id))?.id||kind,action:payload.remove?'delete':'save',user,reason:'Gestione causale',before,after},uid)));return;
+    }
     if(url.pathname==='/api/preview'&&req.method==='POST') {
-      if(['machine','type','calendar','article','setupRule'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      if(['machine','type','calendar','article','setupRule','periodProposal'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
       const old=snapshot();if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
-      const next=applyAction(structuredClone(old),payload.action,user.role);const changes=next.tasks.filter(t=>{const p=old.tasks.find(x=>x.id===t.id);return p&&(p.start!==t.start||p.end!==t.end||p.machineId!==t.machineId||p.runMinutes!==t.runMinutes||p.effectiveSetupMinutes!==t.effectiveSetupMinutes);}).map(t=>{const p=old.tasks.find(x=>x.id===t.id);return {id:t.id,title:t.title,oldStart:p.start,oldEnd:p.end,start:t.start,end:t.end,oldRunMinutes:p.runMinutes,runMinutes:t.runMinutes,oldSetupMinutes:p.effectiveSetupMinutes,setupMinutes:t.effectiveSetupMinutes};});
-      const token=uid()+uid();for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,next,expires:Date.now()+300000});send(res,200,{token,changes});return;
+      const proposal=payload.action?.kind==='periodProposal'?proposePeriod(structuredClone(old),payload.action):null;
+      const next=proposal?.state??applyAction(structuredClone(old),payload.action,user.role);const changes=next.tasks.filter(t=>{const p=old.tasks.find(x=>x.id===t.id);return p&&(p.start!==t.start||p.end!==t.end||p.machineId!==t.machineId||p.runMinutes!==t.runMinutes||p.effectiveSetupMinutes!==t.effectiveSetupMinutes);}).map(t=>{const p=old.tasks.find(x=>x.id===t.id);return {id:t.id,title:t.title,oldStart:p.start,oldEnd:p.end,start:t.start,end:t.end,oldRunMinutes:p.runMinutes,runMinutes:t.runMinutes,oldSetupMinutes:p.effectiveSetupMinutes,setupMinutes:t.effectiveSetupMinutes};});
+      const summary=proposal?{included:proposal.included,excluded:proposal.excluded,load:proposal.load,from:proposal.from,to:proposal.to}:undefined;
+      const token=uid()+uid();for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,next,expires:Date.now()+300000});send(res,200,{token,changes,...(summary?{proposal:summary}:{})});return;
     }
     if(url.pathname==='/api/commit'&&req.method==='POST') {
       const p=previews.get(payload.token);if(!p||p.userId!==user.id||p.expires<Date.now())fail('Anteprima scaduta. Ripeti l’operazione.',409);
-      if(['machine','type','calendar','article','setupRule'].includes(p.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
-      db.exec('BEGIN IMMEDIATE');try {if(snapshot().revision!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);save(p.next);db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
+      if(['machine','type','calendar','article','setupRule','periodProposal'].includes(p.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      db.exec('BEGIN IMMEDIATE');try {if(snapshot().revision!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);const previous=snapshot();save(p.next);const difference=auditDifference(previous,snapshot());const collection={task:'tasks',machine:'machines',type:'types',article:'articles',setupRule:'setupRules'}[p.action.kind];recordMesAudit(db,{entityType:p.action.kind,entityId:p.action.id||(collection?p.next[collection].find(item=>!previous[collection].some(old=>old.id===item.id))?.id:null)||p.action.kind,action:'commit',user,reason:(typeof p.action.values?.notes==='string'&&p.action.values.notes.trim()?p.action.values.notes:'Modifica '+p.action.kind+' confermata').slice(0,1000),before:difference.before,after:difference.after},uid);db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
       send(res,200,{ok:true});return;
     }
     if(url.pathname==='/api/users'&&req.method==='POST') {
@@ -258,15 +322,21 @@ const server=http.createServer(async(req,res)=>{
       const existing=payload.id?db.prepare('SELECT * FROM users WHERE id=?').get(payload.id):null;if(payload.id&&!existing)fail('Utente non trovato.',404);
       if(existing?.id===user.id&&payload.remove)fail('Non puoi eliminare il tuo account.');
       if(existing?.role==='admin'&&(payload.remove||payload.role!=='admin')&&db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").get().n<=1)fail('Deve rimanere almeno un amministratore.');
+      const targetId=existing?.id||uid();
+      db.exec('BEGIN IMMEDIATE');try {
       if(payload.remove)db.prepare('DELETE FROM users WHERE id=?').run(existing.id);
       else {
         const name=text(payload.name,'Nome'),username=text(payload.username,'Nome utente',80).toLowerCase();if(!['admin','operator'].includes(payload.role))fail('Ruolo non valido.');
         if(db.prepare('SELECT id FROM users WHERE username=? AND id<>?').get(username,existing?.id||''))fail('Nome utente già esistente.');
         let encoded=existing?.password;if(payload.password||!existing){const password=text(payload.password,'Password',200);if(password.length<10)fail('La password deve contenere almeno 10 caratteri.');encoded=passwordHash(password);}
         if(existing){db.prepare('UPDATE users SET name=?,username=?,password=?,role=? WHERE id=?').run(name,username,encoded,payload.role,existing.id);if(payload.password)db.prepare('DELETE FROM sessions WHERE user_id=?').run(existing.id);}
-        else db.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run(uid(),name,username,encoded,payload.role);
+        else db.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run(targetId,name,username,encoded,payload.role);
       }
-      db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();send(res,200,{ok:true});return;
+      const publicBefore=existing?{id:existing.id,name:existing.name,username:existing.username,role:existing.role}:null;
+      const publicAfter=db.prepare('SELECT id,name,username,role FROM users WHERE id=?').get(targetId)||null;
+      recordMesAudit(db,{entityType:'user',entityId:targetId,action:payload.remove?'delete':'save',user,reason:'Gestione utente',before:publicBefore,after:{user:publicAfter,passwordChanged:Boolean(payload.password)}},uid);
+      db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();db.exec('COMMIT');
+      }catch(error){db.exec('ROLLBACK');throw error;}send(res,200,{ok:true});return;
     }
     fail('Endpoint non trovato.',404);
   } catch(e) {const expected=e.status||(!/SQLITE|ENOENT|TypeError/.test(String(e))?400:500);if(expected===500)console.error(e);send(res,expected,{error:expected===500?'Errore interno. Controlla i dati e riprova.':e.message});}

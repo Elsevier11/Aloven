@@ -15,11 +15,9 @@ export function migrateDowntime(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') throw new TypeError('Database SQLite non valido.');
   db.exec('BEGIN IMMEDIATE');
   try {
-    if (db.prepare("SELECT 1 FROM meta WHERE key='downtime-v1'").get()) {
-      db.exec('COMMIT');
-      return {migrated:false};
-    }
-    db.exec(`
+    let migrated = false;
+    if (!db.prepare("SELECT 1 FROM meta WHERE key='downtime-v1'").get()) {
+      db.exec(`
       CREATE TABLE IF NOT EXISTS machineStops(
         id TEXT PRIMARY KEY,
         machineId TEXT NOT NULL,
@@ -35,11 +33,27 @@ export function migrateDowntime(db) {
         ON machineStops(machineId) WHERE endedAt IS NULL;
       CREATE INDEX IF NOT EXISTS machineStops_machine_started
         ON machineStops(machineId,startedAt,id);
-    `);
-    db.prepare("INSERT INTO meta(key,value) VALUES ('downtime-v1','1')").run();
-    db.prepare("INSERT INTO meta(key,value) VALUES ('revision','1') ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1").run();
+      `);
+      db.prepare("INSERT INTO meta(key,value) VALUES ('downtime-v1','1')").run();
+      migrated = true;
+    }
+    const hasExecution = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='execution'").get());
+    if (hasExecution && !db.prepare("SELECT 1 FROM meta WHERE key='downtime-v2'").get()) {
+      db.exec(`
+        ALTER TABLE execution ADD COLUMN setupPausedAt TEXT;
+        ALTER TABLE execution ADD COLUMN setupPausedSeconds REAL NOT NULL DEFAULT 0 CHECK(setupPausedSeconds >= 0);
+        CREATE TABLE setupResumeEvents(
+          id TEXT PRIMARY KEY, taskId TEXT NOT NULL,
+          at TEXT NOT NULL, userId TEXT NOT NULL, userName TEXT NOT NULL
+        );
+        CREATE INDEX setupResumeEvents_task_at ON setupResumeEvents(taskId,at,id);
+      `);
+      db.prepare("INSERT INTO meta(key,value) VALUES ('downtime-v2','1')").run();
+      migrated = true;
+    }
+    if (migrated) db.prepare("INSERT INTO meta(key,value) VALUES ('revision','1') ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1").run();
     db.exec('COMMIT');
-    return {migrated:true};
+    return {migrated};
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;
@@ -71,7 +85,7 @@ export function performMachineStopAction(db, payload, user, makeId, now = new Da
       if (activeStop) fail('La macchina è già ferma.',409);
       const execution = db.prepare("SELECT * FROM execution WHERE machineId=? AND phase IN ('setup_running','run_running') LIMIT 1").get(payload.machineId);
       if (execution?.phase === 'setup_running') {
-        fail('Termina prima l’attrezzaggio in corso: l’attrezzaggio non può essere interrotto.');
+        if (!execution.setupPausedAt) db.prepare('UPDATE execution SET setupPausedAt=? WHERE taskId=?').run(now,execution.taskId);
       }
       if (execution?.phase === 'run_running') {
         const start = Date.parse(execution.lastRunStartedAt), end = Date.parse(now);

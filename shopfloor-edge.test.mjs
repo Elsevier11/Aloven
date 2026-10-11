@@ -63,6 +63,7 @@ test('bordo macchina gestisce concorrenza, pause ripetute e rifiuti atomici; la 
     const state = await request('state');
     const preview = await request('preview', {revision: state.revision, action});
     await request('commit', {token: preview.token});
+    if(action.kind==='plan'){const next=await request('state');await request('planning/release',{revision:next.revision});}
     return request('state');
   }
 

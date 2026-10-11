@@ -22,6 +22,16 @@ test('downtime-v1 crea uno storico logico persistente e la migrazione è idempot
     assert.throws(()=>db.prepare('INSERT INTO machineStops VALUES (?,?,?,?,?,?,?,?,?)').run('s2','M1','2026-10-08T09:00:00.000Z',null,'Altro','u1','Operatore',null,null));
     assert.deepEqual(migrateDowntime(db),{migrated:false});
     assert.equal(db.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'12');
+    db.exec('CREATE TABLE execution(taskId TEXT PRIMARY KEY)');
+    assert.deepEqual(migrateDowntime(db),{migrated:true});
+    assert.equal(db.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'13');
+    assert.equal(db.prepare("SELECT value FROM meta WHERE key='downtime-v2'").get().value,'1');
+    assert.ok(db.prepare("SELECT 1 FROM pragma_table_info('execution') WHERE name='setupPausedAt'").get());
+    assert.ok(db.prepare("SELECT 1 FROM pragma_table_info('execution') WHERE name='setupPausedSeconds'").get());
+    db.prepare('INSERT INTO setupResumeEvents VALUES (?,?,?,?,?)').run('r1','t1','2026-10-08T10:00:00.000Z','u1','Operatore');
+    assert.deepEqual(migrateDowntime(db),{migrated:false});
+    assert.equal(db.prepare('SELECT COUNT(*) count FROM setupResumeEvents').get().count,1);
+    assert.equal(db.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'13');
     db.close();db=new DatabaseSync(filename);
     assert.equal(db.prepare('SELECT reason FROM machineStops WHERE id=?').get('s1').reason,'Guasto');
   } finally {db.close();rmSync(directory,{recursive:true,force:true});}
@@ -52,6 +62,7 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
     let state=await request('state');assert.deepEqual(state.machineStops,[]);
     const task=state.tasks.find(item=>item.status==='unplanned'&&item.setupMinutes>0), machineId=task.machineId;
     state=await change({kind:'plan',id:task.id});
+    await request('planning/release',{revision:state.revision});state=await request('state');
 
     const breakdown=state.machineStopReasons.find(reason=>reason.code==='breakdown').id;
     const maintenance=state.machineStopReasons.find(reason=>reason.code==='maintenance').id;
@@ -69,9 +80,25 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
     await machineStop(machineId,'resume',undefined,409,state.revision-1);
     await machineStop(machineId,'resume');
 
-    await shopfloor(task.id,'start_setup');
-    const setupStop=await machineStop(machineId,'stop',breakdown,400);
-    assert.match(setupStop.error,/Termina prima l.attrezzaggio.*non può essere interrotto/);
+    await shopfloor(task.id,'start_setup');await new Promise(resolve=>setTimeout(resolve,20));
+    await machineStop(machineId,'stop',breakdown);
+    state=await request('state');let execution=state.executions.find(item=>item.taskId===task.id);
+    assert.equal(execution.phase,'setup_running');assert.ok(execution.setupPausedAt);const firstSetupSeconds=execution.setupActualSeconds;
+    await new Promise(resolve=>setTimeout(resolve,20));execution=(await request('state')).executions.find(item=>item.taskId===task.id);
+    assert.ok(Math.abs(execution.setupActualSeconds-firstSetupSeconds)<1e-6,'il fermo non conta come tempo attivo di preparazione');
+    await shopfloor(task.id,'finish_setup',409);await shopfloor(task.id,'start_run',409);
+    await machineStop(machineId,'resume');
+    execution=(await request('state')).executions.find(item=>item.taskId===task.id);
+    assert.ok(execution.setupPausedAt,'la riattivazione macchina non riprende la preparazione');
+    await shopfloor(task.id,'finish_setup',409);
+    await shopfloor(task.id,'resume_setup');await new Promise(resolve=>setTimeout(resolve,20));
+    await machineStop(machineId,'stop',breakdown);await new Promise(resolve=>setTimeout(resolve,15));await machineStop(machineId,'resume');
+    state=await request('state');const concurrentRevision=state.revision;
+    const resumeRequest=()=>fetch(`${base}/api/shopfloor/action`,{method:'POST',headers:{'Content-Type':'application/json','X-Aloven-Request':'1',Cookie:cookie},body:JSON.stringify({revision:concurrentRevision,taskId:task.id,action:'resume_setup'})});
+    const resumeStatuses=(await Promise.all([resumeRequest(),resumeRequest()])).map(response=>response.status).sort();
+    assert.deepEqual(resumeStatuses,[200,409],'una doppia ripresa concorrente deve essere registrata una volta sola');
+    state=await request('state');execution=state.executions.find(item=>item.taskId===task.id);
+    assert.equal(execution.events.filter(event=>event.action==='resume_setup').length,2);assert.ok(execution.setupPausedSeconds>0);
     await shopfloor(task.id,'finish_setup');
     await machineStop(machineId,'stop',materials);
     await shopfloor(task.id,'start_run',409);
@@ -81,7 +108,7 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
 
     await machineStop(machineId,'stop',maintenance);
     state=await request('state');
-    let execution=state.executions.find(item=>item.taskId===task.id);
+    execution=state.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'run_paused');assert.ok(execution.runActualSeconds>0);
     assert.deepEqual(execution.events.slice(-1).map(event=>[event.action,event.reason]),[['pause_run','Fermo macchina: Manutenzione']]);
     await machineStop(machineId,'resume');
@@ -89,7 +116,7 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
     assert.equal(execution.phase,'run_paused','la ripresa macchina non riprende automaticamente la lavorazione');
     await shopfloor(task.id,'resume_run');
 
-    assert.equal(state.machineStops.length,3);
+    assert.equal(state.machineStops.length,5);
     assert.ok(state.machineStops.every(item=>item.endedAt&&item.endedByUserName==='Operatore Fermi'));
     const maintenanceStop=state.machineStops.find(item=>item.reasonId===maintenance);
     assert.deepEqual({reason:maintenanceStop.reason,code:maintenanceStop.reasonCode},{reason:'Manutenzione',code:'maintenance'});

@@ -14,7 +14,12 @@
     "test:planner": "node planner-check.mjs",
     "test:interface": "node interface-check.mjs",
     "test:premium": "node premium-check.mjs",
-    "test:dispatch": "node dispatch-check.mjs"
+    "test:dispatch": "node planning-workspace-check.mjs",
+    "test:mes": "node mes-check.mjs",
+    "backup:verify": "node backup-cli.mjs verify",
+    "backup:restore-test": "node backup-cli.mjs restore-test",
+    "test:release-operator": "node release-operator-check.mjs",
+    "test:planning-workflow": "node planning-workspace-check.mjs"
   },
   "engines": {
     "node": ">=22.13"

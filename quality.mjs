@@ -103,7 +103,8 @@ export function executionMetrics(execution, at = new Date().toISOString()) {
   const setupUntil = execution.setupEndedAt || (execution.phase === 'setup_running' ? at : null);
   const directRun = !execution.setupStartedAt && ['run_running','run_paused','completed'].includes(execution.phase);
   const setupKnown = Boolean(execution.setupEndedAt) || directRun;
-  const actualSetupSeconds = directRun ? 0 : elapsedSeconds(execution.setupStartedAt, setupUntil);
+  const openSetupPauseSeconds = execution.setupPausedAt ? elapsedSeconds(execution.setupPausedAt, at) : 0;
+  const actualSetupSeconds = directRun ? 0 : Math.max(0,elapsedSeconds(execution.setupStartedAt, setupUntil) - (execution.setupPausedSeconds || 0) - openSetupPauseSeconds);
   const actualRunSeconds = execution.runActiveSeconds + (execution.phase === 'run_running' ? elapsedSeconds(execution.lastRunStartedAt, at) : 0);
   const plannedSetupSeconds = execution.plannedSetupMinutes == null ? null : execution.plannedSetupMinutes * 60;
   const plannedRunSeconds = execution.plannedRunMinutes == null ? null : execution.plannedRunMinutes * 60;

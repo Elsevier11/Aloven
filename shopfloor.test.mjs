@@ -44,7 +44,7 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];
     return json;
   }
-  async function change(action){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});return request('state');}
+  async function change(action){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});if(action.kind==='plan'){const next=await request('state');await request('planning/release',{revision:next.revision});}return request('state');}
   async function shopfloor(taskId,action,values={},expected=200,revision){const state=revision===undefined?await request('state'):null;return request('shopfloor/action',{revision:revision??state.revision,taskId,action,...values},expected);}
   async function login(username){await request('login',{username,password:'PasswordTest123!'});return cookie;}
   async function stop(){if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}}

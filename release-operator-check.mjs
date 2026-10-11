@@ -1,0 +1,61 @@
+import { spawn } from 'node:child_process';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { once } from 'node:events';
+import assert from 'node:assert/strict';
+
+const { chromium, request }=await import(process.env.PLAYWRIGHT_PATH?pathToFileURL(process.env.PLAYWRIGHT_PATH).href:'playwright');
+const temp=mkdtempSync(path.join(tmpdir(),'aloven-release-operator-'));
+const artifacts=path.resolve('.artifacts');mkdirSync(artifacts,{recursive:true});
+const results=[];let browser,child,adminApi,page,base,releasedTaskId,draftTaskId;
+const report={startedAt:new Date().toISOString(),dataDir:temp,results};
+async function apiPost(url,data){const response=await adminApi.post(url,{headers:{'X-Aloven-Request':'1'},data});const json=await response.json();if(!response.ok())throw new Error(`${url} ${response.status()}: ${json.error||JSON.stringify(json)}`);return json;}
+async function state(){const response=await adminApi.get('/api/state');assert.ok(response.ok());return response.json();}
+async function mutate(action){const current=await state(),preview=await apiPost('/api/preview',{revision:current.revision,action});await apiPost('/api/commit',{token:preview.token});return state();}
+async function release(){const current=await state();return apiPost('/api/planning/release',{revision:current.revision});}
+async function test(name,fn){const started=Date.now();try{await fn();results.push({name,status:'passed',durationMs:Date.now()-started});console.log(`PASS ${name}`);}catch(error){results.push({name,status:'failed',durationMs:Date.now()-started,error:error.stack||String(error)});console.error(`FAIL ${name}: ${error.message}`);}}
+async function waitRevision(){await page.getByRole('button',{name:/Aggiorna|Refresh/i}).click();}
+async function fixture(){
+  await apiPost('/api/setup',{name:'Admin rilascio',username:'adminrelease',password:'PasswordTest123!'});
+  await apiPost('/api/users',{name:'Operatore rilascio',username:'operatorrelease',password:'PasswordTest123!',role:'operator'});
+  let current=await state();const machine=current.machines.find(x=>x.id==='CNC-01'),component1=current.articles.find(x=>x.kind==='component'||x.kind==='both'),component2=current.articles.find(x=>x.id!==component1?.id&&(x.kind==='component'||x.kind==='both')),product=current.articles.find(x=>(x.kind==='product'||x.kind==='both')&&x.unit===machine.speedUnit);
+  assert.ok(machine&&component1&&component2&&product);
+  const task=title=>({title,typeId:current.types[0].id,machineId:machine.id,setupMinutes:title.includes('RILASCIATA')?5:0,runMinutes:30,quantity:10,calculationMode:'manual',notes:'Verifica piano rilasciato',component1ArticleId:component1.id,component2ArticleId:component2.id,productArticleId:product.id});
+  current=await mutate({kind:'task',values:task('ATTIVITÀ RILASCIATA')});releasedTaskId=current.tasks.find(x=>x.title==='ATTIVITÀ RILASCIATA').id;
+  await mutate({kind:'plan',id:releasedTaskId});await release();
+  current=await mutate({kind:'task',values:task('ATTIVITÀ SOLO BOZZA')});draftTaskId=current.tasks.find(x=>x.title==='ATTIVITÀ SOLO BOZZA').id;
+  await mutate({kind:'plan',id:draftTaskId});
+}
+async function requestInterruption(taskId,reason){const current=await state();return apiPost('/api/planning/interruption-request',{revision:current.revision,taskId,reason});}
+
+try{
+  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  base=await new Promise((resolve,reject)=>{let output='';const timeout=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timeout);resolve(match[0]);}});child.stderr.on('data',chunk=>process.stderr.write(chunk));child.on('exit',code=>reject(new Error(`Server exit ${code}`)));});
+  adminApi=await request.newContext({baseURL:base});await fixture();
+  browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});const context=await browser.newContext({viewport:{width:1024,height:768}});page=await context.newPage();page.setDefaultTimeout(10000);
+  await page.goto(base+'/operatore?machine=CNC-01');await page.getByLabel(/Nome utente/i).fill('operatorrelease');await page.getByLabel(/Password/i).fill('PasswordTest123!');await page.getByRole('button',{name:'Accedi'}).click();
+
+  await test('il bordo macchina mostra solo lo snapshot rilasciato a operatori e amministratori',async()=>{await page.getByText('ATTIVITÀ RILASCIATA',{exact:true}).waitFor();assert.equal(await page.getByText('ATTIVITÀ SOLO BOZZA',{exact:true}).count(),0);const adminContext=await browser.newContext({viewport:{width:1024,height:768}}),adminPage=await adminContext.newPage();await adminPage.goto(base+'/operatore?machine=CNC-01');await adminPage.getByLabel(/Nome utente/i).fill('adminrelease');await adminPage.getByLabel(/Password/i).fill('PasswordTest123!');await adminPage.getByRole('button',{name:'Accedi'}).click();await adminPage.getByText('ATTIVITÀ RILASCIATA',{exact:true}).waitFor();assert.equal(await adminPage.getByText('ATTIVITÀ SOLO BOZZA',{exact:true}).count(),0,'La console touch amministratore mostra la bozza');await adminPage.goto(base+'/bordo-macchina?machine=CNC-01');await adminPage.locator('.shop-task h2').getByText('ATTIVITÀ RILASCIATA',{exact:true}).waitFor();assert.equal(await adminPage.getByText('ATTIVITÀ SOLO BOZZA',{exact:true}).count(),0,'Il bordo classico amministratore mostra la bozza');await adminContext.close();});
+
+  await test('richiesta durante attrezzaggio: rifiuto motivato e conferma fisica',async()=>{
+    await page.locator('[data-action="start_setup"]').click();await page.waitForFunction(async id=>(await (await fetch('/api/state')).json()).executions.some(x=>x.taskId===id&&x.phase==='setup_running'),releasedTaskId);
+    await requestInterruption(releasedTaskId,'Cambio urgente priorità');await waitRevision();await page.getByText('Interruzione richiesta dal pianificatore',{exact:true}).first().waitFor();
+    await page.locator('[data-interruption="reject"]').click();await page.locator('[name="reason"]').fill('Macchina non ancora in sicurezza');await page.locator('#interruption-form [type="submit"]').click();await page.locator('#operator-dialog').waitFor({state:'hidden'});let current=await state();assert.equal(current.interruptionRequests.at(0).status,'rejected');
+    await requestInterruption(releasedTaskId,'Cambio urgente confermato');await waitRevision();await page.locator('[data-interruption="confirm"]').click();await page.locator('#interruption-form [type="submit"]').click();current=await state();assert.equal(current.interruptionRequests.at(0).status,'requested','Conferma accettata senza attestazione del fermo fisico');await page.locator('[name="physicalStopConfirmed"]').check();await page.locator('#interruption-form [type="submit"]').click();await page.locator('#operator-dialog').waitFor({state:'hidden'});current=await state();assert.equal(current.tasks.find(x=>x.id===releasedTaskId).status,'cancelled');const execution=current.executions.find(x=>x.taskId===releasedTaskId);assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,null,'La preparazione ha inventato quantità prodotte');assert.equal(execution.lots.length,0,'La preparazione ha inventato lotti');
+  });
+
+  await test('richiesta durante produzione: stessa dichiarazione finale e storico conservato',async()=>{
+    await release();let current=await state();await apiPost('/api/shopfloor/action',{revision:current.revision,taskId:draftTaskId,action:'start_run'});await requestInterruption(draftTaskId,'Ordine cliente annullato');await waitRevision();const classicRunning=await page.context().newPage();await classicRunning.goto(base+'/bordo-macchina?machine=CNC-01');await classicRunning.getByText('Interruzione richiesta dal pianificatore',{exact:true}).waitFor();await classicRunning.getByRole('button',{name:'Sospendi lavorazione'}).waitFor();await classicRunning.close();await page.locator('[data-action="pause_run"]').waitFor();await page.locator('[data-action="pause_run"]').click();await page.locator('#action-form [name="reason"]').fill('Arresto fisico per interruzione richiesta');await page.locator('#action-form [type="submit"]').click();await page.locator('#operator-dialog').waitFor({state:'hidden'});current=await state();const paused=current.executions.find(x=>x.taskId===draftTaskId);assert.equal(paused.phase,'run_paused');assert.equal(current.interruptionRequests.at(0).status,'requested','La sospensione ha chiuso la richiesta');const pausedSeconds=paused.runActiveSeconds;await page.waitForTimeout(1100);assert.equal((await state()).executions.find(x=>x.taskId===draftTaskId).runActiveSeconds,pausedSeconds,'Il tempo continua dopo la sospensione richiesta');
+    const classic=await page.context().newPage();await classic.goto(base+'/bordo-macchina?machine=CNC-01');await classic.getByText('Interruzione richiesta dal pianificatore',{exact:true}).waitFor();await classic.getByRole('button',{name:'Dichiara prodotto e interrompi'}).click();await classic.locator('#modal [name="physicalStopConfirmed"]').waitFor();assert.equal(await classic.locator('#modal [name="producedQuantity"]').inputValue(),'');await classic.keyboard.press('Escape');await classic.locator('#modal').waitFor({state:'hidden'});await classic.close();
+    await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'La richiesta causa overflow su mobile');await page.locator('[data-interruption="confirm"]').click();const dialog=page.locator('#operator-dialog');await dialog.getByText('Ordine cliente annullato',{exact:false}).waitFor();assert.equal(await dialog.locator('[name="producedQuantity"]').inputValue(),'');const footer=await dialog.locator('.dialog-footer').boundingBox();assert.ok(footer&&footer.y+footer.height<=844,'I comandi del consuntivo sono fuori schermo');await dialog.locator('[name="physicalStopConfirmed"]').check();await dialog.locator('[name="producedQuantity"]').fill('8');await dialog.locator('[name="scrapQuantity"]').fill('0');await dialog.locator('[name="outputLot"]').fill('LOT-INT-01');await dialog.locator('#wizard-next').click();
+    for(let index=0;index<2;index++){await dialog.locator(`[data-component-tab="${index}"]`).click();const group=dialog.locator('[data-lot-group]').nth(index);await group.locator('input[name$="-lot"]').fill(`LOT-C${index+1}`);await group.locator('input[name$="-quantity"]').fill('8');await dialog.locator('#wizard-next').click();}
+    await dialog.locator('.tri-state').nth(0).getByText('Regolare',{exact:true}).click();await dialog.locator('.tri-state').nth(1).getByText('Regolare',{exact:true}).click();await dialog.locator('[name="qualityStatus"]').selectOption('conforming');await dialog.getByRole('button',{name:'Conferma interruzione'}).click();await dialog.waitFor({state:'hidden'});
+    current=await state();const execution=current.executions.find(x=>x.taskId===draftTaskId);assert.equal(current.tasks.find(x=>x.id===draftTaskId).status,'cancelled');assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,8);assert.equal(execution.outputLot,'LOT-INT-01');assert.equal(execution.lots.length,2);assert.ok(execution.interruptedAt);assert.equal(current.interruptionRequests.at(0).status,'confirmed');
+  });
+  await context.close();
+}catch(error){results.push({name:'bootstrap',status:'failed',error:error.stack||String(error)});console.error(error);}finally{
+  report.finishedAt=new Date().toISOString();report.summary={passed:results.filter(x=>x.status==='passed').length,failed:results.filter(x=>x.status==='failed').length,total:results.length};writeFileSync(path.join(artifacts,'release-operator-report.json'),JSON.stringify(report,null,2));await adminApi?.dispose();await browser?.close();if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}rmSync(temp,{recursive:true,force:true});
+}
+if(report.summary.failed)process.exitCode=1;else console.log(`Release operator suite: ${report.summary.passed}/${report.summary.total} passed`);

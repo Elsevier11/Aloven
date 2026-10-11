@@ -61,7 +61,7 @@ const report={startedAt:stamp(),dataDir:temp,headless:process.env.HEADFUL!=='1',
 try{
   child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',c=>{out+=c;const m=out.match(/http:\/\/127\.0\.0\.1:\d+/);if(m){clearTimeout(timer);resolve(m[0]);}});child.stderr.on('data',c=>process.stderr.write(c));child.on('exit',code=>{clearTimeout(timer);reject(new Error(`Server exit ${code}`));});});
-  browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});const context=await browser.newContext({viewport:{width:1440,height:1000}});page=await context.newPage();
+  browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addInitScript(()=>localStorage.setItem('aloven-dispatch-mode','overview'));page=await context.newPage();
   await page.goto(base);await page.getByRole('heading',{name:'Configura il tuo reparto'}).waitFor();
   await page.getByLabel('Nome e cognome').fill('Amministratore operativo');await page.getByLabel('Nome utente',{exact:true}).fill('adminop');await page.getByLabel('Password',{exact:true}).fill('PasswordTest123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
 
@@ -102,13 +102,13 @@ try{
   });
 
   await test('attività: torna da assegnare, annulla e ripristina',async()=>{
-    await openTask(b.id);await page.getByRole('button',{name:'Torna da assegnare'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
+    await openTask(b.id);await page.getByRole('button',{name:'Torna da pianificare'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
     await openTask(b.id);await page.getByRole('button',{name:'Annulla attività'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'cancelled');
     await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill('Prodotto operativo Beta');await page.getByRole('row').filter({hasText:'Prodotto operativo Beta'}).getByRole('button',{name:'Apri'}).click();await page.getByRole('button',{name:'Ripristina attività'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
   });
 
   await test('attività: cambio macchina valido e reset pianificazione',async()=>{
-    await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill('Prodotto operativo Beta');await page.getByRole('row').filter({hasText:'Prodotto operativo Beta'}).getByRole('button',{name:'Modifica'}).click();await page.getByLabel('Macchina',{exact:true}).selectOption('TOR-02');await saveModal();b=(await state()).tasks.find(t=>t.id===b.id);assert.equal(b.machineId,'TOR-02');assert.equal(b.position,null);
+    await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill('Prodotto operativo Beta');await page.getByRole('row').filter({hasText:'Prodotto operativo Beta'}).getByRole('button',{name:'Modifica'}).click();await page.getByLabel('Macchina',{exact:true}).selectOption('TOR-02');await page.locator('.machine-compatibility summary').click();await page.locator('[data-compatible-machine][value="TOR-02"]').check();await saveModal();b=(await state()).tasks.find(t=>t.id===b.id);assert.equal(b.machineId,'TOR-02');assert.equal(b.position,null);
   });
 
   await test('validazione: unità automatica incompatibile rifiutata',async()=>{
@@ -142,7 +142,7 @@ try{
 
   let lockedTask;
   await test('blocco attività in corso: modifica, spostamento e cancellazione non esposti',async()=>{
-    await page.goto(base+'/bordo-macchina?machine=CNC-01');await page.getByLabel('Postazione macchina').selectOption('CNC-01');await page.locator('[data-shop-action="start_setup"]').click();await page.locator('#modal').getByRole('button',{name:'Conferma'}).click();await page.locator('#modal').waitFor({state:'hidden'});await page.goto(base);await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();lockedTask=(await state()).tasks.find(t=>t.machineId==='CNC-01'&&t.status==='in_progress');assert.ok(lockedTask);await openTask(lockedTask.id);assert.equal(await page.getByRole('button',{name:/Modifica attività|Sposta|Torna da assegnare|Annulla attività/}).count(),0);await page.getByRole('button',{name:'Chiudi'}).click();await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill(lockedTask.title);const row=page.getByRole('row').filter({hasText:lockedTask.title});assert.equal(await row.getByRole('button',{name:'Modifica'}).count(),0);assert.equal(await row.getByRole('button',{name:'Elimina'}).count(),0);await screenshot('locked-running');
+    await page.evaluate(async()=>{const s=await(await fetch('/api/state')).json();if(s.planning.hasDraftChanges){const r=await fetch('/api/planning/release',{method:'POST',headers:{'Content-Type':'application/json','X-Aloven-Request':'1'},body:JSON.stringify({revision:s.revision})});if(!r.ok)throw new Error(await r.text());}});await page.goto(base+'/bordo-macchina?machine=CNC-01');await page.getByLabel('Postazione macchina').selectOption('CNC-01');await page.locator('[data-shop-action="start_setup"]').click();await page.locator('#modal').getByRole('button',{name:'Conferma'}).click();await page.locator('#modal').waitFor({state:'hidden'});await page.goto(base);await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();lockedTask=(await state()).tasks.find(t=>t.machineId==='CNC-01'&&t.status==='in_progress');assert.ok(lockedTask);await openTask(lockedTask.id);assert.equal(await page.getByRole('button',{name:/Modifica attività|Sposta|Torna da pianificare|Annulla attività/}).count(),0);await page.getByRole('button',{name:'Chiudi'}).click();await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill(lockedTask.title);const row=page.getByRole('row').filter({hasText:lockedTask.title});assert.equal(await row.getByRole('button',{name:'Modifica'}).count(),0);assert.equal(await row.getByRole('button',{name:'Elimina'}).count(),0);await screenshot('locked-running');
   });
 
   await test('calendario: chiusura in conflitto con attività in corso rifiutata',async()=>{

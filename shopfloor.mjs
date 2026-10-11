@@ -1,6 +1,7 @@
+import { finalizeMesExecution } from './mes-records.mjs';
 import { executionMetrics, validateFinishDeclaration } from './quality.mjs';
 
-const ACTIONS = ['start_setup','finish_setup','start_run','pause_run','resume_run','finish_run'];
+const ACTIONS = ['start_setup','finish_setup','resume_setup','start_run','pause_run','resume_run','finish_run'];
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -25,6 +26,21 @@ function cleanReason(value, required = false) {
   }
   if (typeof value !== 'string' || !value.trim() || value.length > 500) fail('Motivazione non valida (massimo 500 caratteri).');
   return value.trim();
+}
+
+function publishedTask(raw) {
+  if (!raw?.releasedPayload || raw.releasedVersion == null) return null;
+  let released;
+  try { released = JSON.parse(raw.releasedPayload); } catch { return null; }
+  const status = ['in_progress','completed'].includes(raw.status) ? raw.status : released.status;
+  return {...raw,...released,id:raw.id,status,releasedPayload:raw.releasedPayload,releasedVersion:raw.releasedVersion};
+}
+
+function adoptPublishedTask(db, task) {
+  const excluded = new Set(['id','releasedPayload','releasedVersion','status']);
+  const columns = db.prepare('PRAGMA table_info(tasks)').all().map(item=>item.name).filter(name=>!excluded.has(name)&&Object.hasOwn(task,name));
+  const values = columns.map(name=>['segments','compatibleMachineIds'].includes(name)&&typeof task[name]!=='string'?JSON.stringify(task[name]):task[name]);
+  db.prepare(`UPDATE tasks SET ${columns.map(name=>`${name}=?`).join(',')},status='planned' WHERE id=?`).run(...values,task.id);
 }
 
 function snapshotForTask(db, task) {
@@ -52,8 +68,11 @@ function ensureCanLockTask(db, task) {
   if (db.prepare('SELECT 1 FROM machineStops WHERE machineId=? AND endedAt IS NULL').get(task.machineId)) {
     fail('La macchina è ferma. Registra la ripresa della macchina prima di avviare l’attività.',409);
   }
-  if (task.position === null) fail('L’attività deve essere pianificata prima di iniziare.');
-  const earlier = db.prepare("SELECT 1 FROM tasks WHERE machineId=? AND position IS NOT NULL AND position<? AND status<>'completed' LIMIT 1").get(task.machineId, task.position);
+  const releaseEnabled=Boolean(db.prepare("SELECT 1 FROM meta WHERE key='planning-release-v1'").get());
+  if ((releaseEnabled&&task.releasedVersion == null) || task.position === null) fail(releaseEnabled?'L’attività deve essere inclusa in un piano rilasciato prima di iniziare.':'L’attività deve essere pianificata prima di iniziare.');
+  const earlier = releaseEnabled
+    ? db.prepare('SELECT * FROM tasks WHERE releasedVersion IS NOT NULL').all().map(publishedTask).find(item=>item&&item.machineId===task.machineId&&item.position!==null&&item.position<task.position&&item.status!=='completed'&&item.status!=='cancelled')
+    : db.prepare("SELECT 1 FROM tasks WHERE machineId=? AND position IS NOT NULL AND position<? AND status<>'completed' LIMIT 1").get(task.machineId,task.position);
   if (earlier) fail('Completa prima le attività precedenti della macchina.');
   const active = db.prepare("SELECT id FROM tasks WHERE machineId=? AND status='in_progress' AND id<>? LIMIT 1").get(task.machineId, task.id);
   if (active) fail('La macchina ha già un’attività in corso.');
@@ -129,6 +148,7 @@ export function migrateShopfloor(db) {
 
 export function shopfloorExecutions(db, at = new Date().toISOString()) {
   const events = db.prepare('SELECT * FROM executionEvents ORDER BY rowid').all();
+  const setupResumes = db.prepare("SELECT id,taskId,'resume_setup' AS action,at,userId,userName,NULL AS reason FROM setupResumeEvents ORDER BY rowid").all();
   const lots = db.prepare('SELECT * FROM executionLots ORDER BY rowid').all();
   const groupByTask = rows => {
     const grouped = new Map();
@@ -138,11 +158,12 @@ export function shopfloorExecutions(db, at = new Date().toISOString()) {
     }
     return grouped;
   };
-  const eventsByTask = groupByTask(events), lotsByTask = groupByTask(lots);
+  const eventsByTask = groupByTask([...events,...setupResumes].sort((a,b)=>a.at.localeCompare(b.at)||a.id.localeCompare(b.id))), lotsByTask = groupByTask(lots);
   return db.prepare('SELECT * FROM execution ORDER BY taskId').all().map(execution => {
     const metrics = executionMetrics(execution, at);
     return {
       ...execution,
+      phase: execution.interruptedAt ? 'cancelled' : execution.phase,
       qualityChecks: execution.qualityChecks === null ? null : JSON.parse(execution.qualityChecks),
       setupActualSeconds: metrics.actualSetupSeconds,
       runActualSeconds: metrics.actualRunSeconds,
@@ -163,27 +184,37 @@ export function performShopfloorAction(db, payload, user, makeId, now = new Date
   db.exec('BEGIN IMMEDIATE');
   try {
     if (revision(db) !== payload.revision) fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
-    const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(payload.taskId);
-    if (!task) fail('Attività non trovata.');
+    const rawTask = db.prepare('SELECT * FROM tasks WHERE id=?').get(payload.taskId);
+    if (!rawTask) fail('Attività non trovata.');
+    const releaseEnabled=Boolean(db.prepare("SELECT 1 FROM meta WHERE key='planning-release-v1'").get());
+    const task = releaseEnabled?publishedTask(rawTask):rawTask;
+    if (!task) fail('L’attività non è inclusa nel piano rilasciato.',409);
     let execution = db.prepare('SELECT * FROM execution WHERE taskId=?').get(task.id);
     let reason = cleanReason(payload.reason);
     const machineStopped = db.prepare('SELECT 1 FROM machineStops WHERE machineId=? AND endedAt IS NULL').get(task.machineId);
 
-    if (machineStopped && ['start_setup','start_run','resume_run'].includes(payload.action)) {
+    if (machineStopped && ['start_setup','finish_setup','resume_setup','start_run','resume_run'].includes(payload.action)) {
       fail('La macchina è ferma. Registra la ripresa della macchina prima di continuare.',409);
     }
 
     if (payload.action === 'start_setup') {
       if (execution) fail('L’attrezzaggio è già stato avviato.',409);
       ensureCanLockTask(db, task);
+      if(releaseEnabled)adoptPublishedTask(db,task);
       execution = createExecution(db, task, 'setup_running', now);
     } else if (payload.action === 'finish_setup') {
       if (!execution || execution.phase !== 'setup_running') fail('L’attrezzaggio non è in corso.',409);
+      if (execution.setupPausedAt) fail('La preparazione è sospesa. Riprendila prima di terminarla.',409);
       db.prepare("UPDATE execution SET phase='setup_done',setupEndedAt=? WHERE taskId=?").run(now,task.id);
+    } else if (payload.action === 'resume_setup') {
+      if (!execution || execution.phase !== 'setup_running' || !execution.setupPausedAt) fail('La preparazione non è in pausa.',409);
+      const total = execution.setupPausedSeconds + elapsedSeconds(execution.setupPausedAt,now);
+      db.prepare('UPDATE execution SET setupPausedAt=NULL,setupPausedSeconds=? WHERE taskId=?').run(total,task.id);
     } else if (payload.action === 'start_run') {
       if (!execution) {
         ensureCanLockTask(db, task);
         if ((task.effectiveSetupMinutes ?? task.setupMinutes) !== 0) fail('Completa prima l’attrezzaggio.');
+        if(releaseEnabled)adoptPublishedTask(db,task);
         execution = createExecution(db, task, 'run_running', now);
       } else {
         if (execution.phase !== 'setup_done') fail('L’esecuzione non può essere avviata in questo stato.',409);
@@ -212,9 +243,15 @@ export function performShopfloorAction(db, payload, user, makeId, now = new Date
       }
       db.prepare("UPDATE execution SET phase='completed',runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=? WHERE taskId=?").run(now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,declaration.qualityStatus,declaration.qualityNotes,JSON.stringify(declaration.qualityChecks),task.id);
       db.prepare("UPDATE tasks SET status='completed' WHERE id=?").run(task.id);
+      if(releaseEnabled)db.prepare("UPDATE executionInterruptionRequests SET status='cancelled',respondedAt=?,respondedByUserId=?,respondedByUserName=?,responseReason='Attività completata prima della risposta' WHERE taskId=? AND status='requested'").run(now,user.id,user.name,task.id);
+      if(db.prepare("SELECT 1 FROM meta WHERE key='mes-records-v1'").get())finalizeMesExecution(db,task.id,payload,user,makeId,now);
     }
 
-    db.prepare('INSERT INTO executionEvents(id,taskId,action,at,userId,userName,reason) VALUES (?,?,?,?,?,?,?)').run(makeId(),task.id,payload.action,now,user.id,user.name,reason);
+    if (payload.action === 'resume_setup') {
+      db.prepare('INSERT INTO setupResumeEvents(id,taskId,at,userId,userName) VALUES (?,?,?,?,?)').run(makeId(),task.id,now,user.id,user.name);
+    } else {
+      db.prepare('INSERT INTO executionEvents(id,taskId,action,at,userId,userName,reason) VALUES (?,?,?,?,?,?,?)').run(makeId(),task.id,payload.action,now,user.id,user.name,reason);
+    }
     db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();
     db.exec('COMMIT');
     return {ok:true};

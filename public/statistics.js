@@ -3,14 +3,16 @@ const percent = new Intl.NumberFormat('it-IT',{style:'percent',maximumFractionDi
 const dateFormat = new Intl.DateTimeFormat('it-IT',{timeZone:'Europe/Rome',dateStyle:'short',timeStyle:'short'});
 let filters=null,report=null,loading=false,error='',revision=null,selected='monthly',page=0,request=0,tablesOpen=false,chartAbort=null;
 const chartUnits={monthly:null,scrapReasons:null};
-const metrics=[['count','Attività'],['plannedQuantity','Q.tà prevista'],['goodQuantity','Q.tà buona'],['scrapQuantity','Scarto'],['scrapRate','Scarto %'],['plannedSetupHours','Attr. previsto (h)'],['actualSetupHours','Attr. effettivo (h)'],['plannedRunHours','Lav. prevista (h)'],['actualRunHours','Lav. effettiva (h)'],['nonconformingCount','Non conformi']];
+const metrics=[['count','Attività'],['plannedQuantity','Q.tà prevista'],['goodQuantity','Q.tà buona'],['scrapQuantity','Scarto'],['scrapRate','Scarto %'],['plannedSetupHours','Attr. previsto (h)'],['actualSetupHours','Attr. effettivo (h)'],['setupPairedCount','Coppie attr.'],['setupDeltaHours','Delta attr. (h)'],['averageSetupDeltaMinutes','Delta medio (min)'],['plannedRunHours','Lav. prevista (h)'],['actualRunHours','Lav. effettiva (h)'],['nonconformingCount','Non conformi']];
 const tables={
  monthly:{label:'Per mese',columns:[['month','Mese'],['unit','Unità'],...metrics]},
  machines:{label:'Per macchina',columns:[['machineName','Macchina'],['unit','Unità'],...metrics]},
  products:{label:'Per prodotto',columns:[['productCode','Codice'],['productDescription','Prodotto'],['unit','Unità'],...metrics]},
  scrapReasons:{label:'Causali scarto',columns:[['reasonCode','Codice'],['label','Causale'],['unit','Unità'],['count','Attività con scarto'],['scrapQuantity','Q.tà scartata']]},
  stopReasons:{label:'Fermi macchina',columns:[['reasonCode','Codice'],['label','Causale'],['stopCount','Fermi'],['closedStopCount','Chiusi'],['openStopCount','Aperti'],['stoppedHours','Durata nel periodo (h)']]},
- details:{label:'Dettaglio attività',columns:[['completedAt','Completata il'],['taskTitle','Attività'],['machineName','Macchina'],['productCode','Prodotto'],['unit','Unità'],...metrics.filter(x=>x[0]!=='count'),['qualityStatus','Qualità'],['scrapReasonLabel','Causale scarto']]},
+ speeds:{label:'Velocità effettiva',columns:[['machineName','Macchina'],['productCode','Codice'],['productDescription','Prodotto'],['unit','Unità'],['count','Attività'],['activeRunHours','Ore attive'],['goodQuantity','Q.tà buona'],['totalQuantity','Q.tà totale'],['goodUnitsPerMinute','Buona/min'],['totalUnitsPerMinute','Totale/min']]},
+ dailyActivity:{label:'Attività giornaliera',columns:[['date','Data'],['machineName','Macchina'],['activeRunHours','Ore lavorazione attiva']]},
+ details:{label:'Dettaglio attività',columns:[['closureStatus','Chiusura'],['completedAt','Chiusa il'],['taskTitle','Attività'],['machineName','Macchina'],['productCode','Prodotto'],['unit','Unità'],...metrics.filter(x=>x[0]!=='count'),['qualityStatus','Qualità'],['scrapReasonLabel','Causale scarto']]},
 };
 function value(key,x,c) {
  if(x===null||x===undefined) return '—';
@@ -72,7 +74,7 @@ function charts(c) {
  </div>`;
 }
 export function statisticsView(c) {
- if(!filters) { const dates=c.state.executions.filter(e=>e.phase==='completed'&&e.runEndedAt).map(e=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(e.runEndedAt))).sort(); filters={from:dates[0]||c.localDate(),to:c.localDate(),machineId:''}; }
+ if(!filters) { const dates=c.state.executions.filter(e=>(e.phase==='completed'||(e.interruptedAt&&e.producedQuantity!=null))&&e.runEndedAt).map(e=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(e.runEndedAt))).sort(); filters={from:dates[0]||c.localDate(),to:c.localDate(),machineId:'',excludeDemo:false}; }
  const stale=revision!==c.state.revision;
  const ready=report&&!loading&&!stale;
  const totals=ready?report.totals:null;
@@ -81,27 +83,27 @@ export function statisticsView(c) {
  const columns=tables[selected].columns;
  const visible=rows.slice(page*25,(page+1)*25);
  return `${c.heading('Statistiche','Produzione consuntivata, scarti e fermi macchina.',`<button class="button primary" id="statistics-export" ${ready?'':'disabled'}>↓ Esporta Excel</button>`)}
- <form id="statistics-filters" class="statistics-filters"><label>Dal<input type="date" name="from" required value="${c.esc(filters.from)}"></label><label>Al<input type="date" name="to" required value="${c.esc(filters.to)}"></label><label>Macchina<select name="machineId" aria-label="Macchina"><option value="">Tutte le macchine</option>${c.state.machines.map(m=>`<option value="${c.esc(m.id)}" ${filters.machineId===m.id?'selected':''}>${c.esc(m.name)}</option>`).join('')}</select></label><button class="button secondary" type="submit" ${loading?'disabled':''}>Applica filtri</button></form>
- <details class="statistics-help"><summary>Come leggere i dati</summary><p class="statistics-method">Produzione attribuita alla data di completamento (ora italiana). Scarto % = scarto ÷ (quantità buona + scarto). I fermi comprendono solo la durata nel periodo scelto, inclusi quelli aperti. Le ore di lavorazione effettiva escludono le pause.</p></details>
+ <form id="statistics-filters" class="statistics-filters"><label>Dal<input type="date" name="from" required value="${c.esc(filters.from)}"></label><label>Al<input type="date" name="to" required value="${c.esc(filters.to)}"></label><label>Macchina<select name="machineId" aria-label="Macchina"><option value="">Tutte le macchine</option>${c.state.machines.map(m=>`<option value="${c.esc(m.id)}" ${filters.machineId===m.id?'selected':''}>${c.esc(m.name)}</option>`).join('')}</select></label><label><input type="checkbox" name="excludeDemo" value="true" ${filters.excludeDemo?'checked':''}> Escludi dati demo</label><button class="button secondary" type="submit" ${loading?'disabled':''}>Applica filtri</button></form>
+ <details class="statistics-help"><summary>Come leggere i dati</summary><p class="statistics-method">Produzione attribuita alla data di completamento (ora italiana). Scarto % = scarto ÷ (quantità buona + scarto). I fermi comprendono solo la durata nel periodo scelto, inclusi quelli aperti. Le ore giornaliere derivano dagli eventi di avvio, ripresa, pausa e fine, ritagliati per giorno italiano. ${ready?c.esc(report.coverage.message):''}</p></details>
  ${error?`<div class="statistics-error" role="alert">${c.esc(error)} <button id="statistics-retry" class="button secondary">Riprova</button></div>`:''}
  ${totals?`<section aria-label="Riepilogo del periodo"><div class="metrics statistics-metrics"><div><span>Attività completate</span><strong>${number.format(totals.count)}</strong></div><div><span>Ore lavorate</span><strong>${value('actualRunHours',totals.actualRunHours,c)}</strong></div><div><span>Ore di attrezzaggio</span><strong>${value('actualSetupHours',totals.actualSetupHours,c)}</strong></div><div><span>Ore di fermo</span><strong>${value('stoppedHours',totals.stoppedHours,c)}</strong></div></div><div class="statistics-quantities">${totals.quantities.map(q=>`<article><strong>${c.esc(c.unitLabel(q.unit))}</strong><span>Buona <b>${value('goodQuantity',q.goodQuantity,c)}</b></span><span>Scarto <b>${value('scrapQuantity',q.scrapQuantity,c)}</b></span><span>Incidenza <b>${value('scrapRate',q.scrapRate,c)}</b></span></article>`).join('')}</div></section>${charts(c)}`:`<section class="statistics-chart-loading" aria-busy="${!error}"><p role="status" class="statistics-empty">${error?'I dati non sono disponibili.':'Caricamento statistiche…'}</p></section>`}
- <details id="statisticsTableDetails" class="statistics-table-details" ${tablesOpen?'open':''}><summary id="statisticsTablesToggle">${tablesOpen?'Nascondi tabelle':'Mostra tabelle'}<span>Dettaglio tabellare · 6 viste</span></summary><div class="statistics-table-content">
+ <details id="statisticsTableDetails" class="statistics-table-details" ${tablesOpen?'open':''}><summary id="statisticsTablesToggle">${tablesOpen?'Nascondi tabelle':'Mostra tabelle'}<span>Dettaglio tabellare · 8 viste</span></summary><div class="statistics-table-content">
  <div class="statistics-tabs" aria-label="Raggruppamento statistiche">${Object.entries(tables).map(([key,t])=>`<button class="button ${selected===key?'primary':'secondary'}" data-statistics-tab="${key}" aria-pressed="${selected===key}">${t.label}</button>`).join('')}</div>
  <section class="statistics-results" aria-busy="${!ready&&!error}"><div class="statistics-section-heading"><h2>${tables[selected].label}</h2>${ready?`<span>${number.format(rows.length)} righe · ${c.esc(filters.from)} → ${c.esc(filters.to)}</span>`:''}</div>
  ${!ready?`<p role="status" class="statistics-empty">${error?'I dati non sono disponibili.':'Caricamento statistiche…'}</p>`:`<div class="table-wrap"><table><thead><tr>${columns.map(([,label])=>`<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${visible.map(row=>`<tr>${columns.map(([key])=>`<td class="${typeof row[key]==='number'?'statistics-number':''}">${value(key,row[key],c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${columns.length}" class="statistics-empty">Nessun dato per il periodo e la macchina selezionati.</td></tr>`}</tbody></table></div>${pages>1?`<div class="statistics-pagination"><button class="button secondary" id="statistics-previous" ${page===0?'disabled':''}>← Precedente</button><span>Pagina ${page+1} di ${pages}</span><button class="button secondary" id="statistics-next" ${page===pages-1?'disabled':''}>Successiva →</button></div>`:''}`}
- <p class="statistics-method">L’export comprende tutte le righe filtrate, in fogli distinti. “—” indica un dato non disponibile. Lo storico DEMO-STORICO contiene dati simulati; è incluso nelle statistiche.</p></section></div></details>`;
+ <p class="statistics-method">L’export comprende tutte le righe filtrate in 9 fogli distinti. “—” indica un dato non disponibile. Lo storico DEMO-STORICO contiene dati simulati ed è ${filters.excludeDemo?'escluso':'incluso'}.</p></section></div></details>`;
 }
 async function load(c) {
  if(loading)return;
  const token=++request; loading=true;error=''; c.render();
- try { const result=await c.api(`statistics?${new URLSearchParams(filters)}`); if(token!==request)return; report=result;filters={from:result.filters.from,to:result.filters.to,machineId:result.filters.machineId||''}; revision=c.state.revision; }
+ try { const result=await c.api(`statistics?${new URLSearchParams(filters)}`); if(token!==request)return; report=result;filters={from:result.filters.from,to:result.filters.to,machineId:result.filters.machineId||'',excludeDemo:Boolean(result.filters.excludeDemo)}; revision=c.state.revision; }
  catch(e) { if(token===request)error=e.message; }
  finally { if(token===request){loading=false;if(c.isActive())c.render();} }
 }
 export function bindStatistics(c) {
  chartAbort?.abort();chartAbort=new AbortController();
  document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelectorAll('.statistics-bar-mark:hover,.statistics-bar-mark:focus').forEach(mark=>mark.classList.add('tooltip-dismissed'));},{signal:chartAbort.signal});
- document.querySelector('#statistics-filters').onsubmit=e=>{e.preventDefault();const next=Object.fromEntries(new FormData(e.target));if(next.from>next.to){c.toast('La data finale deve seguire quella iniziale.',true);return;} filters=next; report=null;page=0;load(c);};
+ document.querySelector('#statistics-filters').onsubmit=e=>{e.preventDefault();const next=Object.fromEntries(new FormData(e.target));next.excludeDemo=next.excludeDemo==='true';if(next.from>next.to){c.toast('La data finale deve seguire quella iniziale.',true);return;} filters=next; report=null;page=0;load(c);};
  document.querySelectorAll('[data-statistics-tab]').forEach(b=>b.onclick=()=>{selected=b.dataset.statisticsTab;page=0;c.render();});
  document.querySelectorAll('[data-chart-unit]').forEach(b=>b.onclick=()=>{chartUnits[b.dataset.chartUnit]=b.dataset.unit;c.render();});
  document.querySelectorAll('.statistics-bar-mark').forEach(mark=>{
