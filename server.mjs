@@ -16,6 +16,7 @@ import { migrateMesRecords, decorateMesExecutions, correctFinishedExecution, dec
 import { backupConfig, createConsistentBackup, startBackupSchedule, testRestore } from './backup.mjs';
 import { migratePlanningCompatibility, compatibilityFields, proposePeriod } from './planning-proposal.mjs';
 import { migratePlanningRelease, decoratePlanningTasks, releasedTasks, planningInfo, interruptionRequests, releasePlanning, requestExecutionInterruption, respondExecutionInterruption } from './planning-release.mjs';
+import { migrateFixedStart } from './fixed-start.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,username
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS machines(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,description TEXT NOT NULL,anchor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS types(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,color TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,title TEXT NOT NULL,typeId TEXT NOT NULL REFERENCES types(id),machineId TEXT NOT NULL REFERENCES machines(id),setupMinutes INTEGER NOT NULL,runMinutes INTEGER NOT NULL,status TEXT NOT NULL,position INTEGER,start TEXT,end TEXT,segments TEXT NOT NULL DEFAULT '[]',notes TEXT NOT NULL DEFAULT '');`);
+CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,title TEXT NOT NULL,typeId TEXT NOT NULL REFERENCES types(id),machineId TEXT NOT NULL REFERENCES machines(id),setupMinutes INTEGER NOT NULL,runMinutes INTEGER NOT NULL,status TEXT NOT NULL,position INTEGER,start TEXT,end TEXT,segments TEXT NOT NULL DEFAULT '[]',notes TEXT NOT NULL DEFAULT '',fixedStart TEXT);`);
 const uid = () => randomBytes(12).toString('hex');
 const hash = value => createHash('sha256').update(value).digest('hex');
 function passwordHash(password) { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
@@ -61,6 +62,7 @@ migrateDowntime(db);
 migrateReasonCatalogs(db);
 migrateMesRecords(db);
 migratePlanningCompatibility(db);
+migrateFixedStart(db);
 migratePlanningRelease(db,uid);
 const backups = startBackupSchedule(db,{...backupOptions,initialBackup});
 function auditDifference(before,after){
@@ -73,11 +75,14 @@ function auditDifference(before,after){
   if(JSON.stringify(before.calendar)!==JSON.stringify(after.calendar)){result.before.calendar=before.calendar;result.after.calendar=after.calendar;}
   return result;
 }
-function snapshot(viewRole='admin') {
+function snapshot(view='draft',detail='full') {
   const rawTasks=db.prepare('SELECT * FROM tasks').all().map(t=>({...t,segments:JSON.parse(t.segments),compatibleMachineIds:JSON.parse(t.compatibleMachineIds||'[]')}));
-  const tasks=viewRole==='operator'?releasedTasks(rawTasks):decoratePlanningTasks(rawTasks);
-  return {revision:Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),scrapReasons:reasonCatalog(db,'scrap'),machineStopReasons:reasonCatalog(db,'machineStop'),tasks,planning:planningInfo(db,rawTasks),interruptionRequests:interruptionRequests(db),executions:decorateMesExecutions(db,shopfloorExecutions(db)),machineStops:machineStops(db),calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
+  const tasks=view==='shopfloor'?releasedTasks(rawTasks):decoratePlanningTasks(rawTasks);
+  const base={revision:currentRevision(),machines:db.prepare('SELECT * FROM machines ORDER BY name').all(),types:db.prepare('SELECT * FROM types ORDER BY name').all(),articles:db.prepare('SELECT * FROM articles ORDER BY code COLLATE NOCASE').all(),setupRules:db.prepare('SELECT * FROM setupRules ORDER BY machineId,fromTypeId,toTypeId').all(),scrapReasons:reasonCatalog(db,'scrap'),machineStopReasons:reasonCatalog(db,'machineStop'),tasks,calendar:JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('calendar').value)};
+  if(detail==='mutation')return base;
+  return {...base,planning:planningInfo(db,rawTasks),interruptionRequests:interruptionRequests(db),executions:decorateMesExecutions(db,shopfloorExecutions(db)),machineStops:machineStops(db)};
 }
+function currentRevision(){return Number(db.prepare('SELECT value FROM meta WHERE key=?').get('revision').value);}
 function text(value,label,max=200) { if(typeof value!=='string'||!value.trim()||value.length>max) fail(`${label}: inserisci un valore valido (massimo ${max} caratteri).`); return value.trim(); }
 function duration(value,label,zero=false) { if(!Number.isInteger(value)||value<(zero?0:1)||value>525600) fail(`${label}: inserisci minuti interi ${zero?'non negativi':'maggiori di zero'} (massimo 525600).`); return value; }
 function positiveNumber(value,label) {if(typeof value!=='number'||!Number.isFinite(value)||value<=0||value>1e9)fail(`${label}: inserisci un valore maggiore di zero (massimo 1000000000).`);return value;}
@@ -97,6 +102,7 @@ const units=['m','m2','kg'],articleKinds=['component','product','both'];
 const supportsRole=(article,role)=>article.kind===role||article.kind==='both';
 function applyAction(state,action,actorRole='admin') {
   const affected = new Set();
+  let fixedPlacementTaskId=null,fixedPlacementBefore=null;
   const releasedValue=(task,key)=>{if(!task.releasedPayload)return null;try{return JSON.parse(task.releasedPayload)?.[key]??null;}catch{return null;}};
   const taskById = id => {const t=state.tasks.find(x=>x.id===id); if(!t) fail('Attività non trovata.',404); return t;};
   const machineById = id => {const m=state.machines.find(x=>x.id===id); if(!m) fail('Macchina non trovata.',404); return m;};
@@ -125,6 +131,9 @@ function applyAction(state,action,actorRole='admin') {
   };
   if(action.kind==='plan') {
     const t=taskById(action.id); if(locked(t)||t.status==='cancelled') fail('Questa attività non può essere spostata.');
+    const hasFixedStart=Object.hasOwn(action,'fixedStart');
+    const requestedFixedStart=hasFixedStart?checkDate(action.fixedStart):null;
+    if(hasFixedStart){fixedPlacementTaskId=t.id;fixedPlacementBefore=new Map(state.tasks.filter(item=>item.id!==t.id&&item.position!=null).map(item=>[item.id,{start:item.start,end:item.end,segments:structuredClone(item.segments),effectiveSetupMinutes:item.effectiveSetupMinutes??null}]));}
     const oldMachineId=t.machineId,targetMachineId=action.machineId??t.machineId;
     if(!(t.compatibleMachineIds||[t.machineId]).includes(targetMachineId))fail('La macchina selezionata non è compatibile con questa attività.');
     const machine=machineById(targetMachineId);affected.add(oldMachineId);t.machineId=targetMachineId;
@@ -135,12 +144,14 @@ function applyAction(state,action,actorRole='admin') {
     }
     const oldSequence=state.tasks.filter(x=>x.machineId===machine.id&&x.position!==null).sort((a,b)=>a.position-b.position);
     const sequence=oldSequence.filter(x=>x.id!==t.id);
-    if(action.unplan) { t.position=null;t.start=null;t.end=null;t.segments=[];t.status='unplanned';t.effectiveSetupMinutes=null; }
+    if(action.unplan) { t.position=null;t.start=null;t.end=null;t.segments=[];t.status='unplanned';t.effectiveSetupMinutes=null;t.fixedStart=null; }
     else {
-      const index=action.beforeId?sequence.findIndex(x=>x.id===action.beforeId):sequence.length;
-      if(index<0) fail('Posizione non più disponibile.');
-      if(sequence.slice(index).some(locked)) fail('Inserisci l’attività dopo le attività in corso o completate.');
-      sequence.splice(index,0,t);t.status='planned';
+      const index=hasFixedStart?sequence.findIndex(x=>x.start!=null&&x.start>=requestedFixedStart):(action.beforeId?sequence.findIndex(x=>x.id===action.beforeId):sequence.length);
+      const insertionIndex=hasFixedStart&&index<0?sequence.length:index;
+      if(insertionIndex<0) fail('Posizione non più disponibile.');
+      if(sequence.slice(insertionIndex).some(locked)) fail('Inserisci l’attività dopo le attività in corso o completate.');
+      t.fixedStart=hasFixedStart?requestedFixedStart:null;
+      sequence.splice(insertionIndex,0,t);t.status='planned';
     }
     sequence.forEach((x,i)=>x.position=i); affected.add(machine.id);
   } else if(action.kind==='task') {
@@ -160,7 +171,7 @@ function applyAction(state,action,actorRole='admin') {
       const clean={title:text(v.title,'Titolo'),typeId:v.typeId,machineId:v.machineId,setupMinutes:duration(v.setupMinutes,'Attrezzaggio',true),runMinutes,quantity,calculationMode,notes:typeof v.notes==='string'?v.notes.slice(0,2000):'',...articleFields,...orderFields(v,existing||{}),...compatibilityFields(v,existing,state.machines)};
       // Validate even unplanned activities: the setup must fit an available shift.
       scheduleMachine([{id:'validation',...clean,status:'planned'}],machineById(v.machineId).anchor,calendarFor(state,v.machineId));
-      if(existing) { affected.add(existing.machineId); if(existing.machineId!==clean.machineId) Object.assign(existing,{position:null,start:null,end:null,segments:[],status:'unplanned',effectiveSetupMinutes:null});Object.assign(existing,clean); }
+      if(existing) { affected.add(existing.machineId); if(existing.machineId!==clean.machineId) Object.assign(existing,{position:null,start:null,end:null,segments:[],status:'unplanned',effectiveSetupMinutes:null,fixedStart:null});Object.assign(existing,clean); }
       else state.tasks.push({id:uid(),...clean,status:'unplanned',position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null});
       affected.add(clean.machineId);
     }
@@ -176,7 +187,7 @@ function applyAction(state,action,actorRole='admin') {
       if(state.tasks.some(x=>x.machineId===t.machineId&&x.position!==null&&x.position<t.position&&x.status!=='completed')) fail('Completa prima le attività precedenti della macchina.');
     }
     t.status=action.status;
-    if(action.status==='cancelled'||action.status==='unplanned') Object.assign(t,{position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null});
+    if(action.status==='cancelled'||action.status==='unplanned') Object.assign(t,{position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null,fixedStart:null});
     affected.add(t.machineId);
   } else if(action.kind==='machine') {
     const existing=action.id?machineById(action.id):null;
@@ -223,8 +234,16 @@ function applyAction(state,action,actorRole='admin') {
     const sequence=state.tasks.filter(t=>t.machineId===id&&t.position!==null).sort((a,b)=>a.position-b.position);
     sequence.forEach((t,i)=>t.position=i);
     const prepared=sequence.map((task,index)=>{let actual=task.setupMinutes;if(locked(task))actual=task.effectiveSetupMinutes??task.setupMinutes;else if(index>0){const previous=sequence[index-1];actual=state.setupRules.find(rule=>rule.machineId===id&&rule.fromTypeId===previous.typeId&&rule.toTypeId===task.typeId)?.minutes??task.setupMinutes;}return {...task,setupMinutes:actual};});
-    const scheduled=scheduleMachine(prepared,machineById(id).anchor,calendarFor(state,id));
+    const scheduled=scheduleMachine(prepared,machineById(id).anchor,calendarFor(state,id),{preserveStarts:Boolean(fixedPlacementTaskId)});
     for(let index=0;index<scheduled.length;index++){const target=taskById(scheduled[index].id),baseSetup=sequence[index].setupMinutes;Object.assign(target,scheduled[index]);target.setupMinutes=baseSetup;target.effectiveSetupMinutes=prepared[index].setupMinutes;}
+  }
+  if(fixedPlacementTaskId){
+    for(const [id,before] of fixedPlacementBefore){
+      const after=taskById(id);
+      if(after.start!==before.start||after.end!==before.end||JSON.stringify(after.segments)!==JSON.stringify(before.segments)||(after.effectiveSetupMinutes??null)!==before.effectiveSetupMinutes){
+        fail('La posizione scelta modificherebbe un’altra attività già pianificata. Scegli uno spazio libero.');
+      }
+    }
   }
   return state;
 }
@@ -238,9 +257,20 @@ function save(state) {
   state.tasks.forEach(x=>t.run(x.id,x.title,x.typeId,x.machineId,x.setupMinutes,x.runMinutes,x.status,x.position??null,x.start??null,x.end??null,JSON.stringify(x.segments),x.notes,x.component1Code||'',x.component1Description||'',x.component2Code||'',x.component2Description||'',x.productCode||'',x.productDescription||'',x.quantity??null,x.calculationMode||'manual',x.effectiveSetupMinutes??null,x.component1ArticleId??null,x.component2ArticleId??null,x.productArticleId??null));
   const references=db.prepare('UPDATE tasks SET outputLot=?,orderReference=?,erpReference=?,customer=?,dueDate=? WHERE id=?');
   state.tasks.forEach(x=>references.run(x.outputLot??null,x.orderReference??null,x.erpReference??null,x.customer??null,x.dueDate??null,x.id));
-  const planning=db.prepare('UPDATE tasks SET compatibleMachineIds=?,preferredMachineId=?,releasedPayload=?,releasedVersion=? WHERE id=?');
-  state.tasks.forEach(x=>planning.run(JSON.stringify(x.compatibleMachineIds||[x.machineId]),x.preferredMachineId??null,x.releasedPayload??null,x.releasedVersion??null,x.id));
+  const planning=db.prepare('UPDATE tasks SET compatibleMachineIds=?,preferredMachineId=?,releasedPayload=?,releasedVersion=?,fixedStart=? WHERE id=?');
+  state.tasks.forEach(x=>planning.run(JSON.stringify(x.compatibleMachineIds||[x.machineId]),x.preferredMachineId??null,x.releasedPayload??null,x.releasedVersion??null,x.fixedStart??null,x.id));
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(JSON.stringify(state.calendar),'calendar');
+  db.prepare('UPDATE meta SET value=? WHERE key=?').run(String(state.revision+1),'revision');
+}
+function savePlanningAction(previous,state){
+  const fields=['machineId','setupMinutes','runMinutes','status','position','start','end','segments','effectiveSetupMinutes','fixedStart'];
+  const beforeById=new Map(previous.tasks.map(task=>[task.id,task]));
+  const update=db.prepare('UPDATE tasks SET machineId=?,setupMinutes=?,runMinutes=?,status=?,position=?,start=?,end=?,segments=?,effectiveSetupMinutes=?,fixedStart=? WHERE id=?');
+  for(const task of state.tasks){
+    const before=beforeById.get(task.id);if(!before)fail('Attività non trovata durante il salvataggio.',409);
+    if(fields.every(field=>JSON.stringify(before[field]??null)===JSON.stringify(task[field]??null)))continue;
+    update.run(task.machineId,task.setupMinutes,task.runMinutes,task.status,task.position??null,task.start??null,task.end??null,JSON.stringify(task.segments),task.effectiveSetupMinutes??null,task.fixedStart??null,task.id);
+  }
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(String(state.revision+1),'revision');
 }
 function publicUsers() {return db.prepare('SELECT id,name,username,role FROM users ORDER BY name').all();}
@@ -277,7 +307,10 @@ const server=http.createServer(async(req,res)=>{
     }
     if(!user)fail('Accedi per continuare.',401);
     if(url.pathname==='/api/logout'&&req.method==='POST') {const token=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('aloven_session='))?.slice(15);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));send(res,200,{ok:true},{'Set-Cookie':cookie('',req,true)});return;}
-    if(url.pathname==='/api/state'&&req.method==='GET') {send(res,200,{...snapshot(user.role),user,users:user.role==='admin'?publicUsers():[]});return;}
+    if(url.pathname==='/api/state'&&req.method==='GET') {
+      const view=url.searchParams.get('view')==='shopfloor'?'shopfloor':'draft';
+      send(res,200,{...snapshot(view),user,users:user.role==='admin'?publicUsers():[]});return;
+    }
     if(url.pathname==='/api/statistics'&&req.method==='GET') {
       send(res,200,buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined,excludeDemo:url.searchParams.get('excludeDemo')??undefined}));return;
     }
@@ -305,17 +338,24 @@ const server=http.createServer(async(req,res)=>{
     }
     if(url.pathname==='/api/preview'&&req.method==='POST') {
       if(['machine','type','calendar','article','setupRule','periodProposal'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
-      const old=snapshot();if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
+      const old=snapshot('draft',['task','status'].includes(payload.action?.kind)?'full':'mutation');if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
       const proposal=payload.action?.kind==='periodProposal'?proposePeriod(structuredClone(old),payload.action):null;
       const next=proposal?.state??applyAction(structuredClone(old),payload.action,user.role);const changes=next.tasks.filter(t=>{const p=old.tasks.find(x=>x.id===t.id);return p&&(p.start!==t.start||p.end!==t.end||p.machineId!==t.machineId||p.runMinutes!==t.runMinutes||p.effectiveSetupMinutes!==t.effectiveSetupMinutes);}).map(t=>{const p=old.tasks.find(x=>x.id===t.id);return {id:t.id,title:t.title,oldStart:p.start,oldEnd:p.end,start:t.start,end:t.end,oldRunMinutes:p.runMinutes,runMinutes:t.runMinutes,oldSetupMinutes:p.effectiveSetupMinutes,setupMinutes:t.effectiveSetupMinutes};});
       const summary=proposal?{included:proposal.included,excluded:proposal.excluded,load:proposal.load,from:proposal.from,to:proposal.to}:undefined;
-      const token=uid()+uid();for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,next,expires:Date.now()+300000});send(res,200,{token,changes,...(summary?{proposal:summary}:{})});return;
+      const placed=payload.action?.kind==='plan'&&Object.hasOwn(payload.action,'fixedStart')?next.tasks.find(task=>task.id===payload.action.id):null;
+      const placement=placed?{id:placed.id,fixedStart:placed.fixedStart??null,start:placed.start??null,end:placed.end??null,machineId:placed.machineId}:undefined;
+      const token=uid()+uid(),collection={task:'tasks',machine:'machines',type:'types',article:'articles',setupRule:'setupRules'}[payload.action.kind];
+      const entityId=payload.action.id||(collection?next[collection].find(item=>!old[collection].some(previous=>previous.id===item.id))?.id:null)||payload.action.kind;
+      for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,previous:old,next,entityId,expires:Date.now()+300000});send(res,200,{token,changes,...(summary?{proposal:summary}:{}),...(placement?{placement}:{})});return;
     }
     if(url.pathname==='/api/commit'&&req.method==='POST') {
       const p=previews.get(payload.token);if(!p||p.userId!==user.id||p.expires<Date.now())fail('Anteprima scaduta. Ripeti l’operazione.',409);
       if(['machine','type','calendar','article','setupRule','periodProposal'].includes(p.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
-      db.exec('BEGIN IMMEDIATE');try {if(snapshot().revision!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);const previous=snapshot();save(p.next);const difference=auditDifference(previous,snapshot());const collection={task:'tasks',machine:'machines',type:'types',article:'articles',setupRule:'setupRules'}[p.action.kind];recordMesAudit(db,{entityType:p.action.kind,entityId:p.action.id||(collection?p.next[collection].find(item=>!previous[collection].some(old=>old.id===item.id))?.id:null)||p.action.kind,action:'commit',user,reason:(typeof p.action.values?.notes==='string'&&p.action.values.notes.trim()?p.action.values.notes:'Modifica '+p.action.kind+' confermata').slice(0,1000),before:difference.before,after:difference.after},uid);db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
-      send(res,200,{ok:true});return;
+      const includeFullState=payload.includeState===true,includePlanningState=payload.includeState==='planning'&&p.action.kind==='plan';let committedSnapshot,difference;
+      db.exec('BEGIN IMMEDIATE');try {if(currentRevision()!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);if(p.action.kind==='plan'){savePlanningAction(p.previous,p.next);committedSnapshot=includeFullState?snapshot('draft'):{...p.next,revision:p.revision+1,tasks:decoratePlanningTasks(p.next.tasks)};}else{save(p.next);committedSnapshot=snapshot('draft',includeFullState?'full':'mutation');}difference=auditDifference(p.previous,committedSnapshot);recordMesAudit(db,{entityType:p.action.kind,entityId:p.entityId,action:'commit',user,reason:(typeof p.action.values?.notes==='string'&&p.action.values.notes.trim()?p.action.values.notes:'Modifica '+p.action.kind+' confermata').slice(0,1000),before:difference.before,after:difference.after},uid);db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
+      const state=payload.includeState===true?{...committedSnapshot,user,users:user.role==='admin'?publicUsers():[]}:undefined;
+      const planningState=includePlanningState?{revision:committedSnapshot.revision,tasks:difference.after.tasks||[],planning:planningInfo(db,committedSnapshot.tasks)}:undefined;
+      send(res,200,{ok:true,...(state?{state}:{}),...(planningState?{planningState}:{})});return;
     }
     if(url.pathname==='/api/users'&&req.method==='POST') {
       if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);

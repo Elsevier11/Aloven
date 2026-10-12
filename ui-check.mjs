@@ -30,11 +30,11 @@ try {
   const focusDate=await page.locator('#date-start').inputValue();await page.getByRole('button',{name:'Giorno successivo',exact:true}).click();assert.notEqual(await page.locator('#date-start').inputValue(),focusDate);await page.getByRole('button',{name:'Giorno precedente',exact:true}).click();assert.equal(await page.locator('#date-start').inputValue(),focusDate);
   const drop=page.locator('[data-drop-machine="CNC-01"]').first();
   await page.locator(`.backlog .task-card[data-task="${firstId}"]`).dragTo(drop,{sourcePosition:{x:12,y:12},targetPosition:{x:100,y:45}});
-  await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva'}).click();await page.locator('#modal').waitFor({state:'hidden'});
   await page.locator(`.backlog .task-card[data-task="${firstId}"]`).waitFor({state:'detached'});
+  assert.equal(await page.locator('#modal').isVisible(),false,'Il trascinamento salva la bozza senza conferma');
   await page.locator(`.backlog [data-detail="${secondId}"]`).click();
-  await page.getByLabel('Posizione nella sequenza').selectOption(firstId);await page.getByRole('button',{name:'Pianifica',exact:true}).click();
-  await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva'}).click();await page.locator('#modal').waitFor({state:'hidden'});
+  await page.getByLabel('Posizione nella sequenza').selectOption('');await page.getByRole('button',{name:'Pianifica',exact:true}).click();
+  await page.locator(`.backlog .task-card[data-task="${secondId}"]`).waitFor({state:'detached'});assert.equal(await page.locator('#modal').isVisible(),false);
   const plannedDay=await page.evaluate(async id=>{const state=await (await fetch('/api/state')).json();return state.tasks.find(t=>t.id===id).start.slice(0,10);},firstId);await page.locator('#date-start').fill(plannedDay);await page.locator('#date-start').dispatchEvent('change');
   mkdirSync('.artifacts',{recursive:true});await page.screenshot({path:'.artifacts/day-machine-focus.png',fullPage:true});
   const durations=await page.locator('.single-day .time-block').evaluateAll(bs=>bs.map(b=>{const times=b.getAttribute('aria-label').match(/(\d\d):(\d\d)–(\d\d):(\d\d)/),scale=Number(b.closest('[data-time-scale]').dataset.timeScale);return {width:b.getBoundingClientRect().width,scale,minutes:(Number(times[3])*60+Number(times[4]))-(Number(times[1])*60+Number(times[2]))};}));assert.ok(durations.length>0);for(const item of durations)assert.ok(Math.abs(item.width-item.minutes*item.scale)<1,'Larghezza proporzionale alla durata reale');
@@ -86,7 +86,7 @@ try {
   await page.locator('.history-row').click();await page.getByText('ROT-002',{exact:false}).waitFor();await page.getByText('0.99%',{exact:true}).waitFor();await page.getByText(`Motivo scarto: ${scrapReasonLabel}`,{exact:true}).waitFor();await page.screenshot({path:'.artifacts/quality-history.png',fullPage:true});await page.getByRole('button',{name:'Chiudi',exact:true}).click();
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.artifacts/shopfloor-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Overflow bordo macchina mobile');
   await page.getByRole('link',{name:'Pianificazione',exact:true}).click();assert.equal(await page.locator('.time-block.completed').count(),0);await openPlanningOptions();await page.getByLabel('Mostra completate',{exact:true}).check();assert.ok(await page.locator('.time-block.completed').count()>0);await page.screenshot({path:'.artifacts/mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Overflow pagina mobile');
-  assert.deepEqual(errors,[],'Errori JavaScript nel browser');console.log('UI verificata: setup, drag-and-drop, inserimento confermato, CRUD attività, calendario ed eccezioni, vista mobile.');
+  assert.deepEqual(errors,[],'Errori JavaScript nel browser');console.log('UI verificata: setup, drag-and-drop, assegnazione in coda, CRUD attività, calendario ed eccezioni, vista mobile.');
 } finally {
   await browser?.close();if(child.exitCode===null){const done=once(child,'exit');child.kill();await done;}rmSync(temp,{recursive:true,force:true});
 }

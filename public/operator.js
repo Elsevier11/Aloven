@@ -42,7 +42,7 @@ function toast(message,error=false){toastBox.textContent=message;toastBox.classN
 function setLanguage(next){lang=next;localStorage.setItem('aloven-operator-language',lang);document.documentElement.lang=lang;state?render():renderAuth(authNeedsSetup);}
 
 async function boot(){clearInterval(poll);try{const session=await api('session');if(!session.user){state=null;renderAuth(session.needsSetup);return;}await reload();poll=setInterval(()=>{if(!dialog.open)reload(true);},15000);}catch(error){renderFailure(error.message);}}
-async function reload(silent=false){try{state=await api('state');chooseMachine();render();}catch(error){if(error.status===401){state=null;renderAuth(false);}else if(!silent)toast(error.message,true);}}
+async function reload(silent=false){try{state=await api('state?view=shopfloor');chooseMachine();render();}catch(error){if(error.status===401){state=null;renderAuth(false);}else if(!silent)toast(error.message,true);}}
 function chooseMachine(){if(!state.machines.some(m=>m.id===machineId))machineId=state.machines[0]?.id||'';if(machineId)localStorage.setItem('aloven-operator-machine',machineId);}
 function renderFailure(message){app.innerHTML=`<div class="boot"><div><p>${esc(message)}</p><button class="button primary" id="retry">${esc(tr('retry'))}</button></div></div>`;document.querySelector('#retry').onclick=boot;}
 

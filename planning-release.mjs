@@ -27,6 +27,9 @@ function releasedPayload(task) {
   for (const key of ['releasedPayload', 'releasedVersion', 'planningState', 'releasedMachineId', 'releasedPosition', 'releasedStart', 'releasedEnd', 'releasedSegments', 'releasedEffectiveSetupMinutes']) delete value[key];
   if (typeof value.segments === 'string') value.segments = JSON.parse(value.segments || '[]');
   if (typeof value.compatibleMachineIds === 'string') value.compatibleMachineIds = JSON.parse(value.compatibleMachineIds || '[]');
+  // Old release snapshots did not contain this field. Omitting the null value
+  // keeps those snapshots comparable, while a real pin remains release data.
+  if (value.fixedStart == null) delete value.fixedStart;
   return value;
 }
 
@@ -96,6 +99,7 @@ export function releasedTasks(tasks) {
     return {
       ...task,
       ...released,
+      fixedStart: Object.hasOwn(released, 'fixedStart') ? released.fixedStart : null,
       status: operationalStatus,
       releasedPayload: task.releasedPayload,
       releasedVersion: task.releasedVersion,
@@ -285,7 +289,7 @@ export function respondExecutionInterruption(db, payload, user, makeId, now = ne
       }
       db.prepare(`UPDATE execution SET interruptedAt=?,interruptionReason=?,interruptionRequestId=?,interruptedByUserId=?,interruptedByUserName=? WHERE taskId=?`)
         .run(now,request.reason,requestId,user.id,user.name,task.id);
-      db.prepare("UPDATE tasks SET status='cancelled',position=NULL,start=NULL,end=NULL,segments='[]',effectiveSetupMinutes=NULL,releasedPayload=NULL,releasedVersion=NULL WHERE id=?").run(task.id);
+      db.prepare("UPDATE tasks SET status='cancelled',position=NULL,start=NULL,end=NULL,segments='[]',effectiveSetupMinutes=NULL,fixedStart=NULL,releasedPayload=NULL,releasedVersion=NULL WHERE id=?").run(task.id);
       db.prepare(`UPDATE executionInterruptionRequests SET status='confirmed',respondedAt=?,respondedByUserId=?,respondedByUserName=?,responseReason=? WHERE id=?`)
         .run(now,user.id,user.name,typeof payload.reason==='string'?payload.reason.trim().slice(0,1000):null,requestId);
       if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mesAuditLog'").get()) recordMesAudit(db,{entityType:'execution',entityId:task.id,action:'interruption_confirmed',user,reason:request.reason,before:{phase:execution.phase,requestId},after:{phase:'cancelled',requestId,producedQuantity:declaration?.goodQuantity??null,scrapQuantity:declaration?.scrapQuantity??null,outputLot}},makeId,now);

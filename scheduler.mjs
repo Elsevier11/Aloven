@@ -244,8 +244,9 @@ function validateLockedTask(task, calendar) {
   return { start, end };
 }
 
-export function scheduleMachine(tasks, anchor, calendar) {
+export function scheduleMachine(tasks, anchor, calendar, options = {}) {
   if (!Array.isArray(tasks)) fail('La sequenza attività deve essere un array');
+  if (!options || typeof options !== 'object' || Array.isArray(options)) fail('Opzioni di pianificazione non valide');
   const anchorMinute = parseIso(anchor, 'Data di ancoraggio');
   const validatedCalendar = validateCalendar(calendar);
   const result = [];
@@ -266,7 +267,20 @@ export function scheduleMachine(tasks, anchor, calendar) {
       continue;
     }
 
-    const scheduled = scheduleValidatedTask(task, cursor, validatedCalendar);
+    let scheduled;
+    const exactStartValue = task.fixedStart ?? (options.preserveStarts && task.start != null ? task.start : null);
+    if (exactStartValue != null) {
+      const fixedStart = parseIso(exactStartValue, `Inizio fissato attività ${task.id ?? ''}`);
+      if (previousEnd !== undefined && fixedStart < previousEnd) {
+        fail(`L’attività ${task.id ?? ''} fissata alle ${exactStartValue} si sovrappone all’attività precedente`);
+      }
+      scheduled = scheduleValidatedTask(task, fixedStart, validatedCalendar);
+      if (scheduled.start !== exactStartValue) {
+        fail(`L’inizio fissato ${exactStartValue} dell’attività ${task.id ?? ''} è fuori dall’orario di lavoro o non consente di completare il setup nel turno`);
+      }
+    } else {
+      scheduled = scheduleValidatedTask(task, cursor, validatedCalendar);
+    }
     result.push(scheduled);
     previousEnd = parseIso(scheduled.end);
     cursor = previousEnd;

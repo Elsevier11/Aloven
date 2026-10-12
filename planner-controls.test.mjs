@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {placementAction,placementChoices} from './public/planner-controls.js';
 const task=(id,position,status='planned',machineId='m1')=>({id,position,status,machineId});
+test('posizionamento manuale trasmette la data esatta e consente di tornare alla sequenza automatica',()=>{
+ const tasks=[{...task('a',0),fixedStart:'2026-11-12T10:15'}];
+ assert.deepEqual(placementAction(tasks,'a','date','','2026-12-14T14:07'),{kind:'plan',id:'a',machineId:'m1',fixedStart:'2026-12-14T14:07'});
+ assert.throws(()=>placementAction(tasks,'a','date','',''),/Scegli data/);
+ assert.deepEqual(placementAction(tasks,'a','end',''),{kind:'plan',id:'a',beforeId:''});
+});
 test('comandi prima/dopo rispettano la sequenza della stessa macchina',()=>{
  const tasks=[task('a',0),task('b',1),task('c',2),task('new',null,'unplanned'),task('other',0,'planned','m2')];
  assert.deepEqual(placementAction(tasks,'new','after','b'),{kind:'plan',id:'new',beforeId:'c'});

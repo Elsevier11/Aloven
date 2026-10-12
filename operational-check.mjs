@@ -85,9 +85,11 @@ try{
     b=(await state()).tasks.find(t=>t.id===b.id);assert.equal(b.runMinutes,150);
   });
 
-  await test('pianificazione: trascinamento con anteprima obbligatoria',async()=>{
+  await test('pianificazione: trascinamento con salvataggio diretto della bozza',async()=>{
     await nav('planning');const card=page.locator(`.backlog .task-card[data-task="${a.id}"]`),drop=page.locator('[data-drop-machine="CNC-01"]').first();await card.dragTo(drop,{targetPosition:{x:80,y:50}});
-    await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva'}).click();await page.locator('#modal').waitFor({state:'hidden'});assert.equal((await state()).tasks.find(t=>t.id===a.id).status,'planned');
+    await page.locator(`.backlog .task-card[data-task="${a.id}"]`).waitFor({state:'detached'});assert.equal(await page.locator('#modal').isVisible(),false);assert.equal((await state()).tasks.find(t=>t.id===a.id).status,'planned');
+    // This suite exercises the separate automatic sequence after verifying the temporal drop.
+    const snapshot=await state(),previewResponse=await page.request.post(base+'/api/preview',{data:{revision:snapshot.revision,action:{kind:'plan',id:a.id,machineId:'CNC-01'}},headers:{'X-Aloven-Request':'1'}});assert.equal(previewResponse.status(),200,await previewResponse.text());const preview=await previewResponse.json(),commit=await page.request.post(base+'/api/commit',{data:{token:preview.token},headers:{'X-Aloven-Request':'1'}});assert.equal(commit.status(),200,await commit.text());await page.reload();await page.locator('.timeline-scroll').waitFor();
   });
 
   await test('pianificazione: assegnazione da dettaglio',async()=>{await planTask(b.id);await planTask(c.id);const seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,b.id,c.id]);});

@@ -6,6 +6,8 @@ Web app in italiano con server Node.js, database SQLite persistente e interfacci
 
 Richiede Node.js **22.13 o successivo** (verificata con 22.20).
 
+Su Windows puoi avviare l'app con un doppio clic su `avvia-aloven.bat`. Mantieni aperta la finestra del server; premi Ctrl+C per arrestarlo. Il file verifica che sia disponibile una versione compatibile di Node.js.
+
 ```powershell
 cd C:\Dev\Aloven
 npm start
@@ -17,7 +19,7 @@ Il database viene creato in `data/aloven.sqlite`. I dati e gli accessi persiston
 
 ## Utilizzo
 
-- **Pianificazione**: trascina una scheda da “Da assegnare” sulla sua macchina. Trascina sopra un'altra scheda per inserirla prima; in una zona libera per accodarla. Il giorno su cui viene effettuato il drop non fissa la data: la posizione nella sequenza e il calendario determinano gli orari, senza intervalli arbitrari. Una scheda spostata nella colonna “Da assegnare” torna non pianificata.
+- **Pianificazione**: nel Piano per macchine trascina un’attività su uno spazio libero della macchina compatibile: il punto di rilascio fissa giorno e ora di inizio, con passi di 15 minuti. Per una data futura o un orario al minuto seleziona il titolo, scegli “Alla data e ora scelte” e salva nella bozza; il piano mostra il giorno scelto. L’inizio deve essere nel calendario di lavoro, l’attrezzaggio deve entrare nel turno e l’intera attività non deve sovrapporsi ad altre. Le altre attività conservano le proprie date; i conflitti, incluse variazioni degli attrezzaggi di transizione, sono rifiutati. Dal menu Azioni della macchina, Vedi sequenza consente aggiunta in coda, riordino con frecce, ritiro e dettagli, con anteprima: un’attività con inizio fissato non viene spostata automaticamente. Riposizionarla con un comando sequenziale elimina il suo vincolo di data. Il trascinamento salva la bozza senza conferma e, nello spostamento di una barra, conserva il punto afferrato. Tutti gli utenti che pianificano vedono la stessa bozza; il bordo macchina classico e touch mostrano il piano rilasciato. Solo Rilascia piano, riservato all’amministratore, aggiorna il reparto. Prepara periodo resta disponibile nella toolbar. Trascinare tra le attività disponibili ritira dalla bozza. Puoi cambiare il primo giorno visualizzato e filtrare per macchina.
 - Il menu **⋯** permette di scegliere la posizione senza trascinare. “Vedi sequenza” mostra tutta la coda, anche oltre i giorni visibili. Puoi cambiare il primo giorno visualizzato e filtrare per macchina.
 - **Attività**: CRUD con macchina obbligatoria, tipologia, attrezzaggio ed esecuzione in minuti, note. Sono obbligatori due componenti consumati e un articolo prodotto, ognuno con codice e descrizione. La ricerca trova titolo, codici e descrizioni. Cambiare macchina a un'attività già pianificata la riporta da assegnare e ricompatta la coda precedente.
 - **Macchine**: CRUD, data/ora di inizio pianificazione e velocità in m lineari/min, m²/min o kg/min. Modificare la velocità ricalcola le attività automatiche non bloccate con anteprima.

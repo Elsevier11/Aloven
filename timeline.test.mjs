@@ -1,6 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {temporalPlan} from './public/timeline.js';
+import {temporalPlan,timelineInsertionBefore,timelineDropStart} from './public/timeline.js';
+
+test('rilascio temporale usa giorno e coordinate del punto scelto anche dopo scorrimento',()=>{
+ const cell={dataset:{date:'2026-11-12',lo:'480',scale:'2'},getBoundingClientRect:()=>({left:-100})};
+ assert.equal(timelineDropStart(cell,110),'2026-11-12T09:45');
+ assert.equal(timelineDropStart(cell,-100),'2026-11-12T08:00');
+ assert.equal(timelineDropStart(cell,320,30),'2026-11-12T11:00');
+ assert.equal(timelineDropStart(cell,20,1440),'2026-11-11T09:00');
+});
+
+test('inserimento usa preparazione e lavorazione insieme e la sequenza oltre il giorno visibile',()=>{
+ const tasks=[
+  {id:'a',machineId:'m',position:0,start:'2026-10-12T08:00',segments:[{start:'2026-10-12T08:00',end:'2026-10-12T08:30'},{start:'2026-10-12T08:30',end:'2026-10-12T10:00'}]},
+  {id:'b',machineId:'m',position:1,start:'2026-10-12T10:00',segments:[{start:'2026-10-12T10:00',end:'2026-10-12T12:00'}]},
+  {id:'c',machineId:'m',position:2,start:'2026-10-13T08:00',segments:[{start:'2026-10-13T08:00',end:'2026-10-13T10:00'}]}
+ ];
+ assert.equal(timelineInsertionBefore(tasks,'m','new','2026-10-12',510),'a');
+ assert.equal(timelineInsertionBefore(tasks,'m','new','2026-10-12',590),'b');
+ assert.equal(timelineInsertionBefore(tasks,'m','new','2026-10-12',800),'c');
+ assert.equal(timelineInsertionBefore(tasks,'m','b','2026-10-12',590),'c');
+ assert.equal(timelineInsertionBefore(tasks,'m','new','2026-10-11',800),'a');
+ assert.equal(timelineInsertionBefore(tasks,'m','new','2026-10-14',800),'');
+});
 
 const context=zoom=>({
   zoom,

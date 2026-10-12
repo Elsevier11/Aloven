@@ -33,7 +33,7 @@ function publishedTask(raw) {
   let released;
   try { released = JSON.parse(raw.releasedPayload); } catch { return null; }
   const status = ['in_progress','completed'].includes(raw.status) ? raw.status : released.status;
-  return {...raw,...released,id:raw.id,status,releasedPayload:raw.releasedPayload,releasedVersion:raw.releasedVersion};
+  return {...raw,...released,fixedStart:Object.hasOwn(released,'fixedStart')?released.fixedStart:null,id:raw.id,status,releasedPayload:raw.releasedPayload,releasedVersion:raw.releasedVersion};
 }
 
 function adoptPublishedTask(db, task) {

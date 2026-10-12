@@ -15,8 +15,8 @@ export function temporalPlan(c,ms,dates,showCompleted){
  const scale=Math.max(dates.length===1?360:240,(available-190)/dates.length)/span*zoom;
  const tickStep=scale<.8?120:60,ticks=Array.from({length:Math.floor(span/tickStep)+1},(_,i)=>lo+i*tickStep);
  const marker=d=>`<div class="now-marker" data-now-marker data-date="${d}" data-lo="${lo}" data-span="${span}" data-scale="${scale}" data-orientation="left" hidden><span>Adesso</span></div>`;
- const header=m=>{const stop=(state.machineStops||[]).find(x=>x.machineId===m.id&&!x.endedAt),parts=m.name.split(' · '),count=tasks.filter(t=>t.machineId===m.id).length;return `<div class="temporal-machine" style="--machine-color:${machineColor(state,m.id)}"><strong><i class="machine-color-dot" aria-hidden="true"></i>${esc(parts[0])}</strong>${parts.length>1?`<span class="machine-description">${esc(parts.slice(1).join(' · '))}</span>`:''}<small>${count} in sequenza</small>${stop?`<span class="machine-stopped">FERMA · ${esc(stop.reason)}</span><small>Piano da verificare alla ripresa</small>`:''}<details class="machine-actions"><summary>Azioni</summary><div><button class="button subtle" data-focus-machine="${m.id}" aria-label="Solo questa macchina">Solo questa</button><button class="button subtle" data-sequence="${m.id}" aria-label="Vedi sequenza">Sequenza</button><button class="button ${stop?'primary':'secondary'}" data-machine-stop="${m.id}" data-stop-action="${stop?'resume':'stop'}" aria-label="${stop?'Riattiva macchina':'Ferma macchina'}">${stop?'Riattiva':'Ferma'}</button>${state.user.role==='admin'?`<button class="button subtle" data-maintenance="${m.id}" aria-label="Manutenzione programmata">Manutenzione</button>`:''}</div></details></div>`;};
- const cell=(m,d)=>{const bands=c.effectiveShifts(d,m.id).map(([a,b])=>`<div class="working-band" style="left:${(minute(a)-lo)*scale}px;width:${(minute(b)-minute(a))*scale}px"></div>`).join('');const lines=ticks.map(v=>`<div class="time-rule" style="left:${(v-lo)*scale}px"></div>`).join('');const blocks=tasks.filter(t=>t.machineId===m.id).flatMap(t=>t.segments.filter(s=>s.start.slice(0,10)===d).map(s=>{const pixels=(minute(s.end.slice(11))-minute(s.start.slice(11)))*scale,compact=pixels<88,warning=warningFor(c.planWarnings,t.id),phase=s.kind==='setup'?'Attrezzaggio':'Lavorazione',status=c.labels?.[t.status]??t.status,selected=c.selectedTaskId===t.id,full=`${m.name} · ${t.title} · ${phase} · ${status} · ${s.start.slice(11)}–${s.end.slice(11)}${warning?` · Attenzione: ${warning}`:''}`;return `<button type="button" class="time-block ${s.kind} ${t.status}${compact?' compact':''}${warning?' has-warning':''}${selected?' selected':''}" data-task="${t.id}" data-machine="${m.id}" data-before="${locked(t)?'':t.id}" data-detail="${t.id}" data-time-tip="${t.id}" data-start="${s.start}" data-end="${s.end}" draggable="${!locked(t)}" style="--machine-color:${machineColor(state,m.id)};left:${(minute(s.start.slice(11))-lo)*scale}px;width:${pixels}px" aria-label="${esc(full)}"${selected?' aria-current="true"':''}><strong>${esc(s.kind==='setup'?'Attrezzaggio':compact?(t.productCode||t.title):t.title)}</strong><span>${s.start.slice(11)}–${s.end.slice(11)} · ${esc(status)}</span>${warning?'<i class="plan-warning" aria-hidden="true">!</i>':''}</button>`;})).join('');return `<div class="temporal-cell" data-drop-machine="${m.id}" data-date="${d}" style="width:${span*scale}px">${bands}${lines}${marker(d)}${blocks}</div>`;};
+ const header=m=>{const stop=(state.machineStops||[]).find(x=>x.machineId===m.id&&!x.endedAt),parts=m.name.split(' · '),count=tasks.filter(t=>t.machineId===m.id).length;return `<div class="temporal-machine" style="--machine-color:${machineColor(state,m.id)}"><strong><i class="machine-color-dot" aria-hidden="true"></i>${esc(parts[0])}</strong>${parts.length>1?`<span class="machine-description">${esc(parts.slice(1).join(' · '))}</span>`:''}<small>${count} in sequenza</small>${stop?`<span class="machine-stopped">FERMA · ${esc(stop.reason)}</span><small>Piano da verificare alla ripresa</small>`:''}<details class="machine-actions"><summary>Azioni</summary><div><button class="button subtle" data-focus-machine="${m.id}" aria-label="Solo questa macchina">Solo questa</button><button class="button subtle" data-sequence="${m.id}">Vedi sequenza</button><button class="button ${stop?'primary':'secondary'}" data-machine-stop="${m.id}" data-stop-action="${stop?'resume':'stop'}" aria-label="${stop?'Riattiva macchina':'Ferma macchina'}">${stop?'Riattiva':'Ferma'}</button>${state.user.role==='admin'?`<button class="button subtle" data-maintenance="${m.id}" aria-label="Manutenzione programmata">Manutenzione</button>`:''}</div></details></div>`;};
+ const cell=(m,d)=>{const bands=c.effectiveShifts(d,m.id).map(([a,b])=>`<div class="working-band" style="left:${(minute(a)-lo)*scale}px;width:${(minute(b)-minute(a))*scale}px"></div>`).join('');const lines=ticks.map(v=>`<div class="time-rule" style="left:${(v-lo)*scale}px"></div>`).join('');const blocks=tasks.filter(t=>t.machineId===m.id).flatMap(t=>t.segments.filter(s=>s.start.slice(0,10)===d).map(s=>{const pixels=(minute(s.end.slice(11))-minute(s.start.slice(11)))*scale,compact=pixels<88,warning=warningFor(c.planWarnings,t.id),phase=s.kind==='setup'?'Attrezzaggio':'Lavorazione',status=c.labels?.[t.status]??t.status,selected=c.selectedTaskId===t.id,full=`${m.name} · ${t.title} · ${phase} · ${status} · ${s.start.slice(11)}–${s.end.slice(11)}${warning?` · Attenzione: ${warning}`:''}`;return `<button type="button" class="time-block ${s.kind} ${t.status}${compact?' compact':''}${warning?' has-warning':''}${selected?' selected':''}" data-task="${t.id}" data-machine="${m.id}" data-before="${locked(t)?'':t.id}" data-detail="${t.id}" data-time-tip="${t.id}" data-start="${s.start}" data-end="${s.end}" draggable="${!locked(t)}" style="--machine-color:${machineColor(state,m.id)};left:${(minute(s.start.slice(11))-lo)*scale}px;width:${pixels}px" aria-label="${esc(full)}"${selected?' aria-current="true"':''}><strong>${esc(s.kind==='setup'?'Attrezzaggio':compact?(t.productCode||t.title):t.title)}</strong><span>${s.start.slice(11)}–${s.end.slice(11)} · ${esc(status)}</span>${warning?'<i class="plan-warning" aria-hidden="true">!</i>':''}</button>`;})).join('');return `<div class="temporal-cell" data-drop-machine="${m.id}" data-date="${d}" data-lo="${lo}" data-scale="${scale}" style="width:${span*scale}px">${bands}${lines}${marker(d)}${blocks}</div>`;};
  const shown=tasks.some(t=>ms.some(m=>m.id===t.machineId)&&t.segments.some(s=>dates.includes(s.start.slice(0,10))));
  const first=tasks.filter(t=>ms.some(m=>m.id===t.machineId)).flatMap(t=>t.segments.map(s=>s.start.slice(0,10))).sort()[0];
  const empty=!shown?`<div class="timeline-empty-period">Nessuna attività nel periodo selezionato.${first?` <button class="button secondary" data-focus-day="${first}">Vai alle attività pianificate</button>`:''}</div>`:'';
@@ -52,13 +52,56 @@ export function bindTimeTips(c){
  updateNowMarkers();if(document.querySelector('[data-now-marker]'))clockTimer=setInterval(updateNowMarkers,60000);
 }
 
-export function clearInsertionHints(){for(const cell of document.querySelectorAll('[data-drop-machine]')){delete cell.dataset.insertionBefore;delete cell.dataset.insertionInvalid;delete cell.dataset.insertionPreviewKey;cell.querySelector('.insertion-hint')?.remove();}}
+export function clearInsertionHints(){for(const cell of document.querySelectorAll('[data-drop-machine]')){delete cell.dataset.insertionBefore;delete cell.dataset.insertionInvalid;delete cell.dataset.insertionError;delete cell.dataset.insertionPreviewKey;cell.querySelector('.insertion-hint')?.remove();}}
+
+export function timelineDropStart(cell,clientX,grabOffsetMinutes=0){
+ const raw=Number(cell.dataset.lo)+(clientX-cell.getBoundingClientRect().left)/Number(cell.dataset.scale)-Number(grabOffsetMinutes||0);
+ const midnight=Date.parse(`${cell.dataset.date}T00:00:00Z`),snapped=Math.round(raw/15)*15;
+ return new Date(midnight+snapped*60000).toISOString().slice(0,16);
+}
+
+// Resolve against the whole queue, including tasks on days outside the viewport.
+export function timelineInsertionBefore(tasks,machineId,dragId,date,atMinute){
+ const queue=tasks.filter(t=>t.machineId===machineId&&t.position!==null&&t.id!==dragId).sort((a,b)=>a.position-b.position);
+ for(const task of queue){
+  const segments=(task.segments||[]).filter(s=>s.start.slice(0,10)===date);
+  if(segments.length){
+   const start=Math.min(...segments.map(s=>minute(s.start.slice(11)))),end=Math.max(...segments.map(s=>minute(s.end.slice(11))));
+   if(atMinute<(start+end)/2)return task.id;
+  }else if(task.start?.slice(0,10)>date)return task.id;
+ }
+ return '';
+}
 
 export function bindInsertionHints(c){
  insertionController?.abort();insertionController=new AbortController();const {signal}=insertionController;clearInsertionHints();
  const dragId=event=>c.dragTaskId?.()||event.dataTransfer?.getData('text/plain')||'';
- const estimate=(machineId,before)=>before?.start||c.state.tasks.filter(t=>t.machineId===machineId&&t.position!==null&&t.end).sort((a,b)=>(a.position??0)-(b.position??0)).at(-1)?.end||c.machine?.(machineId)?.anchor||'';
- const paint=(cell,event)=>{const taskId=dragId(event),dragTask=c.state.tasks.find(t=>t.id===taskId);if(!taskId)return;const horizontal=cell.closest('.gantt-temporal')!==null,axis=horizontal?event.clientX:event.clientY,candidates=[];for(const block of cell.querySelectorAll('[data-task]')){if(block.dataset.task===taskId||candidates.some(x=>x.id===block.dataset.task))continue;const r=block.getBoundingClientRect();candidates.push({id:block.dataset.task,mid:horizontal?r.left+r.width/2:r.top+r.height/2,pos:horizontal?block.offsetLeft:block.offsetTop});}candidates.sort((a,b)=>a.pos-b.pos);const candidate=candidates.find(x=>axis<x.mid),before=c.state.tasks.find(t=>t.id===candidate?.id),invalid=Boolean((dragTask&&dragTask.machineId!==cell.dataset.dropMachine)||locked(before)),key=`${taskId}|${before?.id||''}|${invalid}`;cell.dataset.insertionBefore=!invalid&&before?before.id:'';cell.dataset.insertionInvalid=invalid?'true':'false';let hint=cell.querySelector('.insertion-hint');if(!hint){hint=document.createElement('div');hint.className='insertion-hint';hint.innerHTML='<span></span>';cell.append(hint);}hint.classList.toggle('invalid',invalid);hint.classList.toggle('gantt-hint',horizontal);hint.classList.toggle('tail-hint',!candidate);hint.style[horizontal?'left':'top']=`${Math.max(0,Math.min(candidate?.pos??(horizontal?cell.clientWidth:cell.clientHeight),(horizontal?cell.clientWidth:cell.clientHeight)-3))}px`;if(cell.dataset.insertionPreviewKey===key)return;cell.dataset.insertionPreviewKey=key;const start=estimate(cell.dataset.dropMachine,before),formatted=start?c.fmt(start):'da confermare';hint.querySelector('span').textContent=invalid?(locked(before)?'Posizione non disponibile · attività bloccata':'Posizione non disponibile · macchina diversa'):(before?`Prima di ${before.title} · inizio stimato ${formatted}`:`Coda macchina · inizio stimato ${formatted}`);};
+ const paint=(cell,event)=>{
+  const taskId=dragId(event),dragTask=c.state.tasks.find(t=>t.id===taskId);if(!taskId)return;
+  const horizontal=cell.closest('.gantt-temporal')!==null,axis=horizontal?event.clientX:event.clientY;
+  const blocks=[...cell.querySelectorAll('[data-task]')].filter(b=>b.dataset.task!==taskId);
+  let beforeId='',position=0,fixedStart='',slotError='';
+  if(horizontal){
+   fixedStart=timelineDropStart(cell,event.clientX,c.dragGrabOffsetMinutes?.()||0);const atMinute=minute(fixedStart.slice(11)),fixedDate=fixedStart.slice(0,10);
+   position=(atMinute-Number(cell.dataset.lo))*Number(cell.dataset.scale);
+   const shifts=c.effectiveShifts(fixedDate,cell.dataset.dropMachine);
+   if(!shifts.some(([a,b])=>atMinute>=minute(a)&&atMinute<minute(b)))slotError='Orario fuori turno';
+   if(c.state.tasks.some(t=>t.id!==taskId&&t.machineId===cell.dataset.dropMachine&&t.position!==null&&(t.segments||[]).some(s=>fixedStart>=s.start&&fixedStart<s.end)))slotError='Orario già occupato';
+  }else{
+   const candidate=blocks.find(b=>{const r=b.getBoundingClientRect();return axis<r.top+r.height/2;});
+   beforeId=candidate?.dataset.task||'';position=candidate?.offsetTop??cell.scrollHeight;
+   if(!candidate&&blocks.length){const queue=c.state.tasks.filter(t=>t.machineId===cell.dataset.dropMachine&&t.position!==null&&t.id!==taskId).sort((a,b)=>a.position-b.position),last=blocks.at(-1).dataset.task;beforeId=queue[queue.findIndex(t=>t.id===last)+1]?.id||'';}
+  }
+  const before=c.state.tasks.find(t=>t.id===beforeId),compatible=dragTask?.compatibleMachineIds?.length?dragTask.compatibleMachineIds:[dragTask?.machineId];
+  const error=!compatible.includes(cell.dataset.dropMachine)?'Macchina non compatibile':slotError||(locked(before)?'Posizione bloccata':'');
+  const invalid=Boolean(error),key=`${taskId}|${beforeId}|${fixedStart}|${error}`;
+  cell.dataset.insertionBefore=beforeId;cell.dataset.insertionInvalid=invalid?'true':'false';cell.dataset.insertionError=error;
+  let hint=cell.querySelector('.insertion-hint');if(!hint){hint=document.createElement('div');hint.className='insertion-hint';hint.innerHTML='<span></span>';cell.append(hint);}
+  hint.classList.toggle('invalid',invalid);hint.classList.toggle('gantt-hint',horizontal);hint.classList.toggle('tail-hint',!before);
+  hint.style[horizontal?'left':'top']=`${Math.max(0,position)}px`;
+  if(cell.dataset.insertionPreviewKey===key)return;cell.dataset.insertionPreviewKey=key;
+  hint.querySelector('span').textContent=invalid?error:horizontal?`Inizio: ${c.fmt(fixedStart)}`:(before?`Inserisci prima di ${before.title}`:'Inserisci in fondo alla sequenza');
+ };
  for(const cell of document.querySelectorAll('[data-drop-machine]')){cell.addEventListener('dragover',event=>paint(cell,event),{signal});cell.addEventListener('dragleave',event=>{if(!cell.contains(event.relatedTarget))clearInsertionHints();},{signal});cell.addEventListener('drop',()=>queueMicrotask(clearInsertionHints),{signal});}
  document.addEventListener('dragend',clearInsertionHints,{signal});
 }

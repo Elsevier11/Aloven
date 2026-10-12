@@ -101,3 +101,62 @@ test('rifiuta attività annullate e date ISO non reali', () => {
     /non valida/i,
   );
 });
+
+test('rispetta un inizio fissato futuro e lascia uno spazio libero tra attività', () => {
+  const result = scheduleMachine([
+    { id: 'A', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-11-02T08:00' },
+    { id: 'B', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-11-02T10:00' },
+    { id: 'C', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-11-02T13:00' },
+  ], '2026-10-08T08:00', calendar);
+
+  assert.deepEqual(result.map(task => [task.id, task.start, task.end]), [
+    ['A', '2026-11-02T08:00', '2026-11-02T09:00'],
+    ['B', '2026-11-02T10:00', '2026-11-02T11:00'],
+    ['C', '2026-11-02T13:00', '2026-11-02T14:00'],
+  ]);
+});
+
+test('su macchina vuota il pin è libero anche prima dell’ancoraggio sequenziale', () => {
+  const result = scheduleMachine([
+    { id: 'EARLY', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-10-08T08:00' },
+  ], '2026-11-02T08:00', calendar);
+  assert.equal(result[0].start, '2026-10-08T08:00');
+  assert.equal(result[0].end, '2026-10-08T09:00');
+});
+
+test('rifiuta pin occupati o fuori calendario senza spostarli', () => {
+  const pinned = { id: 'P', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-10-08T09:00' };
+  assert.throws(
+    () => scheduleMachine([
+      { id: 'A', status: 'planned', setupMinutes: 0, runMinutes: 120 },
+      pinned,
+    ], '2026-10-08T08:00', calendar),
+    /sovrappone/i,
+  );
+  assert.equal(pinned.fixedStart, '2026-10-08T09:00');
+
+  assert.throws(
+    () => scheduleMachine([
+      { id: 'W', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-10-10T10:00' },
+    ], '2026-10-08T08:00', calendar),
+    /fuori dall.orario di lavoro/i,
+  );
+});
+
+test('preserva gli inizi automatici solo quando richiesto senza trasformarli in pin', () => {
+  const automatic = {
+    id: 'AUTO', status: 'planned', setupMinutes: 0, runMinutes: 60,
+    start: '2026-10-08T13:00', end: '2026-10-08T14:00', fixedStart: null,
+  };
+  const result = scheduleMachine([
+    { id: 'PIN', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-10-08T10:00' },
+    automatic,
+  ], '2026-10-08T08:00', calendar, {preserveStarts:true});
+  assert.equal(result[1].start,'2026-10-08T13:00');
+  assert.equal(result[1].fixedStart,null);
+
+  assert.throws(() => scheduleMachine([
+    { id: 'LONG', status: 'planned', setupMinutes: 0, runMinutes: 180, fixedStart: '2026-10-08T10:30' },
+    automatic,
+  ], '2026-10-08T08:00', calendar, {preserveStarts:true}),/sovrappone/i);
+});
