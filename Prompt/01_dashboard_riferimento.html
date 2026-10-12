@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forge — Manufacturing Enterprise Planning</title>
+<style>
+  :root{
+    --navy:#101b2d; --navy-2:#17243a; --ink:#172033; --muted:#748096;
+    --line:#e8ecf2; --bg:#f5f7fa; --white:#fff; --blue:#2767ed;
+    --green:#22a06b; --amber:#ed9d24; --red:#df5c64; --purple:#7b61d9;
+  }
+  *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+  .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+  aside{background:var(--navy);color:#eaf0fb;padding:26px 16px;display:flex;flex-direction:column}
+  .brand{display:flex;align-items:center;gap:11px;padding:0 10px 30px;font-weight:800;font-size:20px;letter-spacing:-.7px}
+  .mark{display:grid;place-items:center;width:28px;height:28px;background:var(--blue);border-radius:8px;color:#fff;font-size:16px}
+  .brand span{color:#83a9ff;font-weight:600;font-size:11px;letter-spacing:.8px;display:block}
+  .group{margin:13px 0}.label{font-size:10px;color:#8492a8;font-weight:800;letter-spacing:1.1px;padding:0 12px;margin:15px 0 7px}
+  .nav{width:100%;border:0;background:transparent;color:#afbed3;text-align:left;padding:11px 12px;border-radius:8px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:11px}
+  .nav:hover,.nav.active{background:#243554;color:#fff}.nav.active{box-shadow:inset 3px 0 var(--blue)}
+  .ico{font-size:16px;width:18px;text-align:center}.side-bottom{margin-top:auto;border-top:1px solid #293a58;padding:18px 8px 0}
+  .user{display:flex;align-items:center;gap:10px;font-size:13px}.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#44649e;font-weight:800}.user small{display:block;color:#8da0bb;font-size:11px;margin-top:2px}
+  main{min-width:0}.topbar{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 34px}
+  .crumb{font-size:14px;color:var(--muted)}.crumb b{color:var(--ink);font-weight:750}.top-actions{display:flex;align-items:center;gap:15px}.plant{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:#445166;background:#fff}.bell{position:relative;font-size:20px;color:#536178}.dot{position:absolute;top:0;right:-2px;width:7px;height:7px;border:2px solid #fff;border-radius:50%;background:var(--red)}
+  .content{padding:30px 34px 42px;max-width:1600px;margin:auto}.title-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:25px}.title-row h1{margin:0;font-size:27px;letter-spacing:-1px}.title-row p{margin:5px 0 0;color:var(--muted);font-size:14px}.date{font-size:13px;color:#526178;background:#fff;border:1px solid var(--line);padding:9px 13px;border-radius:8px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}.metric{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;min-height:128px}.metric-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;font-weight:650}.metric-icon{height:29px;width:29px;display:grid;place-items:center;border-radius:8px;background:#edf3ff;color:var(--blue);font-size:15px}.metric strong{display:block;font-size:29px;letter-spacing:-1px;margin:16px 0 3px}.delta{font-size:12px;font-weight:650}.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.8fr);gap:20px}.card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}.card-head{display:flex;align-items:center;justify-content:space-between;padding:19px 20px 15px}.card h2{font-size:15px;margin:0;letter-spacing:-.2px}.sub{color:var(--muted);font-size:12px;margin-top:3px}.link{border:0;background:none;color:var(--blue);font-weight:700;font-size:12px;cursor:pointer}
+  .timeline{padding:2px 20px 20px}.time-scale{display:grid;grid-template-columns:150px repeat(8,1fr);font-size:10px;color:#8994a5;border-bottom:1px solid var(--line);padding-bottom:9px}.time-scale span{text-align:center}.time-scale span:first-child{text-align:left}.machine{display:grid;grid-template-columns:150px 1fr;align-items:center;border-bottom:1px solid #f0f2f5;padding:14px 0}.machine:last-child{border:0}.machine-name{font-size:13px;font-weight:700}.machine-name small{display:block;font-weight:500;color:var(--muted);font-size:11px;margin-top:3px}.track{height:29px;background:#f4f6f9;border-radius:5px;position:relative}.job{position:absolute;height:100%;top:0;border-radius:5px;padding:7px 9px;color:#fff;font-size:10px;font-weight:750;white-space:nowrap;overflow:hidden}.blue{background:var(--blue)}.green{background:var(--green)}.amber{background:var(--amber)}.purple{background:var(--purple)}.red{background:var(--red)}
+  .orders{padding:0 20px 17px}.order{display:grid;grid-template-columns:34px 1fr auto;gap:11px;align-items:center;padding:12px 0;border-bottom:1px solid #f0f2f5}.order:last-child{border:0}.ord-icon{display:grid;place-items:center;width:32px;height:32px;background:#f0f4fb;border-radius:8px;font-size:15px}.order b{font-size:12px}.order small{display:block;color:var(--muted);font-size:11px;margin-top:3px}.badge{font-size:10px;font-weight:800;border-radius:99px;padding:5px 8px}.inprogress{color:#1761dd;background:#e9f1ff}.risk{color:#b56b00;background:#fff2dc}.ready{color:#168153;background:#e5f7ef}
+  .bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}.oee{padding:5px 20px 20px}.gauge-row{display:grid;grid-template-columns:126px 1fr;gap:14px;align-items:center}.gauge{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--blue) 0 76%,#e9eef7 76% 100%);position:relative}.gauge:after{content:"";position:absolute;inset:11px;background:#fff;border-radius:50%}.gauge span{z-index:1;text-align:center;font-weight:800;font-size:24px;letter-spacing:-1px}.gauge small{display:block;font-size:10px;color:var(--muted);letter-spacing:0;font-weight:700}.breakdown{display:grid;gap:12px}.bar-line{display:grid;grid-template-columns:90px 1fr 32px;align-items:center;gap:8px;font-size:11px;color:#58657a}.bar{height:7px;border-radius:9px;background:#edf0f4;overflow:hidden}.fill{height:100%;border-radius:9px}.kpi-list{margin-top:16px;border-top:1px solid var(--line);padding-top:13px;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}.kpi-list b{display:block;color:var(--ink);font-size:15px;margin-top:3px}
+  .quality{padding:0 20px 19px}.quality-score{display:flex;justify-content:space-between;align-items:flex-end;padding:6px 0 15px}.quality-score strong{font-size:29px;letter-spacing:-1px}.quality-score small{color:var(--green);font-size:12px;font-weight:700}.issue{display:flex;align-items:center;gap:10px;border-top:1px solid #eef1f5;padding:12px 0;font-size:12px}.issue .status{width:8px;height:8px;border-radius:50%}.issue span:nth-child(2){flex:1}.issue small{color:var(--muted)}
+  .toast{position:fixed;right:24px;bottom:24px;background:#17243a;color:#fff;padding:13px 17px;border-radius:9px;box-shadow:0 12px 30px #17243a44;transform:translateY(90px);opacity:0;transition:.25s;font-size:13px}.toast.show{transform:translateY(0);opacity:1}
+  @media(max-width:1050px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.bottom{grid-template-columns:1fr}.app{grid-template-columns:74px 1fr}aside{padding:26px 9px}.brand{padding:0 9px 30px}.brand div:not(.mark),.nav span:not(.ico),.label,.user div{display:none}.nav{justify-content:center;padding:12px}.side-bottom{padding:18px 10px 0}.user{justify-content:center}.time-scale{grid-template-columns:115px repeat(8,1fr)}.machine{grid-template-columns:115px 1fr}}@media(max-width:650px){.app{display:block}aside{display:none}.topbar{padding:0 18px}.content{padding:24px 18px}.top-actions .plant{display:none}.title-row{align-items:flex-start;gap:10px}.date{display:none}.metrics{grid-template-columns:1fr 1fr;gap:10px}.metric{padding:13px;min-height:110px}.metric strong{font-size:24px;margin-top:13px}.timeline{overflow:auto}.timeline > *{min-width:690px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="mark">F</div><div>forge<span>MES PLATFORM</span></div></div>
+    <div class="group">
+      <div class="label">OPERATIONS</div>
+      <button class="nav active" data-page="Dashboard"><span class="ico">▦</span><span>Dashboard</span></button>
+      <button class="nav" data-page="Produzione"><span class="ico">◉</span><span>Produzione</span></button>
+      <button class="nav" data-page="Pianificazione"><span class="ico">▤</span><span>Pianificazione</span></button>
+      <button class="nav" data-page="Ordini"><span class="ico">▣</span><span>Ordini di lavoro</span></button>
+    </div>
+    <div class="group">
+      <div class="label">CONTROL</div>
+      <button class="nav" data-page="Qualità"><span class="ico">✓</span><span>Qualità</span></button>
+      <button class="nav" data-page="Manutenzione"><span class="ico">⌁</span><span>Manutenzione</span></button>
+      <button class="nav" data-page="Magazzino"><span class="ico">□</span><span>Magazzino</span></button>
+      <button class="nav" data-page="Analisi"><span class="ico">↗</span><span>Analisi</span></button>
+    </div>
+    <div class="side-bottom"><div class="user"><div class="avatar">PP</div><div><b>Paolo Pedron</b><small>Plant Manager</small></div></div></div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div class="crumb">Operations / <b id="pageName">Dashboard</b></div>
+      <div class="top-actions"><button class="plant">▾ &nbsp; Stabilimento Vicenza</button><div class="bell">♢<i class="dot"></i></div><div class="avatar" style="width:32px;height:32px;font-size:11px">PP</div></div>
+    </header>
+    <section class="content">
+      <div class="title-row"><div><h1>Buonasera, Paolo</h1><p>Qui trovi la situazione operativa del tuo stabilimento.</p></div><div class="date">◷ &nbsp; Sabato, 11 ottobre 2026</div></div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-top"><span>OEE globale</span><div class="metric-icon">◉</div></div><strong>76,4%</strong><span class="delta up">↑ 3,2% <span class="neutral">vs ieri</span></span></div>
+        <div class="metric"><div class="metric-top"><span>Ordini in corso</span><div class="metric-icon">▣</div></div><strong>28</strong><span class="delta up">↑ 5 <span class="neutral">nuovi oggi</span></span></div>
+        <div class="metric"><div class="metric-top"><span>Produzione giornaliera</span><div class="metric-icon">▤</div></div><strong>12.480</strong><span class="delta neutral">Pezzi prodotti</span></div>
+        <div class="metric"><div class="metric-top"><span>Alert attivi</span><div class="metric-icon" style="background:#fff2e0;color:var(--amber)">!</div></div><strong>4</strong><span class="delta down">2 richiedono attenzione</span></div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-head"><div><h2>Pianificazione linee</h2><div class="sub">Stato operativo in tempo reale</div></div><button class="link" onclick="notify('Pianificazione completa aperta')">Apri pianificazione →</button></div>
+          <div class="timeline">
+            <div class="time-scale"><span>LINEA</span><span>06:00</span><span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span><span>16:00</span><span>18:00</span><span>20:00</span></div>
+            <div class="machine"><div class="machine-name">Linea A01<small>Assemblaggio</small></div><div class="track"><div class="job blue" style="left:3%;width:49%">WO-2841 · Serie AX</div><div class="job green" style="left:54%;width:34%">WO-2858 · Serie BX</div></div></div>
+            <div class="machine"><div class="machine-name">Linea B02<small>Lavorazione CNC</small></div><div class="track"><div class="job purple" style="left:0;width:36%">WO-2837 · Corpo valvola</div><div class="job amber" style="left:39%;width:26%">Setup utensile</div><div class="job blue" style="left:67%;width:28%">WO-2860</div></div></div>
+            <div class="machine"><div class="machine-name">Linea C03<small>Verniciatura</small></div><div class="track"><div class="job green" style="left:8%;width:61%">WO-2829 · Lotto 460</div><div class="job blue" style="left:72%;width:20%">WO-2854</div></div></div>
+            <div class="machine"><div class="machine-name">Linea D04<small>Collaudo finale</small></div><div class="track"><div class="job red" style="left:2%;width:24%">Fermo tecnico</div><div class="job blue" style="left:31%;width:48%">WO-2812 · Serie AX</div></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Ordini prioritari</h2><div class="sub">Scadenze delle prossime 24 ore</div></div><button class="link" onclick="notify('Elenco ordini aperto')">Vedi tutti</button></div>
+          <div class="orders">
+            <div class="order"><div class="ord-icon">▣</div><div><b>WO-2841 · Serie AX</b><small>Cliente: MetalWorks S.p.A. · 1.200 pz</small></div><span class="badge inprogress">IN CORSO</span></div>
+            <div class="order"><div class="ord-icon">▣</div><div><b>WO-2860 · Corpo valvola</b><small>Cliente: TDS Industrie · 840 pz</small></div><span class="badge risk">A RISCHIO</span></div>
+            <div class="order"><div class="ord-icon">▣</div><div><b>WO-2829 · Lotto 460</b><small>Cliente: Nova Components · 2.500 pz</small></div><span class="badge inprogress">IN CORSO</span></div>
+            <div class="order"><div class="ord-icon">▣</div><div><b>WO-2812 · Serie AX</b><small>Cliente: MetalWorks S.p.A. · 1.600 pz</small></div><span class="badge ready">PRONTO</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom">
+        <div class="card">
+          <div class="card-head"><div><h2>Performance impianti</h2><div class="sub">OEE medio — turno corrente</div></div><button class="link" onclick="notify('Report OEE generato')">Report</button></div>
+          <div class="oee"><div class="gauge-row"><div class="gauge"><span>76<small>OEE %</small></span></div><div class="breakdown"><div class="bar-line"><span>Disponibilità</span><div class="bar"><div class="fill" style="width:88%;background:var(--blue)"></div></div><b>88%</b></div><div class="bar-line"><span>Performance</span><div class="bar"><div class="fill" style="width:82%;background:var(--purple)"></div></div><b>82%</b></div><div class="bar-line"><span>Qualità</span><div class="bar"><div class="fill" style="width:96%;background:var(--green)"></div></div><b>96%</b></div></div></div><div class="kpi-list"><span>Target OEE<b>80%</b></span><span>Fermi non pianificati<b>42 min</b></span><span>Scarti turno<b>2,1%</b></span></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2>Qualità e segnalazioni</h2><div class="sub">Controlli del turno pomeridiano</div></div><button class="link" onclick="notify('Registro qualità aperto')">Registro qualità</button></div>
+          <div class="quality"><div class="quality-score"><div><strong>98,2%</strong><div class="sub">Conformità produzione</div></div><small>↑ 0,8% vs target</small></div><div class="issue"><i class="status" style="background:var(--amber)"></i><span><b>QC-1048</b> · Tolleranza dimensionale</span><small>Linea B02</small></div><div class="issue"><i class="status" style="background:var(--red)"></i><span><b>MT-027</b> · Vibrazione mandrino</span><small>Linea D04</small></div><div class="issue"><i class="status" style="background:var(--green)"></i><span><b>QC-1042</b> · Controllo lotto completato</span><small>Linea C03</small></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+function notify(message){const toast=document.getElementById('toast');toast.textContent='✓  '+message;toast.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>toast.classList.remove('show'),2600)}
+document.querySelectorAll('.nav').forEach(button=>{button.addEventListener('click',()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));button.classList.add('active');document.getElementById('pageName').textContent=button.dataset.page;if(button.dataset.page!=='Dashboard')notify(button.dataset.page+' selezionato')})});
+</script>
+</body>
+</html>

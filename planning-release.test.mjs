@@ -141,7 +141,8 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     await request('shopfloor/interruption',declaration);
     operatorState=await request('state');const execution=operatorState.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,2);assert.equal(execution.outputLot,'OUT-PARTIAL-1');assert.equal(execution.lots.length,2);assert.ok(execution.runEndedAt);
-    const closedDate=execution.runEndedAt.slice(0,10),report=await request(`statistics?from=${closedDate}&to=${closedDate}`);
+    // Il report usa il giorno aziendale Europe/Rome, anche vicino alla mezzanotte UTC.
+    const closedDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(execution.runEndedAt)),report=await request(`statistics?from=${closedDate}&to=${closedDate}`);
     assert.equal(report.details.find(item=>item.taskId===task.id)?.closureStatus,'Interrotta','il consuntivo parziale entra nelle statistiche');
     cookie=adminCookie;state=await request('state');
     await request('mes/correction',{revision:state.revision,operationId:'correct-interrupted-1',taskId:task.id,reason:'Verifica quantità parziale',producedQuantity:3,scrapQuantity:0,scrapReasonId:null,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},outputLot:'OUT-PARTIAL-1',lots:execution.lots.map(lot=>({component:lot.component,lot:lot.lot,quantity:lot.quantity,barcode:lot.barcode}))});

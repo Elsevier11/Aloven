@@ -15,7 +15,7 @@ try{
  browser=await chromium.launch({channel:'msedge',headless:process.env.HEADFUL!=='1'});
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
- await page.addInitScript(()=>localStorage.setItem('aloven-dispatch-mode','overview'));
+ await page.addInitScript(()=>localStorage.setItem('aloven-planning-layout','overview'));
  await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica interfacce');await page.getByLabel('Nome utente',{exact:true}).fill('interface');await page.getByLabel('Password',{exact:true}).fill('InterfaceTest123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
  mkdirSync('.artifacts',{recursive:true});
  const groups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};

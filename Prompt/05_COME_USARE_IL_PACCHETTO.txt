@@ -1,0 +1,40 @@
+PACCHETTO PER CODEX — MES ACCOPPIAMENTO TESSUTI
+
+1. Estrai MES_Codex_prompt_e_riferimenti.zip.
+2. Apri in Codex il repository della tua web app MES, NON un progetto nuovo.
+3. Rendi disponibile la cartella mes_codex come allegato o come cartella di riferimenti accessibile a Codex nel progetto. Se non accetta ZIP, usa i file estratti.
+4. Copia l’intero contenuto di 00_PROMPT_OBIETTIVO_MES.txt nel comando/campo Obiettivo che usi in Codex.
+5. Indica dove sono gli allegati. Il prompt fa riferimento ai loro nomi esatti.
+6. Fornisci, se non già ricavabile dal repository, il comando di avvio, l’URL locale e la modalità di accesso all’ambiente di test. Non allegare credenziali produttive o file .env contenenti segreti.
+7. Se conosci le postazioni, completa 06_CONTESTO_OPERATIVO_DA_COMPLETARE.txt. I campi ignoti non impediscono l’analisi iniziale.
+
+CONTENUTO
+00_PROMPT_OBIETTIVO_MES.txt: incarico completo da incollare.
+01_dashboard_riferimento.html: prima dashboard approvata, palette principale.
+02_bordo_macchina_riferimento.html: postazione operativa di riferimento.
+03_statistiche_riferimento.html: quattro viste statistiche con cambio scheda e dettaglio dimostrativo.
+04_SPECIFICA_DESIGN.txt: scelte da conservare, priorità e limiti degli esempi.
+05_COME_USARE_IL_PACCHETTO.txt: queste indicazioni e valutazione dei prerequisiti.
+06_CONTESTO_OPERATIVO_DA_COMPLETARE.txt: contesto aggiuntivo facoltativo.
+07_screenshot_app_prima_della_revisione.png: screenshot fornito dall’utente della vecchia interfaccia dispersiva; utile per capire il problema, non come design desiderato.
+
+COSA È SUFFICIENTE
+Il pacchetto contiene il risultato atteso, le scelte estetiche approvate, i valori di stile, i riferimenti visivi e criteri concreti di verifica. È sufficiente per orientare un redesign fedele del progetto esistente, a condizione che Codex abbia accesso a quel progetto e possa avviarlo.
+
+COSA NON PUÒ ESSERE SOSTITUITO DAGLI ALLEGATI
+- Repository: senza codice dell’app esistente Codex può creare soltanto un altro prototipo.
+- Ambiente avviabile e accesso alle pagine: senza questi elementi non può collaudare i flussi reali nel browser.
+- Dati di test rappresentativi: senza di essi non può verificare liste, unità, anomalie e drill-down.
+- Definizioni produttive: regole di OEE, fermi, scarti e consuntivi vanno ricavate dal progetto o confermate dall’azienda quando non documentate.
+- Postazione touch fisica: emulazione e screenshot non provano ergonomia, tastiera a schermo o uso reale in reparto.
+
+VALUTAZIONE COMPLESSIVA
+Per estetica, coerenza, densità e impostazione dei flussi, il materiale è adeguato per iniziare senza altri mockup. Per ottenere un MES affidabile servono anche le evidenze ricavate da codice, dati e prove operative. Il prompt richiede questi controlli e impone di dichiarare i blocchi: non promette che un redesign basti a certificare l’intero prodotto.
+
+Il lavoro finale va provato da chi pianifica e da un operatore: verificare una commessa rappresentativa dal piano alla registrazione produzione/fermi e alla statistica. Individuare i casi aziendali anomali da provare prima dell’uso produttivo.
+
+RIFERIMENTI FUNZIONALI, NON APPLICAZIONE PRODUTTIVA
+Gli HTML hanno dati statici e azioni simulate e sono stati conservati come riferimento visivo. I limiti sono elencati in 04_SPECIFICA_DESIGN.txt. Non installarli al posto dell’app reale.
+
+VERIFICHE DEL PACCHETTO
+Gli HTML sono autosufficienti e gli script sono stati controllati per sintassi. In questa sessione il browser ha bloccato l’apertura degli HTML locali: non sono quindi incluse nuove immagini renderizzate né dichiarati collaudi visivi completati. Codex deve esaminare i riferimenti nel proprio ambiente disponibile e consentito. Lo screenshot della vecchia interfaccia è quello fornito dall’utente.

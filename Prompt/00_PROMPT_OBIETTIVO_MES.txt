@@ -1,0 +1,140 @@
+OBIETTIVO
+
+Porta la mia web app MES, già avanzata e destinata a un’azienda che si occupa di accoppiamento dei tessuti, a un livello eccellente di qualità operativa, usabilità e design. Lavora sul progetto reale: conserva le funzionalità che funzionano, migliora i flussi e implementa l’identità visiva approvata negli allegati.
+
+Voglio un prodotto immediato, moderno e leggibile: situazione produttiva comprensibile a colpo d’occhio, azioni quotidiane raggiungibili con pochi passaggi, nessuno scroll evitabile per arrivare al lavoro vero. La compattezza deve derivare da una gerarchia migliore, non da caratteri minuscoli o informazioni nascoste.
+
+L’incarico comprende analisi, implementazione e verifica nel browser. Non fermarti a un piano o a un mockup. Persegui questo obiettivo fino ai criteri di completamento indicati in fondo, mantenendo traccia di progressi e blocchi concreti.
+
+1. LEGGI GLI ALLEGATI E PRESERVA I RIFERIMENTI APPROVATI
+
+Esamina i tre HTML e 04_SPECIFICA_DESIGN.txt prima di progettare l’interfaccia. Apri o renderizza gli HTML con gli strumenti disponibili e consentiti. Lo screenshot aggiuntivo documenta la vecchia interfaccia dispersiva, non il risultato desiderato. I riferimenti HTML rappresentano una direzione già scelta, non un invito a inventare uno stile alternativo.
+
+- 01_dashboard_riferimento.html: riferimento principale per palette, identità visiva, KPI, disposizione delle sezioni e rappresentazione delle sequenze di lavorazione.
+- 02_bordo_macchina_riferimento.html: riferimento per organizzazione della postazione operativa, stato macchina, ordine, avanzamento, comandi, controlli ed eventi.
+- 03_statistiche_riferimento.html: riferimento per Panoramica, Produzione, Qualità e scarti, Macchine e per le rispettive visualizzazioni.
+
+Conserva in particolare: sidebar navy; superfici bianche su sfondo chiaro; blu delle azioni; colori operativi; badge; gerarchia tipografica; timeline con barre colorate; ordini prioritari; indicatore di performance e relativi fattori; andamento prodotto/pianificato; cause dei fermi; mappa del carico; confronti per macchina e articolo; cause degli scarti.
+
+Gli HTML sono mockup visivi, con dati inventati e interazioni simulate. Non trasferire nell’app numeri statici, notifiche che simulano un’operazione, modali con dati uguali per qualsiasi selezione o formule dedotte dagli esempi. Conserva la rappresentazione e realizza il comportamento reale.
+
+Usa la palette della prima dashboard come base comune:
+navy #101B2D; superficie scura secondaria #17243A; testo #172033; testo secondario #748096; bordi #E8ECF2; sfondo #F5F7FA; superfici #FFFFFF; azione principale #2767ED; verde #22A06B; ambra #ED9D24; rosso #DF5C64; viola #7B61D9.
+
+Adatta le tonalità del testo e dei badge per garantirne la leggibilità. Risolvi le leggere differenze tra i tre mockup attraverso variabili condivise. Mantieni nome, logo, persone e dati del progetto reale: Forge e gli altri nomi dei mockup non sono istruzioni di rinomina.
+
+Puoi migliorare dimensioni, disposizione e interazioni quando serve all’operatività, mantenendo riconoscibile l’impostazione approvata. Questi riferimenti prevalgono su suggerimenti estetici generici; accuratezza, accessibilità e corretto funzionamento prevalgono sulle limitazioni dei mockup.
+
+2. ANALIZZA IL PROGETTO E L’APPLICAZIONE REALE
+
+Leggi le istruzioni del repository e comprendi tecnologie, componenti condivisi, route, dati, permessi, integrazioni e flussi. Rispetta il lavoro e le modifiche già presenti.
+
+Avvia l’ambiente di sviluppo con i comandi documentati; usa il browser disponibile per navigare le pagine e svolgere operazioni rappresentative. Verifica prima quali strumenti e accessi possiedi. Non affermare di aver osservato o eseguito qualcosa se non lo hai fatto.
+
+Mappa le pagine esistenti, gli utenti destinatari, le azioni principali e le criticità: dimensioni eccessive, spazi vuoti, scroll, comandi poco visibili, navigazione dispersiva, mancanza di feedback, incongruenze.
+
+Comunica una diagnosi sintetica e un ordine di intervento, poi procedi. Crea una baseline di schermate e controlli per poter distinguere miglioramenti, difetti preesistenti e regressioni.
+
+3. RISERVA LE MODIFICHE AL PERIMETRO UTILE
+
+Conserva autenticazione, permessi, dati, API, integrazioni, regole produttive, pianificazione, calcoli e tracciabilità. Riutilizza stack e librerie già disponibili. Sono autorizzate modifiche a UI, UX, componenti e interazioni e le correzioni necessarie a rendere affidabili i flussi interessati.
+
+Non riscrivere il prodotto, non cambiare architettura senza necessità e non aggiungere moduli solo perché compaiono nella navigazione dei mockup. Le funzioni esistenti hanno priorità. Se un riferimento contiene un’analisi mancante, valuta prima se si può ottenere dai dati e servizi esistenti senza alterare le regole aziendali.
+
+Per nuove integrazioni, migrazioni o modifiche delle regole produttive, prepara una proposta concreta e chiedi la decisione necessaria. Prosegui nel frattempo sul lavoro indipendente. Non distribuire in produzione e non modificare dati produttivi per collaudare l’interfaccia.
+
+4. COMPRENDI IL DOMINIO TESSILE
+
+Adatta etichette e contenuti ai processi realmente presenti: commesse, lavorazioni, macchine di accoppiamento, materiali e supporti, lotti, rotoli, metri lavorati, setup, pulizia, fermi, scarti, rilavorazioni e controlli, dove gestiti.
+
+Le macchine CNC, verniciatura e assemblaggio degli esempi non definiscono i reparti dell’azienda. Non inventare ricette, temperature, tensioni, adesivi, dati PLC o altri parametri. Mantieni associazioni, vincoli e unità del progetto. Rendi chiaro cosa identifica la commessa, la lavorazione, il lotto e il rotolo, dove applicabile.
+
+Se il significato di un dato o una regola aziendale è ambiguo, ricava la risposta dal codice e dalla documentazione; chiedi soltanto se resta una scelta sostanziale non deducibile.
+
+5. UN’IDENTITÀ VISIVA, DUE MODALITÀ D’USO
+
+DESKTOP GESTIONALE: pianificazione, attività, statistiche, anagrafiche e configurazione devono essere compatti, ordinati e adatti a mouse e tastiera. Privilegia confronto, ricerca, selezione e lavoro ripetuto su più record.
+
+BORDO MACCHINA TOUCH: comandi più grandi e distanziati, stato riconoscibile, poche decisioni per passaggio e feedback immediato. Non usare il bordo macchina come modello di densità per il desktop e non renderlo compatto come una tabella amministrativa.
+
+Condividi identità, stati e componenti, con varianti dimensionali per ciascuna modalità. Verifica il bordo macchina attuale e preservane le caratteristiche efficaci. Il relativo HTML è una guida organizzativa, non una prova di idoneità touch.
+
+6. DIMENSIONI, LEGGIBILITÀ E SPAZIO DI LAVORO
+
+Per il desktop parti da sidebar di circa 216–232 px, top bar di 52–60 px, titoli di 24–28 px, testo operativo di 13–14 px, controlli di 34–40 px e righe tabella di 36–44 px. Usa spaziature regolari basate su multipli di 4/8 px, bordi discreti, angoli di circa 6–10 px e ombre minime.
+
+Sono valori di partenza: adattali ai contenuti e verifica la leggibilità. Centralizzali nel design system. Evita intestazioni monumentali, descrizioni ripetitive, card decorative e ampie fasce vuote.
+
+Sulle pagine operative mostra subito contesto, azioni, informazioni per decidere e contenuto di lavoro. Nella pianificazione a 1366×768, zoom 100%, punta a far iniziare il piano entro circa 240–280 px dall’alto della viewport e a dedicargli almeno metà dell’altezza disponibile. Confronta prima e dopo.
+
+Lo scroll è ammesso per elenchi, storici, form lunghi e timeline estese. Evita lo scroll dell’intera pagina causato soltanto da intestazioni e riepiloghi grandi; mantieni disponibili toolbar e intestazioni dove utile. Non sostituirlo con contenuti tagliati, zoom ridotto, overflow nascosto o molti pannelli annidati.
+
+Usa dettagli contestuali e disclosure progressiva per le informazioni secondarie, senza nascondere decisioni indispensabili. Non troncare codici, stati e valori critici senza un modo immediato per leggerli. Mantieni focus visibile, contrasto e segnali testuali oltre al colore.
+
+7. PIANIFICAZIONE, ATTIVITÀ E ANAGRAFICHE
+
+Pianificazione: timeline e sequenze sono il centro della pagina. Compatta KPI, stato della versione, filtri e comandi. Rendi leggibili macchina, lavorazione, durata, stato, setup e fermi; evidenzia conflitti e modifiche non rilasciate. Mantieni trascinamento e comandi esistenti, con feedback e alternative appropriate al dispositivo. Non comprimere l’asse temporale fino a renderlo inutilizzabile.
+
+Attività/ordini: tabelle dense e leggibili, ricerca, filtri, ordinamento, stati e azioni contestuali. Conserva filtri, selezione e posizione quando si apre un dettaglio e si torna all’elenco. Non moltiplicare i clic necessari per le azioni ricorrenti.
+
+Anagrafiche/configurazione: form organizzati per compito, label esplicite, errori vicino al campo, salvataggio chiaro e protezione delle modifiche non salvate. Mantieni route e termini familiari quando non sono ambigui.
+
+8. BORDO MACCHINA
+
+Verifica i flussi presenti di selezione macchina e ordine, avvio, fermo, ripresa, quantità, scarti, causali, controlli, cambio operatore e chiusura. Non aggiungere funzioni inesistenti come simulazioni.
+
+Stato macchina, lavorazione attiva, avanzamento e azioni principali devono essere immediatamente visibili. Per i comandi principali touch parti da bersagli di almeno 48×48 px, maggiori quando necessario. Controlla spaziatura, tastierino numerico e gestione dell’input, dove pertinente.
+
+Nessuna operazione essenziale deve dipendere da hover, piccoli bersagli o precisione del mouse. Adatta dialoghi e tastiere al tocco; considera che la tastiera a schermo può ridurre lo spazio disponibile.
+
+Distingui comando in corso, riuscito e fallito. Previeni doppi invii. Proteggi operazioni irreversibili con conferme mirate. Se mancano connessione o dati aggiornati, mostra la situazione reale senza simulare capacità offline. La UI MES non sostituisce i dispositivi fisici di sicurezza della macchina.
+
+9. STATISTICHE E DRILL-DOWN
+
+Preserva le quattro viste del riferimento: Panoramica, Produzione, Qualità e scarti, Macchine. Collega i KPI ai dati reali e alle definizioni aziendali. Mantieni la lettura immediata dei grafici approvati.
+
+Le analisi devono permettere di individuare scostamenti dal piano, macchine e commesse critiche, cause di perdita di tempo, scarti e variazioni nel periodo.
+
+Ogni indicatore deve avere periodo, unità e significato chiari; confronto e target soltanto quando disponibili. Distingui variazioni percentuali e punti percentuali. Non sommare metri e pezzi o confrontare produttività incompatibili. Per velocità continua usa le unità definite dal progetto; non imporre un tempo ciclo fittizio.
+
+Verifica formule e aggregazioni. Per l’OEE verifica disponibilità, performance e qualità e la coerenza del prodotto dei fattori; su aggregati evita medie arbitrarie. Distingui fermi pianificati, setup e fermi non pianificati secondo le regole esistenti. Non copiare le incongruenze numeriche dei mockup.
+
+Zero, dato assente, non applicabile, periodo senza attività ed errore devono avere rappresentazioni diverse. Non inventare costi, soglie o target per riempire le card. Se mancano i dati, mantieni l’organizzazione visiva con una spiegazione corretta e documenta il requisito mancante.
+
+Usa assi, scale, unità, legende e tooltip leggibili; nelle mappe di carico rendi comprensibile l’intensità. Il colore di una serie non deve suggerire erroneamente che una categoria sia buona o cattiva.
+
+Realizza drill-down contestuali: aggregato → macchina/commessa/causale → eventi o record disponibili. Conserva periodo e filtri, indica il contesto e permetti il ritorno. Tabelle e dettagli devono corrispondere alla selezione e riconciliarsi con gli aggregati. Nessuna modale con gli stessi dati per tutte le analisi.
+
+10. VERIFICA CON EVIDENZE
+
+Usa il browser prima e dopo le modifiche sostanziali. Verifica desktop a 1366×768 e 1920×1080, zoom 100%. Per il touch usa la viewport reale indicata nel contesto; se non disponibile, 1280×800 come riferimento provvisorio, senza dichiarare collaudato l’hardware fisico.
+
+Controlla dati realistici, nomi lunghi, molti record, stati vuoti, caricamento, errori, aggiornamento, salvataggio, dialoghi e ritorno dai dettagli. Misura scroll, spazio destinato al lavoro e percorso delle azioni ricorrenti; annota miglioramenti e motivi delle eccezioni.
+
+Esegui i flussi principali dall’inizio alla fine in sviluppo/test, inclusi pianificazione e rilascio, avanzamento e fermi, registrazioni e analisi, quando presenti. Verifica che i dati persistano correttamente nei percorsi modificati. Controlla tastiera sul desktop e interazioni senza hover sul touch.
+
+Esegui build e controlli previsti dal progetto e test pertinenti. Aggiungi regressioni significative sui comportamenti critici modificati. Non moltiplicare test che verificano soltanto dettagli CSS. Distingui i problemi preesistenti dalle regressioni introdotte.
+
+Se browser, ambiente, servizi o dati non sono disponibili, registra il blocco e continua le attività indipendenti. Non presentare una verifica statica come un collaudo operativo completo.
+
+11. AUTONOMIA, CONTINUITÀ E CONSEGNA
+
+Procedi per interventi coerenti: risolvi prima le criticità che ostacolano il lavoro, crea componenti condivisi e applicali alle aree interessate. Prendi le decisioni ordinarie di design e implementazione autonomamente; evita conferme per ogni dettaglio reversibile.
+
+Documenta nel repository, nella posizione adatta e senza sovrascrivere istruzioni esistenti, il design system approvato, le varianti desktop/touch, la checklist di verifica e i progressi. Il comando Obiettivo guida questo lavoro; la documentazione rende le scelte rintracciabili nelle modifiche future, senza presumere memoria globale tra sessioni.
+
+Considera concluso l’obiettivo quando:
+- le aree principali esistenti sono state esaminate e adeguate dove necessario;
+- l’identità approvata resta riconoscibile e i colori sono centralizzati;
+- il desktop offre maggiore spazio utile senza scroll evitabile;
+- il bordo macchina conserva l’ergonomia touch e le funzionalità efficaci;
+- i percorsi modificati funzionano e i controlli pertinenti non rilevano regressioni;
+- statistiche e drill-down disponibili usano dati e formule coerenti;
+- non restano sovrapposizioni, contenuti critici irraggiungibili o azioni simulate;
+- hai confrontato il risultato con gli allegati e raccolto evidenze nelle risoluzioni previste.
+
+Una funzionalità necessaria bloccata da dati o accessi mancanti non equivale a un obiettivo completato: consegna le parti verificate, indica il blocco esatto e il minimo elemento che serve per proseguire. Non continuare con ritocchi estetici senza un problema osservabile.
+
+Alla consegna mostra le schermate aggiornate, riassumi i miglioramenti pratici, i flussi e le risoluzioni verificati, i controlli eseguiti e gli eventuali limiti. Non promettere idoneità produttiva soltanto sulla base di screenshot o build riuscita: la valutazione finale dell’operatività richiede la prova dei responsabili e degli operatori.
+
+Inizia ora leggendo gli allegati, analizzando il repository e verificando l’applicazione reale nel browser.

@@ -19,7 +19,10 @@
     "backup:verify": "node backup-cli.mjs verify",
     "backup:restore-test": "node backup-cli.mjs restore-test",
     "test:release-operator": "node release-operator-check.mjs",
-    "test:planning-workflow": "node planning-workspace-check.mjs"
+    "test:planning-workflow": "node planning-workspace-check.mjs",
+    "test:planning-density": "node planning-density-check.mjs",
+    "test:design": "node mes-design-check.mjs",
+    "test:desktop-flow": "node desktop-flow-check.mjs"
   },
   "engines": {
     "node": ">=22.13"

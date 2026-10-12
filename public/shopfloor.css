@@ -17,3 +17,23 @@
 body:has(.shop-shell) #modal :is(button,input,select,textarea):focus-visible{outline:3px solid #1976c9;outline-offset:3px}
 body:has(.shop-shell) #modal label{font-size:13px;line-height:1.45}body:has(.shop-shell) #modal :is(input,select,textarea){min-height:44px;font-size:14px}body:has(.shop-shell) #modal textarea{min-height:88px}body:has(.shop-shell) #modal .dialog-footer .button{min-height:44px}
 @media(max-width:750px){.shop-performance th,.shop-performance td{font-size:12px;line-height:1.4}.lot-row{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 40px;gap:8px}body:has(.shop-shell) #modal{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}body:has(.shop-shell) #modal .dialog-body{padding:18px}body:has(.shop-shell) #modal .form-grid{grid-template-columns:1fr}body:has(.shop-shell) #modal .dialog-footer{position:sticky;bottom:0;display:flex;flex-wrap:wrap;padding:12px 18px}body:has(.shop-shell) #modal .dialog-footer .button{flex:1 1 140px}}
+
+/* Allineamento della vista reparto classica all'identita MES condivisa. */
+.shop-shell{--shop-muted:var(--mes-muted,#58667b);--shop-focus:var(--mes-blue,#2767ed);background:var(--mes-bg,#f5f7fa);color:var(--mes-ink,#172033)}
+.shop-header{background:var(--mes-navy,#101b2d);padding:14px 24px}.shop-header .brand{padding-bottom:0}.shop-header .subtle{color:#c4cfdd}.shop-identity small{color:#c4cfdd}
+.shop-workspace{padding:20px 24px}.shop-toolbar{margin-bottom:18px}.shop-live i{background:var(--mes-green,#22a06b)}
+.shop-current,.shop-next{border-color:var(--mes-border,#e8ecf2);border-radius:8px}
+.shop-phase{background:var(--mes-blue-soft,#edf3ff);border-color:#d7e2f5;padding:20px 24px}.shop-phase.run_running{background:var(--mes-green-soft,#e7f5ee);border-color:#cbe8da}.shop-phase.run_paused{background:var(--mes-amber-soft,#fff3df);border-color:#f0d5a8}.shop-phase>.badge{right:22px;top:20px}
+.shop-task{padding:22px 24px}.shop-target,.shop-next-card,.shop-history,.shop-events p,.quality-summary{border-color:var(--mes-border,#e8ecf2)}
+.shop-notes,.shop-timers>div,.lot-entry,.shop-performance{background:var(--mes-bg,#f5f7fa);border-color:var(--mes-border,#e8ecf2)}
+.shop-timers strong,.shop-target strong,.next-product,.lot-group h3{font-family:"Segoe UI",Arial,sans-serif;font-variant-numeric:tabular-nums}
+.next-phases span{background:var(--mes-blue-soft,#edf3ff);color:var(--mes-blue-text,#2058cd)}.next-product{color:var(--mes-blue-text,#2058cd)}
+.history-row{color:var(--mes-ink,#172033)}.history-row:hover,.history-row:focus-visible{background:var(--mes-blue-soft,#edf3ff)}
+.quality-badge{background:var(--mes-green-soft,#e7f5ee);color:var(--mes-green-text,#14764d)}.quality-badge.nonconforming{background:var(--mes-red-soft,#fcecee);color:var(--mes-red-text,#b33642)}.quality-badge.review{background:var(--mes-amber-soft,#fff3df);color:var(--mes-amber-text,#925b08)}
+.shop-stop-banner{background:var(--mes-amber-soft,#fff3df);color:#684819;border-color:#e8c584}
+@media(max-width:1000px){.shop-header{padding:12px 18px}.shop-workspace{padding:16px}.shop-phase,.shop-task{padding:20px}}
+
+/* Il comando della fase corrente precede i dati di supporto nel primo viewport. */
+.shop-task{display:flex;flex-direction:column}
+.shop-task>.eyebrow{order:1}.shop-task>h2{order:2}.shop-task>.shop-actions{order:3;margin:8px 0 18px}.shop-task>.material-details{order:4}.shop-task>.shop-target{order:5}.shop-task>.shop-notes{order:6}.shop-task>.shop-timers{order:7}.shop-task>.notice{order:8}.shop-task>.shop-performance{order:9}
+@media(min-width:751px){.shop-task>.material-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:12px 0}.shop-task>.material-details>h3{grid-column:1/-1}.shop-task>.material-details>div{min-width:0;border-top:1px solid var(--mes-border,#e8ecf2)}.shop-task>.material-details>div+div{border-left:1px solid var(--mes-border,#e8ecf2)}.shop-task>.material-details strong,.shop-task>.material-details p{overflow-wrap:anywhere}}

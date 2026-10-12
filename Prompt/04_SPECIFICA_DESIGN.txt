@@ -1,0 +1,59 @@
+RIFERIMENTI APPROVATI — IDENTITÀ E INTERPRETAZIONE
+
+Questi HTML esportano le schermate presentate e approvate nella conversazione. Sono riferimenti di design autosufficienti, apribili senza dipendenze esterne. NON sono una nuova applicazione MES da installare e non sono una fonte di dati aziendali.
+
+PRIORITÀ
+1. Funzionamento, dati, regole produttive e accessibilità dell’app reale.
+2. Identità visiva e organizzazione approvate negli allegati.
+3. Adattamenti di densità desktop, ergonomia touch e risoluzioni.
+4. Dettagli letterali dei mockup, che possono richiedere correzioni.
+
+PALETTE PRINCIPALE: 01_dashboard_riferimento.html
+Navy sidebar             #101B2D
+Superficie scura          #17243A
+Testo principale          #172033
+Testo secondario          #748096
+Bordi                     #E8ECF2
+Sfondo                    #F5F7FA
+Superfici                 #FFFFFF
+Azione e selezione        #2767ED
+Verde operativo           #22A06B
+Ambra                     #ED9D24
+Rosso                     #DF5C64
+Viola                     #7B61D9
+
+I mockup successivi hanno leggere variazioni di palette. Unificarle secondo il primo riferimento mantenendo contrasto e leggibilità. Per testo e badge usare varianti più scure quando il colore base non è leggibile su fondo chiaro.
+
+TRATTI DA MANTENERE
+Sidebar scura e selezione evidente; header bianco; sfondo chiaro; card pulite; bordi sottili; numeri KPI prominenti ma compatti; etichette secondarie ordinate; timeline leggibile con sequenze colorate; badge di stato; barre di avanzamento; griglie di confronto; grafici sobri.
+
+GERARCHIA DASHBOARD
+KPI → timeline e ordini prioritari → performance e qualità. Il contenuto aziendale viene dal progetto reale. La dashboard sintetizza, la pagina Pianificazione permette di lavorare su un piano più esteso.
+
+BORDO MACCHINA
+Macchina/stato → ordine/lotto/operatore → avanzamento → comandi e controlli → stato/cronologia. Adattare questa struttura al touch senza uniformarla alla densità desktop. Il mockup non contiene ancora tutte le verifiche ergonomiche richieste dal prompt.
+
+STATISTICHE
+Preservare le quattro viste:
+- Panoramica: KPI, prodotto/pianificato, cause fermi, carico macchine, ordini critici.
+- Produzione: consuntivo/piano, produttività, confronto articoli/commesse.
+- Qualità e scarti: conformità, cause scarto, controlli e non conformità.
+- Macchine: fattori OEE, confronto e stato delle macchine.
+Usare drill-down reali, con contesto e ritorno. Mantenere grafici e organizzazione; correggere unità, formule e contenuti dimostrativi.
+
+LIMITI NOTI DEGLI HTML
+- Numeri, nomi, reparti e date sono dimostrativi, non dati convalidati.
+- I valori OEE aggregati non sono riconciliati con i fattori mostrati: non copiarne i calcoli.
+- I numeri di velocità, tempo residuo e fine stimata sono esempi visivi.
+- La dashboard mescola esempi generici industriali; non definisce il processo tessile.
+- Alcune card statistiche usano metri e pezzi; l’app reale deve separare unità incompatibili.
+- Alcuni grafici non hanno assi completi o una legenda quantitativa: implementarli correttamente.
+- Il dialogo statistiche cambia il titolo ma riutilizza dati dimostrativi; non replicare questo comportamento.
+- Vari pulsanti mostrano un toast; altri sono solo visivi. Non sostituire con essi le funzioni reali.
+- Il giorno della settimana in alcuni esempi è incoerente con la data: usare date reali.
+- Font e simboli sono quelli disponibili localmente. Nel progetto usare la libreria icone/font già disponibile.
+- Le dimensioni degli originali non sono vincoli assoluti: densità e touch vanno verificate.
+
+Il file 07_screenshot_app_prima_della_revisione.png, se presente, è lo screenshot fornito dall’utente della precedente interfaccia. Serve come esempio del problema iniziale, non come riferimento estetico da riprodurre e non come prova dello stato attuale del codice.
+
+In questo pacchetto non sono incluse nuove immagini renderizzate dei tre HTML: il browser disponibile nella sessione di preparazione ha bloccato l’apertura dei file locali. Sono stati verificati staticamente la struttura, l’autosufficienza dei file e la sintassi degli script. Aprire gli HTML nel browser dell’ambiente di sviluppo consente il confronto visivo completo. Questi controlli non costituiscono una verifica funzionale dell’app reale.

@@ -1,0 +1,146 @@
+.console-workspace[data-view="tasks"] .task-table {
+  table-layout:fixed;
+  width:100%;
+  min-width:1040px;
+  font-size:13px;
+}
+.console-workspace[data-view="tasks"] .task-table th,
+.console-workspace[data-view="tasks"] .task-table td {
+  padding:5px 10px;
+  vertical-align:middle;
+}
+.console-workspace[data-view="tasks"] .task-table th { padding-block:8px; }
+.console-workspace[data-view="tasks"] .task-table tbody tr { height:52px; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(1) { width:22%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(2) { width:9%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(3) { width:9%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(4) { width:8%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(5) { width:15%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(6) { width:11%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(7) { width:11%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(8) { width:15%; }
+.console-workspace[data-view="tasks"] .task-table td:first-child {
+  min-width:0;
+  max-width:none;
+}
+.task-table .task-primary>strong {
+  font-size:13px;
+  line-height:1.25;
+  overflow-wrap:anywhere;
+}
+.task-primary-meta {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  margin-top:2px;
+}
+.task-type {
+  display:block;
+  min-width:0;
+  max-width:46%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--mes-muted);
+  font-size:12px;
+}
+.task-type::before {
+  content:'';
+  display:inline-block;
+  width:6px;
+  height:6px;
+  margin-right:6px;
+  border-radius:50%;
+  background:var(--task-color);
+  vertical-align:1px;
+}
+.task-references,
+.task-secondary {
+  position:relative;
+  min-width:0;
+  font-size:12px;
+}
+.task-references { flex:1; }
+.task-references>summary,
+.task-secondary>summary {
+  color:var(--mes-blue-text);
+  cursor:pointer;
+  line-height:1.3;
+  outline-offset:2px;
+}
+.task-references>summary {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.task-references dl,
+.task-secondary p {
+  margin:6px 0 0;
+  color:var(--mes-muted);
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.task-references dl>div {
+  display:grid;
+  grid-template-columns:64px minmax(0,1fr);
+  gap:6px;
+}
+.task-references dt { color:var(--mes-muted); }
+.task-references dd { margin:0; color:var(--mes-ink); }
+.task-table .task-machine strong,
+.task-table .product-column strong {
+  font-size:13px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.task-table .task-times,
+.task-table .task-dates {
+  font-variant-numeric:tabular-nums;
+  white-space:normal;
+}
+.task-table .task-times small,
+.task-table .task-dates small {
+  margin-top:2px;
+}
+.task-table .materials-column {
+  min-width:0;
+  max-width:none;
+}
+.task-table .table-materials summary {
+  line-height:1.3;
+  overflow-wrap:anywhere;
+}
+.task-table .table-materials summary span {
+  margin-left:12px;
+}
+.task-table .table-materials summary span:first-child {
+  margin-left:0;
+}
+.task-table .table-materials p {
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.task-table .row-actions {
+  justify-content:flex-start;
+  gap:2px;
+}
+.task-table .row-actions .button {
+  min-height:32px;
+  padding:4px 6px;
+  font-size:12px;
+}
+@media (min-width:801px) {
+  .console-workspace[data-view="tasks"] .task-table th:last-child,
+  .console-workspace[data-view="tasks"] .task-table td:last-child {
+    min-width:156px;
+    background:var(--mes-surface);
+  }
+}
+@media (min-width:1500px) {
+  .console-workspace[data-view="tasks"] .task-table { min-width:0; }
+  .console-workspace[data-view="tasks"] .task-table th:nth-child(1) { width:24%; }
+  .console-workspace[data-view="tasks"] .task-table th:nth-child(5) { width:16%; }
+  .console-workspace[data-view="tasks"] .task-table th:nth-child(6) { width:13%; }
+  .console-workspace[data-view="tasks"] .task-table th:nth-child(8) { width:13%; }
+}

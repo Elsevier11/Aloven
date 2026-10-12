@@ -1,0 +1,49 @@
+CONTESTO AGGIUNTIVO — COMPILA SOLTANTO CIÒ CHE NON È GIÀ NOTO A CODEX
+
+Nome progetto / posizione repository:
+[...]
+
+Comando documentato per avvio sviluppo:
+[...]
+
+URL locale / percorso di accesso:
+[...]
+
+Accesso test già configurato o modalità sicura di accesso (senza segreti nel file):
+[...]
+
+Monitor del gestionale: risoluzione, zoom e sistema operativo:
+[...]
+
+Bordo macchina: risoluzione, orientamento, browser, schermo touch, eventuale uso guanti:
+[...]
+
+Flussi di cui preservare integralmente il comportamento:
+[...]
+
+Tre operazioni più frequenti di chi pianifica:
+1. [...]
+2. [...]
+3. [...]
+
+Tre operazioni più frequenti al bordo macchina:
+1. [...]
+2. [...]
+3. [...]
+
+Difetti / schermate prioritarie rispetto alle altre:
+[...]
+
+Esempio rappresentativo di commessa o lavorazione di TEST da usare per le prove:
+[...]
+
+Unità reali di produzione e scarto, se non documentate:
+[...]
+
+Definizioni aziendali di OEE, fermi, setup, scarti e rilavorazioni, se non documentate:
+[...]
+
+Vincoli di processo che Codex non può dedurre dal codice:
+[...]
+
+È possibile iniziare l’analisi anche se i campi sono ignoti. Non inventare risposte: lasciare il campo vuoto rende esplicita l’incertezza.

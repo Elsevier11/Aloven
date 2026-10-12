@@ -18,14 +18,19 @@ const context=zoom=>({
 
 test('timeline applica lo zoom, mantiene durate esatte e rende accessibili i blocchi corti',()=>{
   const html=temporalPlan(context(.65),[{id:'m1',name:'Macchina 1'}],['2026-10-08','2026-10-09'],false);
-  assert.match(html,/width:390px/);
-  assert.match(html,/width:9\.75px/);
+  const scale=Number(html.match(/data-time-scale="([\d.]+)"/)[1]);
+  const normal=temporalPlan(context(1),[{id:'m1',name:'Macchina 1'}],['2026-10-08','2026-10-09'],false);
+  const normalScale=Number(normal.match(/data-time-scale="([\d.]+)"/)[1]);
+  assert.ok(Math.abs(scale/normalScale-.65)<1e-9);
+  const shortWidth=Number(html.match(/data-task="short"[^>]*style="[^"]*width:([\d.]+)px/)[1]);
+  assert.ok(Math.abs(shortWidth-15*scale)<1e-9);
+  assert.match(html,new RegExp(`width:${600*scale}px`));
   assert.match(html,/class="time-block run planned compact has-warning selected"/);
   assert.match(html,/>ART-1<\/strong>/);
   assert.match(html,/data-machine="m1"/);
   assert.match(html,/aria-current="true"/);
-  assert.match(html,/08:00–08:15 · Lavorazione · Pianificata<\/span>/);
-  assert.match(html,/aria-label="Ordine breve · Lavorazione · Pianificata · 08:00–08:15 · Attenzione: Sequenza da verificare"/);
+  assert.match(html,/08:00–08:15 · Pianificata<\/span>/);
+  assert.match(html,/aria-label="Macchina 1 · Ordine breve · Lavorazione · Pianificata · 08:00–08:15 · Attenzione: Sequenza da verificare"/);
   assert.match(html,/data-before=""[^>]+draggable="false"/);
   assert.match(html,/data-now-marker/);
 });
@@ -38,5 +43,8 @@ test('timeline evidenzia ogni segmento dell’attività selezionata senza cambia
   assert.equal((html.match(/data-task="short"/g)||[]).length,2);
   assert.equal((html.match(/has-warning selected/g)||[]).length,2);
   assert.equal((html.match(/aria-current="true"/g)||[]).length,2);
-  assert.equal((html.match(/width:15px/g)||[]).length,2);
+  const scale=Number(html.match(/data-time-scale="([\d.]+)"/)[1]);
+  const widths=[...html.matchAll(/data-task="short"[^>]*style="[^"]*width:([\d.]+)px/g)].map(match=>Number(match[1]));
+  assert.equal(widths.length,2);
+  assert.ok(widths.every(width=>Math.abs(width-15*scale)<1e-9));
 });
