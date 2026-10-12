@@ -160,3 +160,15 @@ test('preserva gli inizi automatici solo quando richiesto senza trasformarli in 
     automatic,
   ], '2026-10-08T08:00', calendar, {preserveStarts:true}),/sovrappone/i);
 });
+
+test('preserva il prefisso e non anticipa il primo elemento da ricalcolare',()=>{
+  const result=scheduleMachine([
+    {id:'PREFIX',status:'planned',setupMinutes:0,runMinutes:60,start:'2026-10-08T09:00'},
+    {id:'IMPACTED',status:'planned',setupMinutes:0,runMinutes:60,start:'2026-10-08T14:00'},
+    {id:'TAIL',status:'planned',setupMinutes:0,runMinutes:60,start:'2026-10-08T15:00'},
+  ],'2026-10-08T08:00',calendar,{preserveStartIds:['PREFIX'],minimumStarts:{IMPACTED:'2026-10-08T14:00'}});
+  assert.equal(result[0].start,'2026-10-08T09:00');
+  assert.equal(result[0].fixedStart,undefined,'la protezione temporanea non deve creare pin persistenti');
+  assert.equal(result[1].start,'2026-10-08T14:00');
+  assert.equal(result[2].start,'2026-10-08T15:00');
+});

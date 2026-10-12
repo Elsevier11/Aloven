@@ -268,7 +268,7 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
     }
 
     let scheduled;
-    const exactStartValue = task.fixedStart ?? (options.preserveStarts && task.start != null ? task.start : null);
+    const exactStartValue = task.fixedStart ?? ((options.preserveStarts||options.preserveStartIds?.includes(task.id)) && task.start != null ? task.start : null);
     if (exactStartValue != null) {
       const fixedStart = parseIso(exactStartValue, `Inizio fissato attività ${task.id ?? ''}`);
       if (previousEnd !== undefined && fixedStart < previousEnd) {
@@ -279,7 +279,9 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
         fail(`L’inizio fissato ${exactStartValue} dell’attività ${task.id ?? ''} è fuori dall’orario di lavoro o non consente di completare il setup nel turno`);
       }
     } else {
-      scheduled = scheduleValidatedTask(task, cursor, validatedCalendar);
+      const minimumStart=options.minimumStarts?.[task.id];
+      const earliest=minimumStart==null?cursor:Math.max(cursor,parseIso(minimumStart,`Inizio minimo attività ${task.id ?? ''}`));
+      scheduled = scheduleValidatedTask(task, earliest, validatedCalendar);
     }
     result.push(scheduled);
     previousEnd = parseIso(scheduled.end);

@@ -30,4 +30,8 @@ La mappa di ore attive non è una saturazione; la conformità dei controlli non 
 
 ## Manutenzione
 
+Fluidità del piano: modalità visibili Sposta solo questa / Inserisci e sposta le successive, anteprima server dell’intero ingombro e dei conflitti durante il gesto. Date fissate riconoscibili sulle barre e nella sequenza; modulo di posizionamento prioritario con scelta risorsa e rimozione del vincolo. Riordino della sequenza con drag e pannello conservato dopo la conferma. Annulla ultimo spostamento ripristina l’intera modifica finché revisione e token restano validi; feedback esplicito durante salvataggio. Il normale caricamento del planner esclude lo storico operativo: completate e dettagli vengono richiesti esplicitamente, conservando il contesto minimo e la validazione completa del motore.
+
+Pianificazione: Azioni macchina → Manutenzione apre un intervallo nominato di indisponibilità, visibile con tratteggio ambra nella timeline; blocchi brevi identificati da una chiave e nome accessibile completo. Il clic sul blocco permette modifica o rimozione. Ogni operazione mostra prima le nuove date della coda e salva in bozza; le indisponibilità arrivano al reparto solo con il rilascio. Turni sottostanti conservati, attività precedenti preservate e conflitti con inizi fissati o attività protette segnalati senza spostamenti silenziosi.
+
 Per nuove schermate riutilizzare token e componenti esistenti. Le eccezioni dimensionali vanno motivate dal compito, non dal mockup. Prima di cambiare flussi consultare `MEMORIA_PROGETTO.md`. Verificare desktop e touch su dati isolati; i mockup e lo storico DEMO non costituiscono prova dell'idoneità produttiva.

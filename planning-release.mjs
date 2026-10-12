@@ -15,6 +15,13 @@ function revision(db) {
   return Number(db.prepare("SELECT value FROM meta WHERE key='revision'").get()?.value);
 }
 
+function maintenanceBlocks(db, key = 'calendar') {
+  try {
+    const value=JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get(key)?.value||'{}');
+    return Array.isArray(value)?value:Array.isArray(value.maintenanceBlocks)?value.maintenanceBlocks:[];
+  } catch { return []; }
+}
+
 function requiredText(value, label, maximum = 1000) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum) {
     fail(`${label}: inserisci un valore valido (massimo ${maximum} caratteri).`);
@@ -119,11 +126,19 @@ export function planningInfo(db, tasks) {
   const release = version ? db.prepare('SELECT * FROM planningReleases WHERE version=?').get(version) : null;
   const decorated = decoratePlanningTasks(tasks);
   const changedTaskIds = decorated.filter(task => ['unreleased','modified','pending_removal'].includes(task.planningState) && (task.position != null || task.releasedVersion != null)).map(task => task.id);
+  const draftMaintenance=maintenanceBlocks(db),releasedMaintenance=maintenanceBlocks(db,'releasedMaintenanceBlocks');
+  const releasedById=new Map(releasedMaintenance.map(block=>[block.id,block]));
+  const draftById=new Map(draftMaintenance.map(block=>[block.id,block]));
+  const changedMaintenanceIds=[...new Set([...draftById.keys(),...releasedById.keys()])].filter(id=>JSON.stringify(draftById.get(id))!==JSON.stringify(releasedById.get(id)));
+  const hasMaintenanceChanges=changedMaintenanceIds.length>0;
   return {
     version,
     releasedAt: release?.at ?? null,
     releasedByName: release?.userName ?? null,
-    hasDraftChanges: changedTaskIds.length > 0,
+    hasDraftChanges: changedTaskIds.length > 0||hasMaintenanceChanges,
+    hasMaintenanceChanges,
+    changedMaintenanceIds,
+    maintenanceChangeCount:changedMaintenanceIds.length,
     changedTaskIds,
     releasedItems: decorated.filter(task => task.releasedVersion != null).map(task => ({
       taskId:task.id, version:task.releasedVersion, machineId:task.releasedMachineId,
@@ -141,6 +156,10 @@ export function migratePlanningRelease(db, makeId = () => `migration-${Date.now(
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') throw new TypeError('Database SQLite non valido.');
   db.exec('BEGIN IMMEDIATE');
   try {
+    if (!db.prepare("SELECT 1 FROM meta WHERE key='releasedMaintenanceBlocks'").get()) {
+      db.prepare("INSERT INTO meta(key,value) VALUES ('releasedMaintenanceBlocks',?)").run(JSON.stringify(maintenanceBlocks(db)));
+      if (db.prepare("SELECT 1 FROM meta WHERE key='planning-release-v1'").get()) db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();
+    }
     if (db.prepare("SELECT 1 FROM meta WHERE key='planning-release-v1'").get()) {
       db.exec('COMMIT');
       return {migrated:false};
@@ -210,6 +229,7 @@ export function releasePlanning(db, payload, user, makeId, now = new Date().toIS
       if (task.status === 'planned' && task.position != null) publish.run(JSON.stringify(releasedPayload(task)), version, task.id);
       else withdraw.run(task.id);
     }
+    db.prepare("UPDATE meta SET value=? WHERE key='releasedMaintenanceBlocks'").run(JSON.stringify(maintenanceBlocks(db)));
     db.prepare('INSERT INTO planningReleases(version,at,userId,userName,reason) VALUES (?,?,?,?,?)').run(version, now, user.id, user.name, reason);
     db.prepare("UPDATE meta SET value=? WHERE key='planningReleaseVersion'").run(String(version));
     db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();
@@ -218,7 +238,7 @@ export function releasePlanning(db, payload, user, makeId, now = new Date().toIS
       recordMesAudit(db, {entityType:'planning', entityId:String(version), action:'release', user, reason, before, after}, makeId, now);
     }
     db.exec('COMMIT');
-    return {ok:true, revision:payload.revision + 1, version, releasedAt:now, changedTaskIds:before.changedTaskIds};
+    return {ok:true, revision:payload.revision + 1, version, releasedAt:now, changedTaskIds:before.changedTaskIds,maintenanceChanged:before.hasMaintenanceChanges};
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

@@ -1,0 +1,129 @@
+import {spawn} from 'node:child_process';
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {once} from 'node:events';
+import {pathToFileURL} from 'node:url';
+import assert from 'node:assert/strict';
+
+const playwrightPath=process.env.PLAYWRIGHT_PATH||'C:/Users/Paolo Pedron/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+const {chromium}=await import(pathToFileURL(playwrightPath).href);
+const temp=mkdtempSync(path.join(tmpdir(),'aloven-planner-fluidity-'));
+const artifacts=path.resolve('.artifacts');
+mkdirSync(artifacts,{recursive:true});
+const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,DATA_DIR:temp,PORT:'0'},stdio:['ignore','pipe','pipe']});
+const report={startedAt:new Date().toISOString(),passed:[],failures:[],pageErrors:[],requests:[],layouts:[],visuals:[]};
+let browser,page,base,caseName='bootstrap';
+
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const flushReport=()=>writeFileSync(path.join(artifacts,'planner-fluidity-report.json'),JSON.stringify(report,null,2));
+const capture=async name=>{const screenshot=path.join(artifacts,`planner-fluidity-${name}.png`);await page.screenshot({path:screenshot,fullPage:false});report.visuals.push({name,screenshot});};
+const planningSnapshot=state=>Object.fromEntries(state.tasks.map(task=>[task.id,{machineId:task.machineId,status:task.status,position:task.position,start:task.start,end:task.end,fixedStart:task.fixedStart,segments:task.segments,effectiveSetupMinutes:task.effectiveSetupMinutes}]));
+const recordFailure=async(name,error)=>{
+  const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70);
+  const screenshot=path.join(artifacts,`planner-fluidity-failure-${slug}.png`);
+  await page?.screenshot({path:screenshot,fullPage:false}).catch(()=>{});
+  report.failures.push({name,error:error.stack||String(error),screenshot,reproduction:`PLAYWRIGHT_PATH=${playwrightPath} node planner-fluidity-check.mjs`});
+  flushReport();
+};
+const check=async(name,fn)=>{caseName=name;try{await fn();report.passed.push(name);flushReport();}catch(error){await recordFailure(name,error);}};
+
+try{
+  base=await new Promise((resolve,reject)=>{
+    let output='';const timer=setTimeout(()=>reject(new Error('Timeout avvio server')),15000);
+    child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});
+    child.stderr.on('data',chunk=>process.stderr.write(chunk));child.on('exit',code=>{clearTimeout(timer);reject(new Error(`Server terminato con codice ${code}`));});
+  });
+  browser=await chromium.launch({channel:'msedge',headless:process.env.HEADFUL!=='1'});
+  const context=await browser.newContext({viewport:{width:1366,height:768}});
+  context.setDefaultTimeout(8000);
+  await context.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-plan-zoom','1');localStorage.setItem('aloven-drag-mode','single');});
+  page=await context.newPage();page.on('pageerror',error=>report.pageErrors.push(error.message));
+  page.on('request',request=>{if(/\/api\/(preview|commit|planning\/undo)(?:\?|$)/.test(request.url()))report.requests.push({method:request.method(),endpoint:new URL(request.url()).pathname,body:request.postDataJSON?.()});});
+  await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica fluidità');await page.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await page.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.locator('.timeline-scroll').waitFor();
+
+  const state=async(p=page)=>await (await p.request.get(base+'/api/state')).json();
+  const post=async(p,endpoint,data,expected=200)=>{const response=await p.request.post(base+'/api/'+endpoint,{data,headers:{'X-Aloven-Request':'1'}});assert.equal(response.status(),expected,await response.text());return response.json();};
+  const action=async(value,p=page)=>{const current=await state(p),preview=await post(p,'preview',{revision:current.revision,action:value});await post(p,'commit',{token:preview.token});return state(p);};
+  const cellFor=machineId=>page.locator(`[data-drop-machine="${machineId}"][data-date="2026-10-12"]`);
+  const dragCoordinates=async(source,cell,minute)=>{const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),cell.boundingBox(),cell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox,'Elemento di trascinamento non visibile');return {from:{x:sourceBox.x+Math.min(4,sourceBox.width/2),y:sourceBox.y+Math.min(18,sourceBox.height/2)},to:{x:cellBox.x+(minute-meta.lo)*meta.scale,y:cellBox.y+40}};};
+  const holdDrag=async(source,cell,minute)=>{const point=await dragCoordinates(source,cell,minute);await page.mouse.move(point.from.x,point.from.y);await page.mouse.down();await page.mouse.move(point.from.x+8,point.from.y+2,{steps:3});await page.mouse.move(point.to.x,point.to.y,{steps:14});return point;};
+  const finishDrag=async()=>page.mouse.up();
+
+  const weekly={0:[],1:[['08:00','12:00'],['13:00','17:00']],2:[['08:00','12:00'],['13:00','17:00']],3:[['08:00','12:00'],['13:00','17:00']],4:[['08:00','12:00'],['13:00','17:00']],5:[['08:00','12:00'],['13:00','17:00']],6:[]};
+  let fixture=await action({kind:'calendar',values:{weekly,exceptions:{},machineExceptions:{},maintenanceBlocks:[]}});
+  const machine=fixture.machines.find(item=>item.id==='CNC-01')||fixture.machines[0],other=fixture.machines.find(item=>item.id!==machine.id);assert.ok(machine&&other);
+  for(const item of [machine,other]){const current=(await state()).machines.find(value=>value.id===item.id);await action({kind:'machine',id:item.id,values:{...current,anchor:'2026-10-12T08:00'}});}
+  fixture=await state();const tasks=fixture.tasks.slice(0,4);assert.equal(tasks.length,4);
+  for(let index=0;index<tasks.length;index++){
+    const current=(await state()).tasks.find(item=>item.id===tasks[index].id);
+    await action({kind:'task',id:current.id,values:{...current,title:`Fluidità ${index+1} · ${current.title}`,machineId:machine.id,compatibleMachineIds:[machine.id,other.id],preferredMachineId:machine.id,setupMinutes:0,runMinutes:index===3?60:60,calculationMode:'manual'}});
+  }
+  for(const task of tasks.slice(0,3))await action({kind:'plan',id:task.id,machineId:machine.id});
+  await page.reload();await page.locator('.timeline-scroll').waitFor();await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');
+  const baseline=await state();assert.deepEqual(tasks.slice(0,3).map(item=>baseline.tasks.find(task=>task.id===item.id).start),['2026-10-12T08:00','2026-10-12T09:00','2026-10-12T10:00']);
+  const baselinePlanning=planningSnapshot(baseline),cell=cellFor(machine.id),moverId=tasks[3].id;
+
+  await check('Conflitto completo visibile prima del rilascio del mouse e senza scritture',async()=>{
+    const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);
+    const hint=page.locator('.insertion-hint.invalid');await hint.waitFor({state:'visible',timeout:4000});await sleep(500);assert.equal(await hint.isVisible(),true,'Il feedback rosso deve restare stabile durante il mouse hold');const message=await hint.innerText();
+    assert.match(message,/Fluidità 2|Fluidità 3/,'Il conflitto deve nominare l’attività operativa coinvolta');assert.equal((await state()).revision,before.revision);
+    const markerColor=await hint.evaluate(element=>getComputedStyle(element).backgroundColor);assert.equal(markerColor,'rgb(179, 61, 61)');
+    await capture('invalid-pre-drop');
+    await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);
+    await holdDrag(source,cell,9*60+30);await page.locator('.insertion-hint.invalid').waitFor({state:'visible'});await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
+  });
+
+  await check('Spostamento singolo preciso, stato di salvataggio e annullamento esatto',async()=>{
+    const commitBodies=[];const onRequest=request=>{if(new URL(request.url()).pathname==='/api/commit')commitBodies.push(request.postDataJSON());};page.on('request',onRequest);
+    await page.route('**/api/commit',async route=>{await sleep(550);await route.continue();},{times:1});
+    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator('.drag-preview-footprint[data-preview-task="'+tasks[0].id+'"]').waitFor();await finishDrag();
+    await page.locator('#planning-save-status').waitFor({state:'visible'});assert.equal(await page.locator('.timeline-scroll').getAttribute('aria-busy'),'true');
+    await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"][data-start="2026-10-12T13:00"]`),tasks[0].id,{timeout:7000});page.off('request',onRequest);
+    const moved=await state();assert.equal(moved.tasks.find(task=>task.id===tasks[0].id).fixedStart,'2026-10-12T13:00');assert.ok(commitBodies.length===1);
+    await page.locator('#planning-undo').click();await page.waitForFunction(revision=>Number(document.querySelector('.shell')?.dataset.revision)>revision,moved.revision);assert.deepEqual(planningSnapshot(await state()),baselinePlanning);
+  });
+
+  await check('Inserimento a cascata riusa l’anteprima finale, mostra tutte le impronte e annulla tutte le modifiche',async()=>{
+    await page.getByRole('button',{name:'Inserisci e sposta le successive',exact:true}).click();
+    const traffic={preview:[],commit:[]};const onResponse=async response=>{const endpoint=new URL(response.url()).pathname;if(endpoint==='/api/preview'&&response.request().method()==='POST')traffic.preview.push({action:response.request().postDataJSON()?.action,result:await response.json().catch(()=>null)});};const onRequest=request=>{const endpoint=new URL(request.url()).pathname;if(endpoint==='/api/commit')traffic.commit.push(request.postDataJSON());};page.on('response',onResponse);page.on('request',onRequest);
+    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=3);await capture('cascade-preview');
+    const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 2',{exact:false}).count());
+    await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
+    const cascaded=await state(),after=planningSnapshot(cascaded);assert.deepEqual(after[tasks[0].id],baselinePlanning[tasks[0].id]);assert.equal(after[moverId].fixedStart,'2026-10-12T09:30');assert.notEqual(after[tasks[1].id].start,baselinePlanning[tasks[1].id].start);assert.notEqual(after[tasks[2].id].start,baselinePlanning[tasks[2].id].start);
+    await page.locator('#planning-undo').click();await page.waitForFunction(revision=>Number(document.querySelector('.shell')?.dataset.revision)>revision,cascaded.revision);assert.deepEqual(planningSnapshot(await state()),baselinePlanning);
+    const finalPreviews=traffic.preview.filter(item=>item.action?.fixedStart==='2026-10-12T09:30');assert.equal(finalPreviews.length,1,'Il drop non deve ripetere l’anteprima della posizione finale');assert.equal(traffic.commit.length,1);assert.equal(traffic.commit[0].token,finalPreviews[0].result.token);
+  });
+
+  await check('Pin visibile, comando di rimozione e annullamento obsoleto disabilitato',async()=>{
+    await page.getByRole('button',{name:'Sposta solo questa',exact:true}).click();const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block[data-task="${tasks[0].id}"] .fixed-start-pin`).waitFor();
+    await page.locator(`.time-block.run[data-task="${tasks[0].id}"]`).click();await page.locator('#selection-unpin').waitFor();let unpinAction;const capture=request=>{if(new URL(request.url()).pathname==='/api/preview')unpinAction=request.postDataJSON()?.action;};page.on('request',capture);await page.locator('#selection-unpin').click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',capture);assert.equal(unpinAction.id,tasks[0].id);assert.ok(!Object.hasOwn(unpinAction,'fixedStart'));await page.getByRole('button',{name:'Annulla',exact:true}).click();
+    const current=(await state()).machines.find(item=>item.id===other.id);await action({kind:'machine',id:other.id,values:{...current,description:current.description+' · refresh test'}});await page.reload();await page.locator('.timeline-scroll').waitFor();assert.equal(await page.locator('#planning-undo').isDisabled(),true);
+  });
+
+  await check('Pannello tastiera consente una risorsa compatibile diversa',async()=>{
+    await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');const block=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await block.focus();await block.press('Enter');await page.locator('#selection-placement').waitFor();const destination=page.getByLabel('Risorsa di destinazione');await destination.focus();await destination.press('End');assert.equal(await destination.inputValue(),other.id);
+    await page.getByLabel('Inserisci attività').selectOption('end');await capture('keyboard-destination-panel');let previewAction;const captureRequest=request=>{if(new URL(request.url()).pathname==='/api/preview')previewAction=request.postDataJSON()?.action;};page.on('request',captureRequest);await page.locator('#selection-placement [type="submit"]').press('Enter');await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',captureRequest);assert.equal(previewAction.machineId,other.id);await page.getByRole('button',{name:'Annulla',exact:true}).click();
+  });
+
+  await check('Riordino reale e freccia mantengono aperta la sequenza',async()=>{
+    const row=page.locator(`.gantt-row[data-resource="${machine.id}"]`);await row.locator('.machine-actions').evaluate(element=>element.open=true);await page.locator(`[data-sequence="${machine.id}"]`).click();await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();
+    const source=page.locator(`.production-sequence-row[data-task="${tasks[2].id}"]`),target=page.locator(`.production-sequence-row[data-task="${tasks[1].id}"]`);await source.dragTo(target);await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();assert.equal(await page.locator('#modal').isVisible(),true);await capture('sequence-after-reorder');
+    const arrow=page.locator(`[data-move-task="${tasks[2].id}"][data-direction="down"]`);assert.equal(await arrow.isEnabled(),true);await arrow.click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();assert.equal(await page.locator('#modal').isVisible(),true);await page.getByRole('button',{name:'Chiudi',exact:true}).click();
+  });
+
+  await check('Long press touch seguito da drag orizzontale sposta sulla timeline',async()=>{
+    const touchContext=await browser.newContext({viewport:{width:1024,height:768},hasTouch:true});touchContext.setDefaultTimeout(8000);await touchContext.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-drag-mode','single');});const touch=await touchContext.newPage();touch.on('pageerror',error=>report.pageErrors.push(error.message));
+    await touch.goto(base);await touch.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await touch.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await touch.getByRole('button',{name:'Accedi',exact:true}).click();await touch.locator('.timeline-scroll').waitFor();await touch.locator('#date-start').fill('2026-10-12');await touch.locator('#date-start').dispatchEvent('change');
+    const before=await state(touch),id=tasks[1].id,source=touch.locator(`.time-block.run[data-task="${id}"]`),touchCell=touch.locator(`[data-drop-machine="${machine.id}"][data-date="2026-10-12"]`);const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),touchCell.boundingBox(),touchCell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox);const start={x:sourceBox.x+4,y:sourceBox.y+18},end={x:cellBox.x+(15*60-meta.lo)*meta.scale,y:cellBox.y+40},cdp=await touchContext.newCDPSession(touch);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:9,radiusX:2,radiusY:2,force:1}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:9,radiusX:2,radiusY:2,force:1}]});await touch.locator('.touch-drag-ghost').waitFor();await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.waitForFunction(({id,revision})=>Number(document.querySelector('.shell')?.dataset.revision)>revision&&document.querySelector(`.time-block[data-task="${id}"]`),{id,revision:before.revision},{timeout:7000});assert.equal((await state(touch)).tasks.find(task=>task.id===id).fixedStart,'2026-10-12T15:00');await touchContext.close();
+  });
+
+  await check('Layout desktop e mobile senza overflow ed errori pagina',async()=>{
+    await page.reload();await page.locator('.timeline-scroll').waitFor();for(const [width,height] of [[1366,768],[1920,1080],[390,844]]){await page.setViewportSize({width,height});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Overflow a ${width}x${height}`);const screenshot=path.join(artifacts,`planner-fluidity-${width}x${height}.png`);await page.screenshot({path:screenshot,fullPage:false});report.layouts.push({width,height,screenshot});}assert.deepEqual(report.pageErrors,[]);
+  });
+}catch(error){await recordFailure(caseName,error);}
+finally{
+  report.finishedAt=new Date().toISOString();writeFileSync(path.join(artifacts,'planner-fluidity-report.json'),JSON.stringify(report,null,2));await browser?.close();child.kill();if(child.exitCode===null)await once(child,'exit');assert.ok(path.resolve(temp).startsWith(path.resolve(tmpdir())+path.sep+'aloven-planner-fluidity-'));rmSync(temp,{recursive:true,force:true});
+}
+if(report.failures.length){console.error(`FAIL planner fluidity: ${report.failures.length} casi; report ${path.join(artifacts,'planner-fluidity-report.json')}`);process.exitCode=1;}else console.log(`PASS planner fluidity: ${report.passed.length} scenari`);

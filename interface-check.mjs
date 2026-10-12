@@ -19,7 +19,7 @@ try{
  await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica interfacce');await page.getByLabel('Nome utente',{exact:true}).fill('interface');await page.getByLabel('Password',{exact:true}).fill('InterfaceTest123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
  mkdirSync('.artifacts',{recursive:true});
  const groups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};
- const navigate=async view=>{if(groups[view])await page.locator(`[data-nav-group="${groups[view]}"]`).click();await page.locator(`[data-nav="${view}"]`).click();};
+ const navigate=async view=>{if(groups[view])await page.locator(`[data-nav-group="${groups[view]}"]`).click();await page.locator(`[data-nav="${view}"]`).click();await page.locator(`[data-nav="${view}"].active`).waitFor({state:'visible'});};
  const primary=page.locator('.sidebar nav[aria-label="Menu principale"] > button');
  assert.equal(await primary.count(),6,'Il menu principale deve avere sei voci');
  assert.equal(await page.locator('.sidebar nav[aria-label="Menu principale"] > button[data-nav]').count(),4,'Solo quattro voci principali devono navigare direttamente');

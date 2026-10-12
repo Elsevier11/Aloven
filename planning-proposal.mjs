@@ -1,4 +1,5 @@
 import {scheduleMachine, validateCalendar} from './scheduler.mjs';
+import {effectiveMachineCalendar} from './public/calendar.js';
 
 export function migratePlanningCompatibility(db){
   db.exec('BEGIN IMMEDIATE');
@@ -28,7 +29,7 @@ export function compatibilityFields(values,existing,machines){
   return {compatibleMachineIds:ids,preferredMachineId:preferred};
 }
 
-const calendarFor=(s,id)=>({weekly:s.calendar.weekly,exceptions:{...s.calendar.exceptions,...s.calendar.machineExceptions?.[id]}});
+const calendarFor=(s,id)=>effectiveMachineCalendar(s.calendar,id);
 const validDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00Z'))&&new Date(v+'T12:00Z').toISOString().slice(0,10)===v;
 function minutes(v){return Date.parse(v+'Z')/60000;}
 

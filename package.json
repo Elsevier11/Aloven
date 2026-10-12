@@ -12,6 +12,8 @@
     "test:operator": "node operator-check.mjs",
     "test:statistics": "node statistics-check.mjs",
     "test:planner": "node planner-check.mjs",
+    "test:maintenance": "node maintenance-check.mjs",
+    "test:planner-fluidity": "node planner-fluidity-check.mjs",
     "test:interface": "node interface-check.mjs",
     "test:premium": "node premium-check.mjs",
     "test:dispatch": "node planning-workspace-check.mjs",

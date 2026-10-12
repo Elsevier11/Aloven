@@ -1,10 +1,11 @@
+import {effectiveMachineShifts} from './calendar.js';
 let machineId=new URLSearchParams(location.search).get('machine')||localStorage.getItem('aloven-shop-machine')||'',horizon=localStorage.getItem('aloven-shop-horizon')||'working';
 let clock;
 const phaseLabels={setup_paused:'Attrezzaggio sospeso',ready:'Da iniziare',setup_running:'Attrezzaggio in corso',setup_done:'Pronta per la lavorazione',run_running:'Lavorazione in corso',run_paused:'Lavorazione sospesa',completed:'Completata'};
 const actions={resume_setup:'Riprendi attrezzaggio',start_setup:'Inizia attrezzaggio',finish_setup:'Termina attrezzaggio',start_run:'Inizia lavorazione',pause_run:'Sospendi lavorazione',resume_run:'Riprendi lavorazione',finish_run:'Termina lavorazione'};
 function actualDate(value){return value?new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(value)):'—';}
 function elapsed(seconds){const s=Math.max(0,Math.floor(seconds||0));return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
-function shifts(state,date,id){return state.calendar.machineExceptions[id]?.[date]??state.calendar.exceptions[date]??state.calendar.weekly[new Date(date+'T12:00Z').getUTCDay()]??[];}
+function shifts(state,date,id){return effectiveMachineShifts(state.calendar,date,id);}
 function windowDays(c){const today=c.localDate();if(horizon==='next5')return null;if(horizon==='calendar')return [today,c.addDays(today,1)];for(let i=1;i<=366;i++){const d=c.addDays(today,i);if(shifts(c.state,d,machineId).length)return [today,d];}return [today];}
 function publishedTask(task){let released=null;try{released=typeof task.releasedPayload==='string'?JSON.parse(task.releasedPayload):task.releasedPayload||null;}catch{}if(!released)return task.status==='in_progress'?task:null;return {...task,...released,status:['in_progress','completed'].includes(task.status)?task.status:released.status,releasedPayload:task.releasedPayload,releasedVersion:task.releasedVersion};}
 function publishedTasks(c){return (c.state.tasks||[]).map(publishedTask).filter(Boolean);}
