@@ -64,14 +64,46 @@ try{
   const baseline=await state();assert.deepEqual(tasks.slice(0,3).map(item=>baseline.tasks.find(task=>task.id===item.id).start),['2026-10-12T08:00','2026-10-12T09:00','2026-10-12T10:00']);
   const baselinePlanning=planningSnapshot(baseline),cell=cellFor(machine.id),moverId=tasks[3].id;
 
+  await check('Anteprima immediata continua, scroll e resize senza commit durante il gesto',async()=>{
+    await page.locator('#plan-zoom').evaluate(element=>{element.value='1.5';element.dispatchEvent(new Event('change'));});
+    await page.route('**/api/preview',async route=>{await sleep(700);await route.continue();});
+    const before=await state(),commits=report.requests.filter(request=>request.endpoint==='/api/commit').length;
+    try{
+      const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);const point=await holdDrag(source,cell,13*60);
+      const estimate=page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="checking"]`);
+      await estimate.waitFor();assert.match(await page.locator('.insertion-hint').innerText(),/stimata/);
+      await capture('immediate-estimate');
+      await page.evaluate(()=>{window.testFootprint=document.querySelector('.drag-preview-footprint');});
+      const meta=await cell.evaluate(element=>({scale:Number(element.dataset.scale)}));
+      await page.mouse.move(point.to.x+30*meta.scale,point.to.y);
+      assert.equal(await page.evaluate(()=>window.testFootprint===document.querySelector('.drag-preview-footprint')),true,'Riutilizza il nodo durante il movimento');
+      const previous=await page.locator('.drag-preview-footprint').first().evaluate(element=>element.style.left);
+      await page.locator('.timeline-scroll').evaluate(element=>{element.scrollLeft+=30;});
+      await page.waitForFunction(left=>document.querySelector('.drag-preview-footprint')?.style.left!==left,previous);
+      await page.evaluate(()=>window.dispatchEvent(new Event('resize')));await page.locator('.insertion-hint').waitFor();
+      await page.mouse.move(10,10);await finishDrag();await sleep(900);
+      assert.equal(await page.locator('.drag-preview-footprint').count(),0,'Risposte tardive non ripristinano l’anteprima');
+      assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commits);
+    }finally{await page.mouse.move(10,10);await finishDrag();await page.unroute('**/api/preview');await page.locator('#plan-zoom').evaluate(element=>{element.value='1';element.dispatchEvent(new Event('change'));});}
+  });
+
   await check('Conflitto completo visibile prima del rilascio del mouse e senza scritture',async()=>{
     const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);
     const hint=page.locator('.insertion-hint.invalid');await hint.waitFor({state:'visible',timeout:4000});await sleep(500);assert.equal(await hint.isVisible(),true,'Il feedback rosso deve restare stabile durante il mouse hold');const message=await hint.innerText();
-    assert.match(message,/Fluidità 2|Fluidità 3/,'Il conflitto deve nominare l’attività operativa coinvolta');assert.equal((await state()).revision,before.revision);
+    assert.match(message,/Fluidità [234]/,'Il conflitto deve nominare un’attività operativa coinvolta');assert.match(message,/sovrappone|occupat/);assert.equal((await state()).revision,before.revision);
+    assert.ok(await page.locator('.drag-preview-footprint[data-validity="invalid"]').count(),'Il conflitto conserva l’ingombro rosso');
     const markerColor=await hint.evaluate(element=>getComputedStyle(element).backgroundColor);assert.equal(markerColor,'rgb(179, 61, 61)');
     await capture('invalid-pre-drop');
     await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);
     await holdDrag(source,cell,9*60+30);await page.locator('.insertion-hint.invalid').waitFor({state:'visible'});await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
+  });
+
+  await check('Errore di salvataggio lascia la bozza intatta e pulisce il gesto',async()=>{
+    const before=await state(),commits=report.requests.filter(request=>request.endpoint==='/api/commit').length;
+    await page.route('**/api/commit',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Errore di salvataggio simulato'})}),{times:1});
+    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,13*60);await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();await finishDrag();
+    await page.getByText('Errore di salvataggio simulato',{exact:true}).waitFor();
+    assert.equal((await state()).revision,before.revision);assert.equal(await page.locator('.drag-preview-footprint').count(),0);assert.equal(await page.locator('#planning-save-status').isVisible(),false);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commits+1);
   });
 
   await check('Spostamento singolo preciso, stato di salvataggio e annullamento esatto',async()=>{
@@ -87,7 +119,7 @@ try{
   await check('Inserimento a cascata riusa l’anteprima finale, mostra tutte le impronte e annulla tutte le modifiche',async()=>{
     await page.getByRole('button',{name:'Inserisci e sposta le successive',exact:true}).click();
     const traffic={preview:[],commit:[]};const onResponse=async response=>{const endpoint=new URL(response.url()).pathname;if(endpoint==='/api/preview'&&response.request().method()==='POST')traffic.preview.push({action:response.request().postDataJSON()?.action,result:await response.json().catch(()=>null)});};const onRequest=request=>{const endpoint=new URL(request.url()).pathname;if(endpoint==='/api/commit')traffic.commit.push(request.postDataJSON());};page.on('response',onResponse);page.on('request',onRequest);
-    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=3);await capture('cascade-preview');
+    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="ready"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=3);await capture('cascade-preview');
     const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 2',{exact:false}).count());
     await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
     const cascaded=await state(),after=planningSnapshot(cascaded);assert.deepEqual(after[tasks[0].id],baselinePlanning[tasks[0].id]);assert.equal(after[moverId].fixedStart,'2026-10-12T09:30');assert.notEqual(after[tasks[1].id].start,baselinePlanning[tasks[1].id].start);assert.notEqual(after[tasks[2].id].start,baselinePlanning[tasks[2].id].start);
@@ -102,7 +134,7 @@ try{
   });
 
   await check('Pannello tastiera consente una risorsa compatibile diversa',async()=>{
-    await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');const block=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await block.focus();await block.press('Enter');await page.locator('#selection-placement').waitFor();const destination=page.getByLabel('Risorsa di destinazione');await destination.focus();await destination.press('End');assert.equal(await destination.inputValue(),other.id);
+    await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');const block=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await block.focus();await block.press('Enter');await page.locator('#selection-placement').waitFor();const destination=page.getByLabel('Macchina di destinazione');await destination.focus();await destination.press('End');assert.equal(await destination.inputValue(),other.id);
     await page.getByLabel('Inserisci attività').selectOption('end');await capture('keyboard-destination-panel');let previewAction;const captureRequest=request=>{if(new URL(request.url()).pathname==='/api/preview')previewAction=request.postDataJSON()?.action;};page.on('request',captureRequest);await page.locator('#selection-placement [type="submit"]').press('Enter');await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',captureRequest);assert.equal(previewAction.machineId,other.id);await page.getByRole('button',{name:'Annulla',exact:true}).click();
   });
 
@@ -112,11 +144,13 @@ try{
     const arrow=page.locator(`[data-move-task="${tasks[2].id}"][data-direction="down"]`);assert.equal(await arrow.isEnabled(),true);await arrow.click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();assert.equal(await page.locator('#modal').isVisible(),true);await page.getByRole('button',{name:'Chiudi',exact:true}).click();
   });
 
-  await check('Long press touch seguito da drag orizzontale sposta sulla timeline',async()=>{
+  await check('Touch fra macchine, pointercancel e pressione senza spostamento',async()=>{
     const touchContext=await browser.newContext({viewport:{width:1024,height:768},hasTouch:true});touchContext.setDefaultTimeout(8000);await touchContext.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-drag-mode','single');});const touch=await touchContext.newPage();touch.on('pageerror',error=>report.pageErrors.push(error.message));
     await touch.goto(base);await touch.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await touch.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await touch.getByRole('button',{name:'Accedi',exact:true}).click();await touch.locator('.timeline-scroll').waitFor();await touch.locator('#date-start').fill('2026-10-12');await touch.locator('#date-start').dispatchEvent('change');
-    const before=await state(touch),id=tasks[1].id,source=touch.locator(`.time-block.run[data-task="${id}"]`),touchCell=touch.locator(`[data-drop-machine="${machine.id}"][data-date="2026-10-12"]`);const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),touchCell.boundingBox(),touchCell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox);const start={x:sourceBox.x+4,y:sourceBox.y+18},end={x:cellBox.x+(15*60-meta.lo)*meta.scale,y:cellBox.y+40},cdp=await touchContext.newCDPSession(touch);
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:9,radiusX:2,radiusY:2,force:1}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:9,radiusX:2,radiusY:2,force:1}]});await touch.locator('.touch-drag-ghost').waitFor();await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.waitForFunction(({id,revision})=>Number(document.querySelector('.shell')?.dataset.revision)>revision&&document.querySelector(`.time-block[data-task="${id}"]`),{id,revision:before.revision},{timeout:7000});assert.equal((await state(touch)).tasks.find(task=>task.id===id).fixedStart,'2026-10-12T15:00');await touchContext.close();
+    const before=await state(touch),id=tasks[1].id,source=touch.locator(`.time-block.run[data-task="${id}"]`),touchCell=touch.locator(`[data-drop-machine="${other.id}"][data-date="2026-10-12"]`);const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),touchCell.boundingBox(),touchCell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox);const start={x:sourceBox.x+4,y:sourceBox.y+18},end={x:cellBox.x+(15*60-meta.lo)*meta.scale,y:cellBox.y+40},cdp=await touchContext.newCDPSession(touch);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:7}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert.equal((await state(touch)).revision,before.revision,'Una pressione senza spostamento non salva');assert.equal(await touch.locator('.drag-preview-footprint').count(),0);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:8}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:8}]});await touch.locator('.drag-preview-footprint').first().waitFor();await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});assert.equal(await touch.locator('.drag-preview-footprint').count(),0);assert.equal(await touch.locator('.drop-hover').count(),0);assert.equal((await state(touch)).revision,before.revision);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:9,radiusX:2,radiusY:2,force:1}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:9,radiusX:2,radiusY:2,force:1}]});await touch.locator('.drag-preview-footprint').first().waitFor();assert.equal(await touch.locator('.touch-drag-ghost').isVisible(),false);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.waitForFunction(({id,revision})=>Number(document.querySelector('.shell')?.dataset.revision)>revision&&document.querySelector(`.time-block[data-task="${id}"]`),{id,revision:before.revision},{timeout:7000});const moved=(await state(touch)).tasks.find(task=>task.id===id);assert.equal(moved.fixedStart,'2026-10-12T15:00');assert.equal(moved.machineId,other.id);await touchContext.close();
   });
 
   await check('Layout desktop e mobile senza overflow ed errori pagina',async()=>{

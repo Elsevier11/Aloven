@@ -23,7 +23,7 @@ try{
  await page.getByLabel('Solo per la macchina selezionata').check();assert.equal(await page.locator('.other-machine').count(),0);await page.getByLabel('Solo per la macchina selezionata').uncheck();assert.ok(await page.locator('.other-machine').count()>0);passed.push('Tre pannelli, righe compatte e filtro compatibilità');
  const select=async id=>{await page.locator(`[data-select-task="${id}"]`).click();await page.locator('#planning-selection').waitFor({state:'visible'});};
  const confirm=async()=>{await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva'}).click();await page.locator('#modal').waitFor({state:'hidden'});};
- const plan=async(id,mode='end',ref='')=>{await select(id);await page.getByLabel('Inserisci attività').selectOption(mode);if(ref)await page.getByLabel('Attività di riferimento').selectOption(ref);await page.getByRole('button',{name:'Anteprima assegnazione',exact:true}).click();await confirm();};
+ const plan=async(id,mode='end',ref='')=>{await select(id);await page.getByLabel('Inserisci attività').selectOption(mode);if(ref)await page.getByLabel('Attività di riferimento').selectOption(ref);await page.getByRole('button',{name:'Anteprima pianificazione',exact:true}).click();await confirm();};
  await plan(tasks[0].id);await plan(tasks[1].id);await plan(tasks[2].id,'before',tasks[1].id);
  const sequence=async()=> (await state()).tasks.filter(t=>t.machineId===machine.id&&t.position!==null).sort((a,b)=>a.position-b.position).map(t=>t.id);
  assert.deepEqual(await sequence(),[tasks[0].id,tasks[2].id,tasks[1].id]);assert.equal(await page.locator('.sequence-row').count(),3);passed.push('Assegnazione e inserimento intermedio con ricalcolo');

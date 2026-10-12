@@ -25,3 +25,9 @@
 .timeline-maintenance:focus-visible{outline:2px solid var(--mes-blue,#2767ed);outline-offset:-3px}
 .maintenance-list{margin-top:16px}.maintenance-list summary{cursor:pointer}.maintenance-list button{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-top:8px;text-align:left;white-space:normal}.maintenance-list button span{font-size:12px}.maintenance-list button strong{overflow-wrap:anywhere}
 .maintenance-preview{margin-bottom:16px}.maintenance-preview p{margin:6px 0}
+
+/* Estimates follow the gesture immediately; only the server marks them ready. */
+.drag-preview-footprint[data-validity="checking"]{border-color:var(--mes-amber);border-style:dashed;background:color-mix(in srgb,var(--mes-amber) 20%,transparent)}
+.drag-preview-footprint[data-validity="invalid"]{border-color:var(--mes-red);background:color-mix(in srgb,var(--mes-red) 24%,transparent)}
+.touch-drag-ghost{padding:8px 12px;border-radius:6px;background:var(--mes-navy);color:white;font-size:12px;overflow-wrap:anywhere}
+.touch-drag-ghost[hidden]{display:none}

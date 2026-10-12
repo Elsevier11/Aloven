@@ -138,6 +138,7 @@ export function planningInfo(db, tasks) {
     hasDraftChanges: changedTaskIds.length > 0||hasMaintenanceChanges,
     hasMaintenanceChanges,
     changedMaintenanceIds,
+    releasedMaintenanceBlocks: releasedMaintenance,
     maintenanceChangeCount:changedMaintenanceIds.length,
     changedTaskIds,
     releasedItems: decorated.filter(task => task.releasedVersion != null).map(task => ({

@@ -258,3 +258,56 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .resource-timeline .time-block.fixed-start{padding-left:20px}
 .planning-workspace .selection-body{padding:12px}.planning-workspace .selection-information>h3{margin:8px 0;font-size:15px;line-height:1.35}.planning-workspace .selection-information>p{margin:5px 0;line-height:1.4}.planning-workspace #selection-placement{margin-top:12px;padding-top:10px}.planning-workspace #selection-placement h3{margin-bottom:8px}.planning-workspace #selection-placement label{margin:8px 0}.planning-workspace .selection-help{margin:8px 0;font-size:11px;line-height:1.4}.planning-pin .button{padding:4px 8px;min-height:30px;font-size:11px}
 @media(min-width:801px){.planning-workspace .planning-selection{top:0;max-height:100%}}
+
+/* Operational identifiers and the two independent planning states. */
+.task-reference{display:block;color:var(--mes-ink);font-size:12px;font-weight:700;overflow-wrap:anywhere;line-height:1.35}
+.compact-task .task-reference{margin-bottom:3px;white-space:normal}
+.dispatch-state{display:inline-block;font-size:11px;font-weight:600;line-height:1.4;border-radius:4px;padding:2px 5px;background:var(--mes-amber-soft);color:var(--mes-amber-text)}
+.dispatch-state[data-tone="released"]{background:var(--mes-green-soft);color:var(--mes-green-text)}
+.dispatch-state[data-tone="modified"],.dispatch-state[data-tone="removal"]{background:var(--mes-red-soft);color:var(--mes-red-text)}
+.task-primary+.dispatch-state,.selection-statuses{display:flex;flex-wrap:wrap;gap:5px}
+.task-destination-fixed{font-size:13px;line-height:1.4;margin:8px 0}
+.task-destination-fixed strong{display:block;margin-top:4px}
+.selection-reference,.selection-order-facts{margin:6px 0;overflow-wrap:anywhere}
+.selection-states{display:flex;flex-wrap:wrap;gap:5px}
+.selection-reference span{display:block;font-size:11px;color:var(--mes-ink)}
+.selection-reference strong{display:block}
+.selection-destination span,.selection-destination strong{display:block;margin:5px 0;line-height:1.4}
+.selection-unplan p{font-size:11px;line-height:1.4;color:var(--mes-ink);margin:5px 0}
+.compact-task .dispatch-state{margin-top:4px}
+.period-counts{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;font-size:12px;min-width:0}
+.period-counts .button{font-size:12px;min-height:28px;padding:3px 6px}
+.planning-legend{position:relative;margin-left:auto}
+.planning-legend summary{cursor:pointer;padding:5px}
+.planning-legend[open]{max-width:100%}
+.planning-legend p{margin:5px 0;max-width:680px;line-height:1.4}
+.planning-legend-body{position:absolute;z-index:40;right:0;top:100%;width:400px;max-width:calc(100vw - 32px);padding:12px;background:white;border:1px solid var(--mes-border);border-radius:6px;box-shadow:0 5px 16px #17203320}
+.planning-titlebar{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px}
+.planning-title h1{font-size:24px}
+.planning-workspace .release-panel{display:flex;justify-content:flex-end;flex-wrap:nowrap;min-width:0}
+.planning-workspace .release-panel>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.planning-workspace .release-panel strong,.planning-workspace .release-panel small{max-width:100%;text-align:right;overflow-wrap:anywhere;line-height:1.35}
+.planning-workspace .release-panel .button{flex-shrink:0}
+.sequence-task-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--mes-ink);font-weight:400}
+.drag-mode-caption{font-size:12px;color:var(--mes-muted);font-weight:600}
+.planning-workspace .resource-timeline .temporal-machine{padding:6px 10px;min-height:104px}
+.planning-workspace .resource-timeline .temporal-machine small{font-size:11px;margin-top:3px;line-height:1.3}
+.planning-workspace .resource-timeline .direct-sequence{padding:3px 7px;min-height:26px;margin-top:4px;font-size:11px}
+.outside-sequence{border:0;background:transparent;text-align:left;color:var(--mes-blue);font-size:11px;text-decoration:underline;padding:3px 0;min-height:24px}
+.resource-timeline .machine-actions{display:inline-block;margin-top:3px}
+.resource-timeline .time-block .bar-dispatch{position:absolute;bottom:3px;top:auto;right:3px;padding:0;width:8px;height:8px;min-width:0;border-radius:50%;border:1px solid white;background:var(--mes-amber);box-sizing:border-box}
+.resource-timeline .time-block .bar-dispatch[data-tone="released"]{background:var(--mes-green)}
+.resource-timeline .time-block .bar-dispatch[data-tone="modified"],.resource-timeline .time-block .bar-dispatch[data-tone="removal"]{background:var(--mes-red)}
+.resource-timeline .time-block .task-reference{color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.planning-search-results article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--mes-border)}
+.planning-search-results article>div{min-width:0;overflow-wrap:anywhere}
+.planning-search-results p{margin:4px 0;line-height:1.4}
+.planning-search-results small{display:block;margin-bottom:4px}
+.release-changes{margin:12px 0;display:grid;gap:8px}
+.release-change{padding:10px;background:var(--mes-bg);border-radius:6px;overflow-wrap:anywhere}
+.release-change>strong,.release-change>span{display:block}
+.release-change>span{font-size:12px;margin-top:4px}
+.release-change p{font-size:13px;line-height:1.4;margin:5px 0}
+.release-warnings{margin:10px 0;color:var(--mes-amber-text)}
+@media(max-width:800px){.planning-search-results article{align-items:flex-start;flex-direction:column}.period-counts .button,.planning-legend summary{min-height:44px}.planning-legend{margin-left:0}.drag-mode-caption{width:100%}.direct-sequence,.outside-sequence{min-height:36px!important}}
+@media(max-width:1100px){.planning-titlebar{grid-template-columns:1fr}.planning-workspace .release-panel>div{align-items:flex-start}.planning-workspace .release-panel strong,.planning-workspace .release-panel small{text-align:left}.planning-legend-body{position:fixed;left:16px;right:16px;top:160px;width:auto}}

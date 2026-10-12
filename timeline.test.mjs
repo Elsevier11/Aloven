@@ -52,7 +52,7 @@ test('timeline applica lo zoom, mantiene durate esatte e rende accessibili i blo
   assert.match(html,/data-machine="m1"/);
   assert.match(html,/aria-current="true"/);
   assert.match(html,/08:00–08:15 · Pianificata<\/span>/);
-  assert.match(html,/aria-label="Macchina 1 · Ordine breve · Lavorazione · Pianificata · 08:00–08:15 · Attenzione: Sequenza da verificare"/);
+  assert.match(html,/aria-label="Macchina 1 · Ordine breve · Lavorazione · Pianificata · 08:00–08:15 · Da inviare al reparto · ART-1 · Attenzione: Sequenza da verificare"/);
   assert.match(html,/data-before=""[^>]+draggable="false"/);
   assert.match(html,/data-now-marker/);
 });

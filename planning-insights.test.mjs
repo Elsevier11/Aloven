@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planningWarnings,periodLoad,taskInPeriod} from './public/planning-insights.js';
 const task=(id,machineId,position,status,end)=>({id,machineId,position,status,end,segments:[{start:'2026-10-08T08:00',end:'2026-10-08T09:00',kind:'run'}]});
+test('inizio superato non avviato è distinto da consegna, annullate e completate senza ricalcolo',()=>{const state={machines:[{id:'A'}],tasks:['planned','unplanned','cancelled','completed'].map((status,i)=>({...task(String(i),'A',status==='unplanned'?null:i,status,'2026-10-08T09:00'),start:'2026-10-08T08:00'}))};const before=structuredClone(state);assert.equal(planningWarnings(state,new Date('2026-10-08T06:00Z')).size,0);const warnings=planningWarnings(state,new Date('2026-10-08T06:01Z'));assert.deepEqual([...warnings.keys()],['0']);assert.match(warnings.get('0'),/non avviata/);assert.deepEqual(state,before);});
 test('evidenzia solo i giorni con segmenti di lavoro, senza includere pause e giorni chiusi',()=>{
  const t={segments:[{start:'2026-10-09T15:00',end:'2026-10-09T17:00'},{start:'2026-10-12T08:00',end:'2026-10-12T10:00'}]};
  assert.equal(taskInPeriod(t,['2026-10-09']),true);assert.equal(taskInPeriod(t,['2026-10-10','2026-10-11']),false);assert.equal(taskInPeriod(t,['2026-10-12']),true);assert.equal(taskInPeriod(t,['2026-10-13']),false);

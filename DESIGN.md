@@ -34,4 +34,14 @@ Fluidità del piano: modalità visibili Sposta solo questa / Inserisci e sposta 
 
 Pianificazione: Azioni macchina → Manutenzione apre un intervallo nominato di indisponibilità, visibile con tratteggio ambra nella timeline; blocchi brevi identificati da una chiave e nome accessibile completo. Il clic sul blocco permette modifica o rimozione. Ogni operazione mostra prima le nuove date della coda e salva in bozza; le indisponibilità arrivano al reparto solo con il rilascio. Turni sottostanti conservati, attività precedenti preservate e conflitti con inizi fissati o attività protette segnalati senza spostamenti silenziosi.
 
+Posizionamento: ingombro locale immediato, semitrasparente e non interattivo. Ambra tratteggiato con testo Anteprima stimata, in verifica; blu dopo conferma server; rosso con motivo di rifiuto, senza far sparire l’ingombro. La stima segue il calendario ma non anticipa la validazione degli attrezzaggi, dei conflitti o della coda. Scroll e resize aggiornano il punto anche senza movimento del puntatore. Sul touch l’ingombro resta nella timeline e lo scroll è bloccato soltanto durante il gesto attivo; una pressione senza spostamento non salva. Conservare snap a 15 minuti e conferme delle modalità esistenti.
+
 Per nuove schermate riutilizzare token e componenti esistenti. Le eccezioni dimensionali vanno motivate dal compito, non dal mockup. Prima di cambiare flussi consultare `MEMORIA_PROGETTO.md`. Verificare desktop e touch su dati isolati; i mockup e lo storico DEMO non costituiscono prova dell'idoneità produttiva.
+
+## Comprensione del piano
+
+Ordine/lotto identificano il lavoro nelle schede e nella sequenza; le barre mantengono la geometria temporale e mostrano il riferimento corto del lotto. Titolo, quantità e consegna completano il riepilogo selezionato. Stato della pianificazione e invio al reparto sono distinti: badge scritti nei riepiloghi, indicatore discreto sulle barre con significato nella legenda e nel tooltip. Nessun identificativo operativo inventato quando i dati mancano.
+
+Ricerca globale delle attività aperte con accesso alla posizione, oltre al filtro locale del backlog. Conteggi distinguono attività nel periodo, fuori periodo e totale della sequenza. Sequenza direttamente accessibile per macchina; inizi previsti superati senza avvio segnalati con collegamento all’attività. Il rilascio mostra prima/dopo di macchina, date e dati principali, ritiri e indisponibilità, specificando che riguarda tutte le macchine e tutte le date.
+
+Il pannello di posizionamento raggruppa sequenza e data, spiega snap e data fissata e rende evidente la macchina di destinazione. Le modalità di trascinamento sono configurazioni esplicite. Usare Togli dal piano e spiegare quando la rimozione arriverà al reparto. Legenda essenziale apribile e comandi raggiungibili anche su viewport piccoli; nessuna animazione nell’inseguimento del puntatore.
