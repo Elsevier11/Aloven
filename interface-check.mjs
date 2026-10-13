@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 // Read-only visual/keyboard checks across console views, on a disposable database.
 import {spawn} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
@@ -8,7 +9,7 @@ import {once} from 'node:events';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_PATH?pathToFileURL(process.env.PLAYWRIGHT_PATH).href:'playwright');
 const temp=mkdtempSync(join(tmpdir(),'aloven-interface-'));
-const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
 let browser;
 try{
  const base=await new Promise((resolve,reject)=>{let out='';child.stdout.on('data',chunk=>{out+=chunk;const match=out.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0]);});child.on('exit',()=>reject(new Error('Server terminated')));});

@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -16,7 +17,7 @@ if(copySource){
  const copy=new DatabaseSync(path.join(temp,'aloven.sqlite')),salt=randomBytes(16).toString('hex'),password=`${salt}:${scryptSync('DragCheck123!',salt,64).toString('hex')}`;
  try{copy.prepare('INSERT INTO users(id,name,username,password,role) VALUES (?,?,?,?,?)').run('copy-drag-review','Verifica copia','copy-drag-review',password,'admin');}finally{copy.close();}
 }
-const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,DATA_DIR:temp,PORT:'0'},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,DATA_DIR:temp,PORT:'0'},stdio:['ignore','pipe','pipe']});
 let browser;const report={startedAt:new Date().toISOString(),source:copySource?'copia del database operativo':'database temporaneo',cases:[]};
 try{
  const base=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',b=>{out+=b;const url=out.match(/http:\/\/127\.0\.0\.1:\d+/);if(url){clearTimeout(timer);resolve(url[0]);}});});
@@ -87,7 +88,7 @@ try{
  await page.screenshot({path:copySource?'.artifacts/planning-deep-copy-future-scroll.png':'.artifacts/planning-deep-future-scroll.png',fullPage:false});
  const visibility=await page.locator(`.time-block[data-task="${extra.id}"]`).first().evaluate(el=>{const b=el.getBoundingClientRect(),scroll=el.closest('.timeline-scroll').getBoundingClientRect(),header=el.closest('.gantt-row').querySelector('.temporal-machine').getBoundingClientRect();return {left:b.left,right:b.right,visibleFrom:header.right,visibleTo:scroll.right,top:b.top,bottom:b.bottom,viewportHeight:innerHeight,visibleTop:scroll.top+(el.closest('.timeline-scroll').querySelector('.gantt-dates')?.offsetHeight||0),visibleBottom:scroll.bottom,scrollLeft:el.closest('.timeline-scroll').scrollLeft};});
  assert.ok(visibility.right>visibility.visibleFrom&&visibility.left<visibility.visibleTo&&visibility.top<Math.min(visibility.viewportHeight,visibility.visibleBottom)&&visibility.bottom>visibility.visibleTop,`Attività salvata ma nascosta dopo cambio data: ${JSON.stringify(visibility)}`);
- await page.locator(`.time-block[data-task="${extra.id}"]`).first().click();await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-12-16T10:00');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();
+ await page.locator(`.time-block.run[data-task="${extra.id}"]`).first().click();await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-12-16T10:00');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();
  await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"][data-start="2026-12-16T10:00"]`),extra.id);
  await page.screenshot({path:`.artifacts/planning-deep-${copySource?'copy':'fixture'}-in-period.png`,fullPage:false});
  const exposed=await page.locator(`.time-block[data-task="${extra.id}"]`).first().evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.left+Math.min(r.width/2,10),r.top+r.height/2);return hit?.closest('.time-block')?.dataset.task===el.dataset.task;});

@@ -7,12 +7,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('concorrenza, replay, richieste interrotte, riavvii e sessione scaduta conservano il piano', async()=>{
   const data=mkdtempSync(path.join(tmpdir(),'aloven-resilience-'));
   let child,base,cookie;
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,HOST:'127.0.0.1',PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,HOST:'127.0.0.1',PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error('Avvio server scaduto: '+output)),10000);child.stderr.on('data',x=>output+=x);child.stdout.on('data',x=>{output+=x;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.once('exit',()=>{clearTimeout(timer);reject(new Error('Server terminato: '+output));});});
   }
   async function stop(){if(child?.exitCode===null){const done=once(child,'exit');child.kill('SIGKILL');await done;}}

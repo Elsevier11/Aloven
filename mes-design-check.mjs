@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 // Integration evidence: real application, isolated database, approved desktop/touch profiles.
 import {spawn} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
@@ -9,7 +10,7 @@ import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_PATH?pathToFileURL(process.env.PLAYWRIGHT_PATH).href:'playwright');
 const temp=mkdtempSync(path.join(tmpdir(),'aloven-design-'));
 const out=path.resolve('.artifacts/mes-excellence/final');mkdirSync(out,{recursive:true});
-const server=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+const server=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
 const report={startedAt:new Date().toISOString(),browser:'Microsoft Edge',zoom:100,isolatedData:true,views:[],errors:[]};
 let browser;
 try{
@@ -39,7 +40,7 @@ try{
   await page.setViewportSize(viewport);
   for(const view of views){await navigate(view);if(view==='planning'){await page.locator('#date-start').fill(day);await page.locator('#date-start').dispatchEvent('change');await page.locator('.time-block.run').first().waitFor();}await page.evaluate(()=>{const c=document.querySelector('.console-content');if(c)c.scrollTop=0;});const m=await measure(view);assert.ok(m.outerScroll.width<=viewport.width+1,view+' horizontal overflow');if(view!=='shopfloor')assert.ok(m.outerScroll.height<=viewport.height+1,view+' page scroll');if(view==='planning'){assert.ok(m.work.top<=280,'Timeline begins in first280px');assert.ok(m.work.height>=viewport.height/2,'Timeline occupies >=half viewport');assert.equal(m.sidebar.width,224);assert.equal(m.navy,'rgb(16, 27, 45)');assert.ok(await page.locator('.time-block.run').count()>=4,'Multiple resources have actual planned bars');}const file=`${view}-${viewport.width}x${viewport.height}.png`;await page.screenshot({path:path.join(out,file)});report.views.push({...m,file});}
  }
- await navigate('planning');await page.setViewportSize({width:1366,height:768});await page.locator('.planning-priorities>summary').click();const priorities=page.locator('.planning-priorities');assert.match(await priorities.innerText(),/VERIFICA-ORD-01/);await priorities.locator('[data-detail]').click();await page.locator('#modal').waitFor({state:'visible'});assert.match(await page.locator('#modal').innerText(),/VERIFICA-ORD-01|VERIFICA-LOT-01/);await page.getByRole('button',{name:'Chiudi',exact:true}).click();
+ await navigate('planning');await page.setViewportSize({width:1366,height:768});await page.locator('.planning-priorities>summary').click();const priorities=page.locator('.planning-priorities');assert.match(await priorities.innerText(),/VERIFICA-ORD-01/);await priorities.locator('[data-detail]').click();await page.locator('#modal').waitFor({state:'visible'});await page.locator('#modal').getByText(/VERIFICA-ORD-01|VERIFICA-LOT-01/).first().waitFor();await page.getByRole('button',{name:'Chiudi',exact:true}).click();
  await navigate('statistics');await page.locator('[data-statistics-dashboard="machines"]').click();assert.match(await page.locator('#oee-readiness').innerText(),/OEE non disponibile/);await page.screenshot({path:path.join(out,'statistics-machines-1366x768.png')});
  await page.locator('[data-statistics-dashboard="quality"]').click();await page.screenshot({path:path.join(out,'statistics-quality-1366x768.png')});
  await page.locator('[data-statistics-dashboard="production"]').click();await page.screenshot({path:path.join(out,'statistics-production-1366x768.png')});

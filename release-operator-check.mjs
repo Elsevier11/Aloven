@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -31,7 +32,7 @@ async function fixture(){
 async function requestInterruption(taskId,reason){const current=await state();return apiPost('/api/planning/interruption-request',{revision:current.revision,taskId,reason});}
 
 try{
-  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let output='';const timeout=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timeout);resolve(match[0]);}});child.stderr.on('data',chunk=>process.stderr.write(chunk));child.on('exit',code=>reject(new Error(`Server exit ${code}`)));});
   adminApi=await request.newContext({baseURL:base});await fixture();
   browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});const context=await browser.newContext({viewport:{width:1024,height:768}});page=await context.newPage();page.setDefaultTimeout(10000);
@@ -51,7 +52,7 @@ try{
     const classic=await page.context().newPage();await classic.goto(base+'/bordo-macchina?machine=CNC-01');await classic.getByText('Interruzione richiesta dal pianificatore',{exact:true}).waitFor();await classic.getByRole('button',{name:'Dichiara prodotto e interrompi'}).click();await classic.locator('#modal [name="physicalStopConfirmed"]').waitFor();assert.equal(await classic.locator('#modal [name="producedQuantity"]').inputValue(),'');await classic.keyboard.press('Escape');await classic.locator('#modal').waitFor({state:'hidden'});await classic.close();
     await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'La richiesta causa overflow su mobile');await page.locator('[data-interruption="confirm"]').click();const dialog=page.locator('#operator-dialog');await dialog.getByText('Ordine cliente annullato',{exact:false}).waitFor();assert.equal(await dialog.locator('[name="producedQuantity"]').inputValue(),'');const footer=await dialog.locator('.dialog-footer').boundingBox();assert.ok(footer&&footer.y+footer.height<=844,'I comandi del consuntivo sono fuori schermo');await dialog.locator('[name="physicalStopConfirmed"]').check();await dialog.locator('[name="producedQuantity"]').fill('8');await dialog.locator('[name="scrapQuantity"]').fill('0');await dialog.locator('[name="outputLot"]').fill('LOT-INT-01');await dialog.locator('#wizard-next').click();
     for(let index=0;index<2;index++){await dialog.locator(`[data-component-tab="${index}"]`).click();const group=dialog.locator('[data-lot-group]').nth(index);await group.locator('input[name$="-lot"]').fill(`LOT-C${index+1}`);await group.locator('input[name$="-quantity"]').fill('8');await dialog.locator('#wizard-next').click();}
-    await dialog.locator('.tri-state').nth(0).getByText('Regolare',{exact:true}).click();await dialog.locator('.tri-state').nth(1).getByText('Regolare',{exact:true}).click();await dialog.locator('[name="qualityStatus"]').selectOption('conforming');await dialog.getByRole('button',{name:'Conferma interruzione'}).click();await dialog.waitFor({state:'hidden'});
+    await dialog.locator('.tri-state').nth(0).getByText('Regolare',{exact:true}).click();await dialog.locator('.tri-state').nth(1).getByText('Regolare',{exact:true}).click();await dialog.locator('[name="qualityStatus"]').selectOption('conforming');const plausibility=dialog.locator('[name="plausibilityReason"]');if(await plausibility.count())await plausibility.fill('Ciclo di verifica concluso subito');await dialog.getByRole('button',{name:'Conferma interruzione'}).click();await dialog.waitFor({state:'hidden'});
     current=await state();const execution=current.executions.find(x=>x.taskId===draftTaskId);assert.equal(current.tasks.find(x=>x.id===draftTaskId).status,'cancelled');assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,8);assert.equal(execution.outputLot,'LOT-INT-01');assert.equal(execution.lots.length,2);assert.ok(execution.interruptedAt);assert.equal(current.interruptionRequests.at(0).status,'confirmed');
   });
   await context.close();

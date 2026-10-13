@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,7 +17,7 @@ async function test(name,fn){const started=Date.now();try{await fn();results.pus
 const state=async(p=page)=>p.evaluate(async()=>{const r=await fetch('/api/state');if(!r.ok)throw new Error(`state ${r.status}`);return r.json();});
 const navGroups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};
 const nav=async(name,p=page)=>{if(navGroups[name])await p.locator(`[data-nav-group="${navGroups[name]}"]`).click();await p.locator(`[data-nav="${name}"]`).click();};
-async function confirmPreview(p=page){const heading=p.getByRole('heading',{name:'Conferma la modifica'});if(await heading.isVisible().catch(()=>false)){await p.getByRole('button',{name:'Conferma e salva'}).click();await p.locator('#modal').waitFor({state:'hidden'});}}
+async function confirmPreview(p=page){const heading=p.getByRole('heading',{name:'Conferma la modifica'});await Promise.race([heading.waitFor({timeout:5000}),p.locator('#modal').waitFor({state:'hidden',timeout:5000}),p.locator('.dialog-error:not([hidden])').waitFor({timeout:5000})]).catch(()=>{});if(await heading.isVisible().catch(()=>false)){await p.getByRole('button',{name:'Conferma e salva'}).click();await p.locator('#modal').waitFor({state:'hidden'});}}
 async function cancelPreview(p=page){await p.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await p.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();await p.locator('#modal').waitFor({state:'hidden'});}
 async function discardModifiedDialog(){page.once('dialog',async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/modifiche|salvat/i);await dialog.accept();});await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});}
 async function settleMutation(p=page,{confirm=true}={}){
@@ -60,7 +61,7 @@ async function moveTask(id,beforeId,confirm=true){await openTask(id);await page.
 
 const report={startedAt:stamp(),dataDir:temp,headless:process.env.HEADFUL!=='1',browser:'Microsoft Edge',results};
 try{
-  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',c=>{out+=c;const m=out.match(/http:\/\/127\.0\.0\.1:\d+/);if(m){clearTimeout(timer);resolve(m[0]);}});child.stderr.on('data',c=>process.stderr.write(c));child.on('exit',code=>{clearTimeout(timer);reject(new Error(`Server exit ${code}`));});});
   browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addInitScript(()=>localStorage.setItem('aloven-planning-layout','overview'));page=await context.newPage();
   await page.goto(base);await page.getByRole('heading',{name:'Configura il tuo reparto'}).waitFor();

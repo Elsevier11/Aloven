@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { buildStatisticsReport, buildStatisticsWorkbook } from './statistics.mjs';
+import {TEST_NOW} from './test-clock.mjs';
 
 function fixture() {
   const db=new DatabaseSync(':memory:');
@@ -85,7 +86,7 @@ test('API statistiche richiede sessione, valida filtri ed esporta XLSX',async()=
   const data=mkdtempSync(path.join(tmpdir(),'aloven-statistics-'));
   let child,base,cookie='';
   try {
-    child=spawn(process.execPath,['server.mjs'],{cwd:process.cwd(),env:{...process.env,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{cwd:process.cwd(),env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
     base=await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error('Server non avviato: '+output)),10000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>output+=chunk);child.on('exit',()=>reject(new Error('Server terminato: '+output)));});
     let response=await fetch(`${base}/api/statistics`);assert.equal(response.status,401);
     response=await fetch(`${base}/api/setup`,{method:'POST',headers:{'Content-Type':'application/json','X-Aloven-Request':'1'},body:JSON.stringify({name:'Admin',username:'admin',password:'PasswordTest123!'})});

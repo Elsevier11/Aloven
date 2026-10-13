@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { migrateProduction } from './production.mjs';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('production-v1 migra il catalogo una sola volta e conserva gli snapshot storici',()=>{
   const directory=mkdtempSync(path.join(tmpdir(),'aloven-production-migration-'));
@@ -41,7 +42,7 @@ test('catalogo, calcolo automatico, velocità e regole setup usano preview/commi
   const data=mkdtempSync(path.join(tmpdir(),'aloven-production-http-'));
   let child,base,cookie='';
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error(`Server non avviato: ${output}`)),10000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>{output+=chunk;});child.on('exit',()=>{clearTimeout(timer);reject(new Error(`Server terminato: ${output}`));});});
   }
   async function request(endpoint,data,expected=200){const response=await fetch(`${base}/api/${endpoint}`,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json','X-Aloven-Request':'1'}:{}),...(cookie?{Cookie:cookie}:{})},body:data?JSON.stringify(data):undefined});const json=await response.json();assert.equal(response.status,expected,JSON.stringify(json));if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];return json;}

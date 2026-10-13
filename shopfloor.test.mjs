@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import { migrateShopfloor } from './shopfloor.mjs';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('shopfloor-v1 crea tabelle logiche senza FK ed è atomica, persistente e idempotente',()=>{
   const directory=mkdtempSync(path.join(tmpdir(),'aloven-shopfloor-migration-'));
@@ -35,7 +36,7 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
   const data=mkdtempSync(path.join(tmpdir(),'aloven-shopfloor-http-'));
   let child,base,cookie='';
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error(`Server non avviato: ${output}`)),10000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>{output+=chunk;});child.on('exit',()=>{clearTimeout(timer);reject(new Error(`Server terminato: ${output}`));});});
   }
   async function request(endpoint,data,expected=200){

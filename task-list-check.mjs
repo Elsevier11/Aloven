@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
@@ -14,7 +15,7 @@ mkdirSync(artifacts,{recursive:true});
 let browser,server;
 
 try{
-  server=spawn(process.execPath,['server.mjs'],{env:{...process.env,HOST:'127.0.0.1',PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  server=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,HOST:'127.0.0.1',PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   const base=await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error(`Avvio server scaduto: ${output}`)),15000);server.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});server.stderr.on('data',chunk=>process.stderr.write(chunk));server.once('exit',code=>{clearTimeout(timer);reject(new Error(`Server terminato: ${code} ${output}`));});});
   browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});
   const page=await browser.newPage({viewport:{width:1366,height:768}}),errors=[];
@@ -39,7 +40,7 @@ try{
   const editable=seeded.tasks.find(task=>task.title===editableTitle);
   assert.ok(editable,`Attività modificabile non trovata: ${editableTitle}`);
   await editableRow.getByRole('button',{name:'Modifica'}).click();
-  await page.locator('#modal').getByText('Riferimenti ordine e lotto',{exact:true}).click();
+  await page.locator('#modal .order-references[open]').waitFor();
   await page.getByLabel('Riferimento ordine').fill('ORD-CLIENTE-INTERNAZIONALE-2026-000184-LAVORAZIONE-URGENTE');
   await page.getByLabel('Lotto prodotto previsto').fill('LOTTO-PRODOTTO-FINITO-TRACCIABILITA-ESTESA-2026-10');
   await page.getByLabel('Consegna prevista').fill('2026-12-31');

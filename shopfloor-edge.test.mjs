@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('bordo macchina gestisce concorrenza, pause ripetute e rifiuti atomici; la quantita parziale conclude', async () => {
   const data = mkdtempSync(path.join(tmpdir(), 'aloven-shopfloor-edge-'));
@@ -14,7 +15,7 @@ test('bordo macchina gestisce concorrenza, pause ripetute e rifiuti atomici; la 
 
   async function start() {
     child = spawn(process.execPath, ['server.mjs'], {
-      env: {...process.env, PORT: '0', DATA_DIR: data},
+      env: {...process.env, ALOVEN_NOW: TEST_NOW, PORT: '0', DATA_DIR: data},
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return new Promise((resolve, reject) => {

@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -10,7 +11,7 @@ const defaultPlaywright='C:/Users/Paolo Pedron/.cache/codex-runtimes/codex-prima
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_PATH||defaultPlaywright).href);
 const temp=mkdtempSync(path.join(tmpdir(),'aloven-mes-browser-'));
 const artifacts=path.resolve('.artifacts');mkdirSync(artifacts,{recursive:true});
-const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp,BACKUP_DIR:path.join(temp,'backups')},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp,BACKUP_DIR:path.join(temp,'backups')},stdio:['ignore','pipe','pipe']});
 let browser,page;const passed=[],failed=[],consoleErrors=[],httpErrors=[];
 const scenario=async(name,run)=>{try{await run();passed.push(name);}catch(error){failed.push({name,error:error.stack||error.message});console.error('FAIL',name,error.message);if(page&&await page.locator('#modal').isVisible().catch(()=>false))await page.keyboard.press('Escape').catch(()=>{});}};
 try{

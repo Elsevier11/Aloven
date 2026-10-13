@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
@@ -48,7 +49,7 @@ async function planTask(task,target=page){
 }
 
 try{
-  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,HOST:'127.0.0.1',PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,HOST:'127.0.0.1',PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error(`Avvio server scaduto: ${output}`)),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>process.stderr.write(chunk));child.once('exit',code=>{clearTimeout(timer);reject(new Error(`Server terminato: ${code} ${output}`));});});
   browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});
   context=await browser.newContext({viewport:{width:1440,height:1000}});
@@ -90,6 +91,8 @@ try{
     await editTask(task);
     await page.getByLabel('Note').fill('Commit confermato dal server');
     await page.locator('#modal').getByRole('button',{name:'Salva',exact:true}).click();
+    await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();
+    await page.getByRole('button',{name:'Conferma e salva'}).click();
     await page.locator('#modal .dialog-error:not([hidden])').waitFor();
     assert.equal(commits,1);
     await page.unroute('**/api/commit');

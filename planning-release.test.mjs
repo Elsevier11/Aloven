@@ -7,6 +7,7 @@ import path from 'node:path';
 import {once} from 'node:events';
 import {DatabaseSync} from 'node:sqlite';
 import {migratePlanningRelease,releasedTasks,releasePlanning} from './planning-release.mjs';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('la migrazione considera rilasciato il piano esistente ed è idempotente',()=>{
   const db=new DatabaseSync(':memory:');
@@ -76,7 +77,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
   const data=mkdtempSync(path.join(tmpdir(),'aloven-release-'));
   let child,base,cookie='';
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='',errors='';const timer=setTimeout(()=>reject(new Error(`Server non avviato: ${errors}`)),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(`Server terminato: ${output}\n${errors}`));});});
   }
   async function request(endpoint,data,expected=200,session=cookie){

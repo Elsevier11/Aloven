@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('API MES: ordine, consuntivo, tracciabilità, rettifiche, qualità, audit, backup e riavvio', async () => {
   const dataDir = mkdtempSync(path.join(tmpdir(), 'aloven-mes-http-'));
@@ -14,7 +15,7 @@ test('API MES: ordine, consuntivo, tracciabilità, rettifiche, qualità, audit, 
 
   async function start() {
     child = spawn(process.execPath, ['server.mjs'], {
-      env: {...process.env, PORT: '0', DATA_DIR: dataDir, BACKUP_DIR: path.join(dataDir, 'backups'), BACKUP_INTERVAL_HOURS: '24'},
+      env: {...process.env, ALOVEN_NOW: TEST_NOW, PORT: '0', DATA_DIR: dataDir, BACKUP_DIR: path.join(dataDir, 'backups'), BACKUP_INTERVAL_HOURS: '24'},
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return new Promise((resolve, reject) => {

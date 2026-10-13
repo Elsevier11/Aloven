@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -11,7 +12,7 @@ const {chromium}=await import(pathToFileURL(playwrightPath).href);
 const temp=mkdtempSync(path.join(tmpdir(),'aloven-planner-fluidity-'));
 const artifacts=path.resolve('.artifacts');
 mkdirSync(artifacts,{recursive:true});
-const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,DATA_DIR:temp,PORT:'0'},stdio:['ignore','pipe','pipe']});
+const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,DATA_DIR:temp,PORT:'0'},stdio:['ignore','pipe','pipe']});
 const report={startedAt:new Date().toISOString(),passed:[],failures:[],pageErrors:[],requests:[],layouts:[],visuals:[]};
 let browser,page,base,caseName='bootstrap';
 

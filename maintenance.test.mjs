@@ -7,6 +7,7 @@ import path from 'node:path';
 import {once} from 'node:events';
 import {effectiveMachineCalendar,effectiveMachineShifts} from './public/calendar.js';
 import {scheduleMachine} from './scheduler.mjs';
+import {TEST_NOW} from './test-clock.mjs';
 
 const weekly={0:[],1:[['08:00','12:00'],['13:00','17:00']],2:[['08:00','12:00'],['13:00','17:00']],3:[['08:00','12:00'],['13:00','17:00']],4:[['08:00','12:00'],['13:00','17:00']],5:[['08:00','12:00'],['13:00','17:00']],6:[]};
 
@@ -33,7 +34,7 @@ test('sottrae manutenzioni multi-giorno senza alterare eccezioni e rispetta setu
 
 test('API manutenzione mantiene una bozza separata dal piano rilasciato, controlla ruolo e persiste',async()=>{
   const data=mkdtempSync(path.join(tmpdir(),'aloven-maintenance-'));let child,base,cookie='';
-  async function start(){child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});return new Promise((resolve,reject)=>{let output='',errors='';const timer=setTimeout(()=>reject(new Error(errors||'Server non avviato')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(output+errors));});});}
+  async function start(){child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});return new Promise((resolve,reject)=>{let output='',errors='';const timer=setTimeout(()=>reject(new Error(errors||'Server non avviato')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(output+errors));});});}
   async function stop(){const done=once(child,'exit');child.kill();await done;}
   async function request(endpoint,data,expected=200,session=cookie){const response=await fetch(`${base}/api/${endpoint}`,{method:data===undefined?'GET':'POST',headers:{...(data===undefined?{}:{'Content-Type':'application/json','X-Aloven-Request':'1'}),...(session?{Cookie:session}:{})},body:data===undefined?undefined:JSON.stringify(data)});const json=await response.json();assert.equal(response.status,expected,JSON.stringify(json));if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];return json;}
   async function previewCommit(action){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});return {preview,state:await request('state')};}

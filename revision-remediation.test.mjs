@@ -8,6 +8,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {once} from 'node:events';
+import {TEST_NOW} from './test-clock.mjs';
 
 test('avvisi dati: componenti uguali, quantità/consegna assenti e consegna passata',()=>{
   assert.equal(taskWarnings({component1Code:'A',component2Code:'a'},'2026-10-13').length,3);
@@ -32,7 +33,7 @@ test('festività italiane modificabili senza sovrascrivere eccezioni e turni',()
 
 test('API anteprima espone avvisi senza salvare; utenti con identità duplicata rifiutati',async()=>{
   const dir=mkdtempSync(path.join(tmpdir(),'aloven-review-'));
-  const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:dir},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:dir},stdio:['ignore','pipe','pipe']});
   let cookie='';
   try{
     const base=await new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error('Avvio scaduto')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.on('exit',()=>{clearTimeout(timer);reject(new Error(output));});});

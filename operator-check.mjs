@@ -1,3 +1,4 @@
+import {TEST_NOW} from './test-clock.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -37,7 +38,7 @@ async function assertNoOverflow(p=page){assert.ok(await p.evaluate(()=>document.
 async function waitDialogClosed(){await page.locator('#operator-dialog').waitFor({state:'hidden'});}
 
 try {
-  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
+  child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:temp},stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(new Error('Server timeout')),15000);child.stdout.on('data',chunk=>{out+=chunk;const match=out.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>process.stderr.write(chunk));child.on('exit',code=>{clearTimeout(timer);reject(new Error(`Server exit ${code}`));});});
   adminApi=await request.newContext({baseURL:base});await buildFixture();
   browser=await chromium.launch({headless:process.env.HEADFUL!=='1',channel:'msedge'});
