@@ -457,3 +457,5 @@ Ogni voce del registro occupava quattro righe e ripeteva il messaggio automatico
 ### Statistiche: etichette leggibili e note non duplicate — 13 ottobre 2026
 
 Nel grafico di produzione mensile le etichette dell'asse X erano tagliate ("2025-", "2026-", con il mese a capo e nascosto): ora sono brevi e su una riga ("dic 25", "ott 26"; per il grafico giornaliero e per la mappa di calore "13/10"). Le note sotto i grafici non ripetono più le descrizioni: produzione mensile («per data di chiusura delle lavorazioni consuntivate» passa nella descrizione, la nota conserva la scala), attività delle macchine (descrizione breve; la nota resta con la copertura degli eventi). Calcoli, KPI, filtri, drill-down ed export invariati. Verifiche: 114/114 unitari/HTTP; statistics 16/16, design, premium, interface, mes.
+
+Nei grafici a barre con una sola serie (scarti per causale) è nascosta l'etichetta della serie ripetuta su ogni riga («Scarto»); con più serie resta. Verifiche: statistics, design, premium, 114/114 unitari/HTTP.

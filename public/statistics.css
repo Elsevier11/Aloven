@@ -187,3 +187,5 @@ body:has(.shell) #modal:has(.statistics-detail-body){width:min(1080px,calc(100vw
 .statistics-point.tooltip-below .statistics-chart-tooltip{top:18px;bottom:auto}
 .statistics-point.edge-start .statistics-chart-tooltip{left:-8px;right:auto;transform:none}
 .statistics-point.edge-end .statistics-chart-tooltip{right:-8px;left:auto;transform:none}
+.statistics-bar-chart.single-series .statistics-series{display:none}
+.statistics-bar-chart.single-series .statistics-bar-mark{grid-template-columns:minmax(0,1fr) auto}
