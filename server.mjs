@@ -18,6 +18,7 @@ import { migratePlanningCompatibility, compatibilityFields, proposePeriod } from
 import { migratePlanningRelease, decoratePlanningTasks, releasedTasks, planningInfo, interruptionRequests, releasePlanning, requestExecutionInterruption, respondExecutionInterruption } from './planning-release.mjs';
 import { migrateFixedStart } from './fixed-start.mjs';
 import { migrateSetupOverride } from './setup-override.mjs';
+import { machineLiveStatus } from './live-status.mjs';
 import { effectiveMachineCalendar } from './public/calendar.js';
 import { taskWarnings } from './task-warnings.mjs';
 import {migrateAuditIntegrity,verifyAuditIntegrity} from './audit-integrity.mjs';
@@ -97,7 +98,7 @@ function snapshot(view='draft',detail='full',options={}) {
       if(task.status==='cancelled')return task.planningState==='pending_removal';
       return ['planned','unplanned','in_progress'].includes(task.status);
     });
-    return {...base,tasks:projectedTasks,planning:planningInfoForPlanner(rawTasks,includeCompleted),interruptionRequests:interruptionRequests(db).filter(request=>request.status==='requested'),executions:[],machineStops:machineStops(db).filter(stop=>stop.endedAt==null),scope:'planning',completeHistory:includeCompleted};
+    return {...base,tasks:projectedTasks,planning:planningInfoForPlanner(rawTasks,includeCompleted),interruptionRequests:interruptionRequests(db).filter(request=>request.status==='requested'),executions:[],machineStops:machineStops(db).filter(stop=>stop.endedAt==null),liveMachines:machineLiveStatus(db,{machines:base.machines,tasks,now:liveNow()}),serverNow:liveNow(),scope:'planning',completeHistory:includeCompleted};
   }
   return {...base,planning:planningInfo(db,rawTasks),interruptionRequests:interruptionRequests(db),executions:decorateMesExecutions(db,shopfloorExecutions(db)),machineStops:machineStops(db)};
 }
@@ -383,6 +384,7 @@ function save(state) {
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(JSON.stringify(state.calendar),'calendar');
   db.prepare('UPDATE meta SET value=? WHERE key=?').run(String(state.revision+1),'revision');
 }
+const liveNow=()=>new Date(planningNow()).toISOString();
 const isPlanningKind=kind=>kind==='plan'||kind==='realign';
 function savePlanningAction(previous,state){
   const fields=['machineId','setupMinutes','runMinutes','status','position','start','end','segments','effectiveSetupMinutes','fixedStart','setupOverrideMinutes'];
@@ -409,7 +411,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/planning-presentation.js':['planning-presentation.js','text/javascript'],'/scheduler.mjs':['../scheduler.mjs','text/javascript'],'/mes-console.js':['mes-console.js','text/javascript'],'/mes-console.css':['mes-console.css','text/css'],'/planning-console.css':['planning-console.css','text/css'],'/design-system.css':['design-system.css','text/css'],'/task-list.css':['task-list.css','text/css'],'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/calendar.js':['calendar.js','text/javascript'],'/maintenance.js':['maintenance.js','text/javascript'],'/statistics-detail.js':['statistics-detail.js','text/javascript'], '/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/planning-priorities.js':['planning-priorities.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/planning-presentation.js':['planning-presentation.js','text/javascript'],'/planning-live.js':['planning-live.js','text/javascript'],'/scheduler.mjs':['../scheduler.mjs','text/javascript'],'/mes-console.js':['mes-console.js','text/javascript'],'/mes-console.css':['mes-console.css','text/css'],'/planning-console.css':['planning-console.css','text/css'],'/design-system.css':['design-system.css','text/css'],'/task-list.css':['task-list.css','text/css'],'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/calendar.js':['calendar.js','text/javascript'],'/maintenance.js':['maintenance.js','text/javascript'],'/statistics-detail.js':['statistics-detail.js','text/javascript'], '/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/planning-priorities.js':['planning-priorities.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
@@ -503,7 +505,7 @@ const server=http.createServer(async(req,res)=>{
         undo={token,revision:committedSnapshot.revision,label:p.action.kind==='realign'?'Riallineamento':task?.title||'Ultimo spostamento'};
       }
       const state=includeFullState||includePlannerState?{...(responseSnapshot||committedSnapshot),user,users:user.role==='admin'?publicUsers():[]}:undefined;
-      const planningState=includePlanningState?{revision:committedSnapshot.revision,tasks:difference.after.tasks||[],planning:payload.plannerProjection?planningInfoForPlanner(committedSnapshot.tasks,payload.includeCompleted===true):planningInfo(db,committedSnapshot.tasks)}:undefined;
+      const planningState=includePlanningState?{revision:committedSnapshot.revision,tasks:difference.after.tasks||[],planning:payload.plannerProjection?planningInfoForPlanner(committedSnapshot.tasks,payload.includeCompleted===true):planningInfo(db,committedSnapshot.tasks),liveMachines:machineLiveStatus(db,{machines:committedSnapshot.machines,tasks:committedSnapshot.tasks,now:liveNow()}),serverNow:liveNow()}:undefined;
       send(res,200,{ok:true,...(state?{state}:{}),...(planningState?{planningState}:{}),...(undo?{undo}:{})});return;
     }
     if(url.pathname==='/api/users'&&req.method==='POST') {

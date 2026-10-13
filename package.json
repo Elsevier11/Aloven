@@ -29,7 +29,8 @@
     "test:planning-drag": "node planning-drag-check.mjs",
     "test:planning-unified": "node planning-unified-check.mjs",
     "test:design": "node mes-design-check.mjs",
-    "test:desktop-flow": "node desktop-flow-check.mjs"
+    "test:desktop-flow": "node desktop-flow-check.mjs",
+    "test:planning-live": "node planning-live-check.mjs"
   },
   "engines": {
     "node": ">=22.13"
