@@ -41,7 +41,7 @@ try{
   assert.ok(await page.locator('.timeline-scroll').evaluate(el=>el.clientHeight>=180),'Timeline utilizzabile anche con riepilogo aperto');
   await page.getByRole('button',{name:'Chiudi riepilogo attività'}).click();
  }
- await page.locator('#planning-options > summary').click();await page.getByLabel('Densità schede').selectOption('compact');assert.ok(await page.locator('#planning-options').evaluate(el=>el.open),'Opzioni restano aperte durante modifica');await page.getByLabel('Densità schede').press('Escape');assert.equal(await page.locator('#planning-options').evaluate(el=>el.open),false);
+ await page.locator('#planning-options > summary').click();await page.getByLabel('Zoom temporale').selectOption('0.65');assert.ok(await page.locator('#planning-options').evaluate(el=>el.open),'Opzioni restano aperte durante modifica');await page.getByLabel('Zoom temporale').press('Escape');assert.equal(await page.locator('#planning-options').evaluate(el=>el.open),false);
  const views=['planning','tasks','machines','types','articles','setupRules','scrapReasons','machineStopReasons','calendar','users'];
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:width===390?844:1000});
