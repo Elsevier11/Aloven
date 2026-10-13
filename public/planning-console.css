@@ -7,7 +7,7 @@
 .shell .sidebar nav button.active{background:#243e60;box-shadow:inset 2px 0 var(--blue)}
 .shell .sidebar .nav-caption{font-size:10px;letter-spacing:1px;color:#adbed2}
 .shell .button{border-radius:8px}
-.planning-workspace{--planner-muted:var(--mes-muted);--candidate-columns:minmax(130px,1fr) 50px 72px 42px 108px;--sequence-columns:24px minmax(150px,1fr) 58px 66px 90px 90px 126px;color:var(--ink)}
+.planning-workspace{--planner-muted:var(--mes-muted);--candidate-columns:minmax(130px,1fr) 50px 72px 42px 108px;--sequence-columns:24px minmax(150px,1fr) 58px 66px 90px 90px 150px;color:var(--ink)}
 .planning-workspace ::selection{background:#d6e6fc;color:#17385f}
 .planning-workspace input{caret-color:var(--blue)}
 .planning-workspace :is(.candidate-list,.production-sequence,.timeline-scroll){scrollbar-color:#a5b5c6 #eef2f7;scrollbar-width:thin}
