@@ -453,3 +453,7 @@ Calendario mensile: ogni giorno ripeteva le fasce orarie della settimana standar
 ### Registro modifiche più compatto — 13 ottobre 2026
 
 Ogni voce del registro occupava quattro righe e ripeteva il messaggio automatico («Modifica plan confermata») già nel titolo, con un ID di 24 caratteri sempre in vista. Ora la voce mostra titolo e riga data · autore; la motivazione compare solo se non è il messaggio automatico (le rettifiche con motivazione scritta dall'amministratore restano visibili); l'ID autore e i valori prima/dopo sono nel riquadro «Dettagli». Dati, catena di integrità e verifica invariati. Tolto il sottotitolo di Backup. Verifiche: 114/114 unitari/HTTP; revision, mes, interface, premium, design.
+
+### Statistiche: etichette leggibili e note non duplicate — 13 ottobre 2026
+
+Nel grafico di produzione mensile le etichette dell'asse X erano tagliate ("2025-", "2026-", con il mese a capo e nascosto): ora sono brevi e su una riga ("dic 25", "ott 26"; per il grafico giornaliero e per la mappa di calore "13/10"). Le note sotto i grafici non ripetono più le descrizioni: produzione mensile («per data di chiusura delle lavorazioni consuntivate» passa nella descrizione, la nota conserva la scala), attività delle macchine (descrizione breve; la nota resta con la copertura degli eventi). Calcoli, KPI, filtri, drill-down ed export invariati. Verifiche: 114/114 unitari/HTTP; statistics 16/16, design, premium, interface, mes.
