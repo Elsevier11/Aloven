@@ -202,10 +202,10 @@ try{
 
   await check('Contatori nel periodo e fuori periodo aprono la sequenza completa',async()=>{
     await setDay('2026-10-12');
-    const counts=page.locator('.period-counts');
+    const counts=page.locator('.temporal-machine').filter({has:page.locator(`[data-outside-sequence="${machine.id}"]`)});
     await counts.waitFor();
     assert.match((await counts.textContent()).replace(/\s+/g,' '),/nel periodo/i);
-    assert.match((await counts.textContent()).replace(/\s+/g,' '),/fuori periodo/i);
+    assert.match((await counts.textContent()).replace(/\s+/g,' '),/\d+ fuori/i);
     await page.locator(`[data-outside-sequence="${machine.id}"]`).click();
     await page.getByRole('heading',{name:'Sequenza macchina',exact:true}).waitFor();
     assert.ok(await page.locator(`.production-sequence-row[data-task="${futureTask.id}"]`).count());

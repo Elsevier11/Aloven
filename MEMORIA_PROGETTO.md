@@ -15,7 +15,7 @@ Riepilogo per orientarsi; le sezioni datate qui sotto sono la cronologia e, in c
 - **Dati e sicurezza:** SQLite con backup automatico ogni 24 ore e verifica di recupero; migrazioni additive; nessuna modifica ai dati operativi senza backup.
 - **Test:** unitari/HTTP con `npm test`, suite browser con Edge e Playwright (`npm run test:*`); l'orologio dei test è unico (test-clock.mjs, sostituibile con ALOVEN_NOW).
 - **Da definire o futuri, non implementare senza richiesta:** integrazione Arca ed ERP, ordini a più fasi, sequenziamento automatico per caratteristiche (es. spessore), OEE, rotoli individuali e magazzino, validazione sul campo con pianificatori e operatori, prove su tablet fisici.
-- **In discussione:** si veda l'ultima serie «Punti in discussione» in fondo (totale in sequenza per macchina, descrizione macchina e tipo ripetuti, conteggi globali nel/fuori periodo).
+- **In discussione:** restano solo ripetizioni minori di descrizione macchina e tipo di lavorazione nella colonna macchina e nel pannello di selezione.
 
 ## Contesto e funzioni presenti
 
@@ -469,3 +469,7 @@ La paginazione di Verifiche qualità, Tracciabilità e Registro modifiche mostra
 ### Consegne mostrato solo quando serve — 13 ottobre 2026
 
 Il controllo «Consegne · N» della barra comandi compare solo se almeno un'attività aperta (nel filtro macchina corrente) ha una consegna dichiarata; con zero consegne non occupa spazio. La funzione planningPriorities e il suo stato vuoto («Nessuna consegna registrata») restano invariati e testati. desktop-flow-check imposta una consegna prima di provare il pannello. Verifiche: 114/114 unitari/HTTP; desktop-flow, design, planning-clarity, planning-unified, planner, dispatch, interface, ui.
+
+### Conteggi globali tolti — 13 ottobre 2026
+
+Decisione dell'utente (13 ottobre 2026): tolti dalla barra secondaria di Pianificazione i conteggi globali «N nel periodo · M fuori periodo» e il pulsante che apriva la ricerca limitata alle attività fuori periodo (modalità ora rimossa dal dialogo). Restano i conteggi per macchina nella colonna macchina («N nel periodo · M fuori», con M che apre la sequenza completa), la ricerca globale «Cerca attività» e il carico del periodo. Questa decisione sostituisce l'approvazione del 12 ottobre sui conteggi globali nel/fuori periodo. Confermato anche di lasciare il totale in sequenza di ciascuna macchina solo nel tooltip. planning-clarity-check verifica ora i conteggi nella colonna macchina. Verifiche: 114/114 unitari/HTTP; planning-clarity 8/8, planning-density, planning-unified, planner, planner-fluidity, dispatch, maintenance, interface, ui, design, desktop-flow.
