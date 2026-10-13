@@ -441,3 +441,7 @@ Nel dialogo Prepara il piano del periodo ogni attività ripeteva «Consegna Non 
 ### Cerca attività: risultati su tre righe — 13 ottobre 2026
 
 I risultati della ricerca globale occupavano quattro righe e ripetevano lo stato («Pianificata» nel testo e di nuovo nel badge; «Da pianificare», «Data non pianificata» e «Non inviata al reparto» insieme). Ora: riferimento, titolo e una riga con codice macchina, data (o «Da pianificare») e, solo se diverso dal predefinito, lo stato di invio come badge. Lo stato di pianificazione scritto compare solo per attività in lavorazione, completate o annullate. I pulsanti Vai alla posizione / Seleziona attività e la ricerca non cambiano. Verifiche: 114/114 unitari/HTTP; planning-clarity 8/8, dispatch 9/9, planning-unified 10/10, planner 10/10, interface.
+
+### Pagina Attività e pagine di elenco semplificate — 13 ottobre 2026
+
+Colonna Stato della tabella Attività: i badge (stato, inizio previsto superato, invio al reparto) sono impilati e non sconfinano più nella colonna Macchina; larghezze ribilanciate (Stato 14%, Macchina 7%). Macchina e Articolo prodotto mostrano il codice con la descrizione nel tooltip, al posto di due «Descrizione» apribili per riga; restano apribili i componenti consumati. Tolti i sottotitoli generici di Attività, Macchine, Tipologie e Utenti (ripetevano il titolo); la testata omette il paragrafo se vuoto. Nessuna modifica a filtri, paginazione, azioni o dati. Verifiche: 114/114 unitari/HTTP; task-list, ui, interface, desktop-flow, premium, design, mes, operational 18/18.
