@@ -229,6 +229,7 @@ try{
     if(await page.locator('#clear-planning-selection').isVisible())await page.locator('#clear-planning-selection').click();
     await page.locator(`.time-block[data-task="${draftTask.id}"]`).first().click();
     const placement=page.locator('#selection-placement');
+    await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});
     await placement.waitFor();
     const mode=placement.locator('select[name="mode"], select').filter({has:page.locator('option[value="end"]')}).first();
     const values=await mode.locator('option').evaluateAll(options=>options.map(option=>option.value));

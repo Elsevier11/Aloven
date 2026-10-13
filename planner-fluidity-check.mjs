@@ -135,7 +135,7 @@ try{
   });
 
   await check('Pannello tastiera consente una risorsa compatibile diversa',async()=>{
-    await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');const block=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await block.focus();await block.press('Enter');await page.locator('#selection-placement').waitFor();const destination=page.getByLabel('Macchina di destinazione');await destination.focus();await destination.press('End');assert.equal(await destination.inputValue(),other.id);
+    await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');const block=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await block.focus();await block.press('Enter');await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});await page.locator('#selection-placement').waitFor();const destination=page.getByLabel('Macchina di destinazione');await destination.focus();await destination.press('End');assert.equal(await destination.inputValue(),other.id);
     await page.getByLabel('Inserisci attività').selectOption('end');await capture('keyboard-destination-panel');let previewAction;const captureRequest=request=>{if(new URL(request.url()).pathname==='/api/preview')previewAction=request.postDataJSON()?.action;};page.on('request',captureRequest);await page.locator('#selection-placement [type="submit"]').press('Enter');await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',captureRequest);assert.equal(previewAction.machineId,other.id);await page.getByRole('button',{name:'Annulla',exact:true}).click();
   });
 
