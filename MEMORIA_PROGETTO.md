@@ -433,3 +433,7 @@ Rimossa l'opzione Normale/Compatta delle card del backlog (variabile, salvataggi
 ### Finestra Sequenza macchina: azioni compatte — 13 ottobre 2026
 
 Nella sequenza completa le azioni di riga si sovrapponevano (frecce, «Togli dal piano» e menu in 126 px) e lo stato ripeteva «Pianificata» su righe sempre pianificate. Ora le azioni sono quattro icone sulla stessa riga (su, giù, ✕ Togli dal piano con nome accessibile completo e tooltip, dettagli) in una colonna da 150 px, e lo stato mostra solo la condizione di invio al reparto («Modificata · da inviare», «Da inviare al reparto»); per le attività in lavorazione resta lo stato esteso. Funzioni e protezioni invariate. Verifiche: 114/114 unitari/HTTP; dispatch 9/9, planning-clarity 8/8, planning-unified 10/10, planner-fluidity 10/10, planning-density 5/5, planner 10/10, maintenance 6/6, operational 18/18, ui, interface.
+
+### Prepara periodo: righe senza rumore — 13 ottobre 2026
+
+Nel dialogo Prepara il piano del periodo ogni attività ripeteva «Consegna Non indicata · Destinazione univoca · macchina · descrizione». Ora la riga mostra la consegna solo se dichiarata e il codice macchina (o «N macchine compatibili · preferita X»). Tolti «Non indicata», «Destinazione univoca» e la descrizione della macchina, già nell'elenco delle macchine incluse. Rimossa la funzione taskDestinationCaption. Logica della proposta, selezione e conferma invariate. Verifiche: 114/114 unitari/HTTP; dispatch 9/9, planning-unified 10/10, planning-clarity 8/8, planner 10/10, interface, ui.
