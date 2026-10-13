@@ -11,7 +11,7 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
 .sidebar button:focus-visible,.sidebar a:focus-visible{outline-color:#a6d7ff;outline-offset:-3px}
 .sidebar nav button{font-size:14px;min-height:44px}
 .sidebar .nav-caption{color:#afc3d8;font-size:10px}
-.sidebar .live-dot,.sidebar .user small{color:#b4c8da;font-size:12px}
+.sidebar .user small{color:#b4c8da;font-size:12px}
 .sidebar .user strong{font-size:12px}
 .sidebar .user .icon-button{min-width:36px}
 .topbar,.today{font-size:12px}

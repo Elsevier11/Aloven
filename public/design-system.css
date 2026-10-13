@@ -31,7 +31,7 @@ input::placeholder,textarea::placeholder { color:var(--mes-muted); opacity:1; }
 .shell .sidebar { background:var(--mes-navy); }
 .shell .sidebar nav button.active { background:var(--mes-dark); box-shadow:inset 2px 0 var(--mes-blue); }
 .shell .sidebar nav button { font-size:14px; min-height:40px; }
-.shell .sidebar .nav-caption,.shell .sidebar .live-dot,.shell .sidebar .user small { color:#BCC7D8; }
+.shell .sidebar .nav-caption,.shell .sidebar .user small{ color:#BCC7D8; }
 .shell .sidebar .user strong { font-size:13px; }
 .shell .sidebar nav button { color:#BCC7D8; }
 .shell .sidebar nav button.active,.shell .sidebar nav button:hover { color:white; }

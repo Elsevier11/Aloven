@@ -15,7 +15,7 @@ Riepilogo per orientarsi; le sezioni datate qui sotto sono la cronologia e, in c
 - **Dati e sicurezza:** SQLite con backup automatico ogni 24 ore e verifica di recupero; migrazioni additive; nessuna modifica ai dati operativi senza backup.
 - **Test:** unitari/HTTP con `npm test`, suite browser con Edge e Playwright (`npm run test:*`); l'orologio dei test è unico (test-clock.mjs, sostituibile con ALOVEN_NOW).
 - **Da definire o futuri, non implementare senza richiesta:** integrazione Arca ed ERP, ordini a più fasi, sequenziamento automatico per caratteristiche (es. spessore), OEE, rotoli individuali e magazzino, validazione sul campo con pianificatori e operatori, prove su tablet fisici.
-- **In discussione:** restano solo ripetizioni minori di descrizione macchina e tipo di lavorazione nella colonna macchina e nel pannello di selezione.
+- **In discussione:** restano da decidere i marcatori «!» di inizio previsto superato sulle barre (quasi ovunque con i dati dimostrativi; il riepilogo «Piano da verificare» dice già lo stesso).
 
 ## Contesto e funzioni presenti
 
@@ -477,3 +477,7 @@ Decisione dell'utente (13 ottobre 2026): tolti dalla barra secondaria di Pianifi
 ### Indicatore Adesso una sola volta — 13 ottobre 2026
 
 Nel Gantt la linea rossa dell'ora corrente resta su tutte le righe macchina, ma l'etichetta «Adesso» compare solo sulla prima riga invece di ripetersi su ciascuna. Solo CSS; posizione e aggiornamento dell'indicatore invariati. Verifiche: 114/114 unitari/HTTP; planner, planner-fluidity, planning-clarity, planning-density, planning-drag, interface.
+
+### Quattro rifiniture dopo la prova su schermata reale — 13 ottobre 2026
+
+Dalla schermata reale dell'utente (account operatore): 1) la frase «Rilascio riservato all'amministratore» non è più una riga scollegata per chi non può rilasciare, ma un tooltip del pannello di stato; 2) il tooltip delle barre non ripete il riferimento quando è già nel titolo («Lotto FW-102 · … · lotto FW-102») né lo stato «Pianificata» (resta per le attività non pianificate); 3) «Azioni ▸» in ogni riga macchina diventa una sola icona ⋯ con nome accessibile «Azioni macchina»; 4) tolta dalla barra laterale la riga «Dati caricati». Rimosse le regole CSS orfane (live-dot, release-readonly). Funzioni invariate. Verifiche: 114/114 unitari/HTTP; maintenance, planner, planner-fluidity, planning-clarity, planning-density, planning-drag, planning-unified, dispatch, release-operator, ui, interface, premium, design, desktop-flow, mes, operational 18/18, resilience 5/5.
