@@ -449,3 +449,7 @@ Colonna Stato della tabella Attività: i badge (stato, inizio previsto superato,
 ### Calendario e pagine amministrative senza ripetizioni — 13 ottobre 2026
 
 Calendario mensile: ogni giorno ripeteva le fasce orarie della settimana standard, nascondendo le eccezioni. Ora la cella mostra gli orari solo se il giorno differisce dalla settimana standard (eccezioni, chiusure, manutenzioni) o è non lavorativo; ogni giorno ha un nome accessibile con data, orari ed eventuale eccezione. Tolti i sottotitoli generici di Statistiche, Calendario e Anagrafica articoli; restano quelli che spiegano un concetto (regole di attrezzaggio, causali, tracciabilità, verifiche qualità, registro, backup). Nessuna modifica ai dati o al calcolo della disponibilità. Verifiche: 114/114 unitari/HTTP; ui, interface, desktop-flow, premium, design, statistics, maintenance, operational 18/18.
+
+### Registro modifiche più compatto — 13 ottobre 2026
+
+Ogni voce del registro occupava quattro righe e ripeteva il messaggio automatico («Modifica plan confermata») già nel titolo, con un ID di 24 caratteri sempre in vista. Ora la voce mostra titolo e riga data · autore; la motivazione compare solo se non è il messaggio automatico (le rettifiche con motivazione scritta dall'amministratore restano visibili); l'ID autore e i valori prima/dopo sono nel riquadro «Dettagli». Dati, catena di integrità e verifica invariati. Tolto il sottotitolo di Backup. Verifiche: 114/114 unitari/HTTP; revision, mes, interface, premium, design.
