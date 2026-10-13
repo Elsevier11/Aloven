@@ -60,7 +60,6 @@ input::placeholder,textarea::placeholder { color:var(--mes-muted); opacity:1; }
 .shell .row-actions .button { min-height:34px; padding:5px 8px; }
 .shell .calendar-day small,.shell .calendar-day.off small,.shell .calendar-day.exception em { font-size:11px; }
 .shell .month-toolbar .icon-button { min-height:34px; min-width:34px; }
-.planning-workspace .release-panel .release-kicker { font-size:12px; }
 .shell .console-workspace .section-navigation { margin-bottom:12px; padding-bottom:8px; }
 .shell .console-workspace .page-heading { margin-bottom:12px; }
 .planning-workspace .planning-titlebar .page-heading h1 { font-size:26px; }
@@ -111,8 +110,7 @@ input::placeholder,textarea::placeholder { color:var(--mes-muted); opacity:1; }
 }
 @media(min-width:1201px) {
   section.planning-toolbar { grid-template-columns:minmax(220px,1fr) auto auto auto auto; }
-  section.planning-toolbar>.planning-period { grid-column:2/6; }
-  section.planning-toolbar>.planning-priorities { grid-column:4; grid-row:2; }
+    section.planning-toolbar>.planning-priorities { grid-column:4; grid-row:2; }
   section.planning-toolbar>.planning-options { grid-column:5; }
 }
 @media(max-width:800px) {

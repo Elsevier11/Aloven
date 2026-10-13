@@ -49,12 +49,11 @@ td small,.materials-column small{font-size:12px}
 .calendar-day.exception em{color:#795005;font-size:11px}
 .month-toolbar select{font-size:13px}
 .calendar-legend{flex-wrap:wrap}
-.backlog>p,.queue-hint,.machine-label,.card-bottom,.plan-legend{font-size:12px}
+.machine-label,.card-bottom{font-size:12px}
 .backlog .search,.plan-toolbar>select,.date-controls input,.zoom-control select,.density-control select{font-size:13px;min-height:36px}
 .type-label{font-size:11px;color:var(--ink)}
 .card-menu{min-width:32px;min-height:32px}
 .material-flow>div,.material-flow small{font-size:11px;color:var(--mes-muted)}
-.plan-legend>span:last-child,.load-summary small,.planning-alert p{font-size:12px}
 .auth-form small,.auth-form form>p:not(.eyebrow){font-size:13px}
 .auth-brand>small{color:#b4c8da;font-size:12px}
 @media(max-width:1200px){.calendar-layout{grid-template-columns:minmax(0,1fr)}}
@@ -89,7 +88,6 @@ td small,.materials-column small{font-size:12px}
 .dispatch-backlog .task-select:hover{text-decoration:none}
 .dispatch-backlog .compact-task:hover{background:var(--mes-bg)}
 .dispatch-backlog .compact-task.selected{outline:none;background:#e8f1ff;border-left-color:var(--mes-blue)}
-.dispatch-backlog .queue-hint{font-size:11px;line-height:1.5;margin:0;padding-top:8px}
 .dispatch-filter{display:flex;flex-direction:row;align-items:center;gap:7px;font-size:13px;color:var(--mes-muted)}
 .dispatch-filter input{width:16px;height:16px;margin:0}
 .dispatch-resources{padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -134,22 +132,9 @@ td small,.materials-column small{font-size:12px}
 .section-navigation button{min-height:40px;padding:8px 14px;border:1px solid var(--line);background:white;color:var(--ink);font-size:13px;font-weight:600}
 .section-navigation button:hover{background:#edf4ff}
 .section-navigation button.active{background:#eaf2ff;color:#174d9d;border-color:#83a8de;box-shadow:inset 0 -2px var(--blue)}
-.planning-overview{display:flex;align-items:stretch;gap:16px;margin-bottom:12px;background:white;border:1px solid var(--line);border-radius:8px;padding:12px 16px}
-.planning-overview .metrics{flex:1;min-width:0;padding:0;margin:0;border:0;border-radius:0;gap:0;background:none}
-.planning-overview .metrics>div{padding:0 14px}
-.planning-overview .metrics>div:first-child{padding-left:0}
-.planning-overview .metrics strong{font-size:22px;margin-top:2px;gap:6px}
-.planning-overview .metrics small{display:none}
-.planning-overview .load-summary{flex:0 1 330px;padding:0 0 0 18px;margin:0;border:0;border-left:1px solid var(--line);border-radius:0;gap:3px;align-content:center;font-size:12px}
-.planning-overview .load-summary strong{font-size:12px}
-.planning-overview .load-summary small{font-size:11px;line-height:1.4}
-.planning-alert{padding:8px 12px;margin:0 0 10px;font-size:12px}
-.planning-alert summary{color:#774907;font-weight:650;min-height:24px}
-.planning-alert p{margin:6px 0 2px}
 .plan-toolbar{gap:8px;margin-bottom:10px}
 .plan-toolbar .date-controls{margin-left:0}
 .plan-toolbar .plan-view-switch .button{min-height:36px}
-.plan-toolbar #machine-filter{flex:1;max-width:280px}
 .planning-options{position:relative;margin-left:auto;border:0;padding:0;flex:none;font-size:13px}
 .planning-options>summary{min-height:36px;padding:8px 12px;color:var(--ink);border:1px solid var(--line);border-radius:6px;background:white}
 .planning-options-body{position:absolute;right:0;top:calc(100% + 8px);width:300px;padding:18px;border:1px solid #b9cadd;border-radius:8px;background:white;box-shadow:0 8px 24px #172b4224;z-index:30;display:flex;flex-direction:column;gap:16px}
@@ -165,14 +150,13 @@ td small,.materials-column small{font-size:12px}
  .planning-workspace .page-heading{margin-bottom:12px;gap:12px;flex:none}
  .planning-workspace .page-heading h1{font-size:27px;letter-spacing:-.6px}
  .planning-workspace .page-heading p:not(.eyebrow){margin-top:3px;font-size:12px}
- .planning-overview,.planning-workspace .planning-alert,.planning-workspace .plan-toolbar{flex-shrink:0}
+ .planning-workspace .plan-toolbar{flex-shrink:0}
  .planning-workspace .planner-area{flex:1;min-height:0}
  .planning-workspace .planner{height:100%;min-height:0}
  .planning-workspace .backlog{height:100%;align-self:stretch;padding:12px;min-height:0}
  .planning-workspace .backlog-cards{min-height:0;max-height:none;overflow:auto}
  .planning-workspace .backlog .search{margin:10px 0;flex-shrink:0}
- .planning-workspace .queue-hint{margin-top:10px;padding-top:8px;flex-shrink:0}
- .planning-workspace .timeline-scroll{height:100%;min-height:0;max-height:none}
+  .planning-workspace .timeline-scroll{height:100%;min-height:0;max-height:none}
  .planning-workspace .planning-selection{position:static;max-height:100%;height:100%;min-height:0}
  .planning-workspace .planner-area.has-selection{grid-template-rows:minmax(0,1fr)}
 }
@@ -180,16 +164,10 @@ td small,.materials-column small{font-size:12px}
  .planning-workspace .planner-area.has-selection{display:block;position:relative}
  .planning-workspace .planning-selection{position:absolute;top:0;right:0;width:340px;max-width:calc(100% - 12px);z-index:25;box-shadow:-8px 0 24px #172b4220}
  .planning-workspace .selection-body{display:block}
- .planning-overview{gap:10px;padding:10px}
- .planning-overview .metrics>div{padding:0 8px}
- .planning-overview .load-summary{flex-basis:260px;padding-left:10px}
-}
+   }
 @media(max-width:800px){
  .sidebar nav{overflow:auto;flex:1;gap:4px}.sidebar .brand{padding-bottom:0}
- .planning-overview{flex-direction:column;padding:14px;gap:12px}
- .planning-overview .metrics{gap:12px 0}.planning-overview .metrics>div:nth-child(odd){padding-left:0}
- .planning-overview .load-summary{flex:auto;padding:10px 0 0;border-left:0;border-top:1px solid var(--line)}
- .planning-options{margin-left:0}.planning-options-body{left:0;right:auto;width:min(300px,calc(100vw - 30px))}
+    .planning-options{margin-left:0}.planning-options-body{left:0;right:auto;width:min(300px,calc(100vw - 30px))}
  .planning-workspace .timeline-scroll{height:500px;min-height:0}
  .section-navigation{gap:6px}.section-navigation button{padding:8px 10px;font-size:12px}
 }
