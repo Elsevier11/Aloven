@@ -463,3 +463,7 @@ Nei grafici a barre con una sola serie (scarti per causale) è nascosta l'etiche
 ### Bordo macchina classico senza ripetizioni — 13 ottobre 2026
 
 Nel bordo macchina classico tolti: la riga di stato «Piano rilasciato e rilevazioni condivise» (già sottintesa dal titolo «Prossime fasi rilasciate»), il nome della macchina ripetuto sotto il titolo della fase (è già nel selettore Postazione macchina) e la nota «Le modifiche in bozza non sono visibili a bordo macchina», ora mostrata solo agli amministratori, che sono gli unici a modificare la bozza. Comandi, dichiarazioni, tempi e regole di piano rilasciato invariati. Verifiche: 114/114 unitari/HTTP; ui, release-operator, mes, design, premium, revision, interface, operational 18/18.
+
+### Paginazione nascosta quando non serve — 13 ottobre 2026
+
+Le liste con al massimo 25 elementi (utenti, macchine, causali, regole…) mostravano comunque Righe, Precedente, «1 / 1» e Successiva. Ora, finché tutto entra in una pagina da 25, resta solo il conteggio («1–1 di 1 elementi»); selettore e comandi tornano oltre i 25 elementi o dopo aver scelto un'altra dimensione di pagina. Filtri, paginazione, gestione dello zero e focus invariati. Verifiche: premium, ui, interface, desktop-flow, design, task-list, operational 18/18.
