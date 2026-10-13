@@ -30,3 +30,10 @@ test('compatibility validates destination and preference, legacy explicit reassi
 test('compatibility migration additive and idempotent with historical destination preserved',()=>{
  const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT); INSERT INTO meta VALUES('revision','1'); CREATE TABLE tasks(id TEXT PRIMARY KEY,machineId TEXT);INSERT INTO tasks VALUES('t','m');");assert.equal(migratePlanningCompatibility(db).migrated,true);assert.equal(db.prepare('SELECT compatibleMachineIds FROM tasks').get().compatibleMachineIds,'["m"]');assert.equal(migratePlanningCompatibility(db).migrated,false);assert.equal(db.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'2');db.close();
 });
+test('proposal honours a manual setup time over catalog rules and the base setup',()=>{
+ const s=base();s.setupRules=[{machineId:'m',fromTypeId:'type',toTypeId:'second',minutes:15}];
+ s.tasks=[task('a',60,{setupOverrideMinutes:0}),task('b',60,{typeId:'second',setupOverrideMinutes:45}),task('c',60,{typeId:'second'})];
+ const p=propose(s),by=id=>p.state.tasks.find(t=>t.id===id);
+ assert.deepEqual(p.included,['a','b','c']);
+ assert.equal(by('a').effectiveSetupMinutes,0);assert.equal(by('b').effectiveSetupMinutes,45,'il valore manuale prevale sulla regola');assert.equal(by('c').effectiveSetupMinutes,30,'senza override né regola second→second resta il valore base');
+});

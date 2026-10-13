@@ -23,6 +23,22 @@ export function placementAction(tasks,id,mode,targetId,fixedStart,machineId) {
   if(task.machineId===original.machineId&&task.status==='planned'&&!task.fixedStart&&next===beforeId)return null;
   return {kind:'plan',id,beforeId,...(task.machineId!==original.machineId?{machineId:task.machineId}:{})};
 }
+/** Setup the machine's rules would give this activity in its current sequence position (same rule as the server). */
+export function theoreticalSetup(state,task) {
+  const queue=state.tasks.filter(t=>t.machineId===task.machineId&&t.position!==null).sort((a,b)=>a.position-b.position),index=queue.findIndex(t=>t.id===task.id);
+  if(index>0){
+    const rule=(state.setupRules||[]).find(item=>item.machineId===task.machineId&&item.fromTypeId===queue[index-1].typeId&&item.toTypeId===task.typeId);
+    if(rule)return rule.minutes;
+  }
+  return task.setupMinutes;
+}
+/** Action for a manual setup time; null when it matches what is stored. A value equal to the theoretical one clears the override. */
+export function setupOverrideAction(state,task,minutes) {
+  if(!Number.isInteger(minutes)||minutes<0)throw new Error('Inserisci minuti interi, zero o più.');
+  const theory=theoreticalSetup(state,task),next=minutes===theory?null:minutes;
+  if((task.setupOverrideMinutes??null)===next)return null;
+  return {kind:'setupOverride',id:task.id,minutes:next};
+}
 function compatibleMachines(c,t) {
   const ids=Array.isArray(t.compatibleMachineIds)&&t.compatibleMachineIds.length?t.compatibleMachineIds:[t.machineId];
   const machines=c.state.machines.filter(machine=>ids.includes(machine.id));
@@ -57,7 +73,7 @@ export function planningSelection(c) {
   <div class="selection-information"><div class="selection-states">${c.badge(t.status)}<span class="dispatch-state dispatch-tone" data-tone="${c.esc(dispatchTone(t))}">${c.esc(dispatchLabel(t))}</span></div><h3>${c.esc(t.title)}</h3>${titleFacts.length?`<p class="selection-title-facts">${titleFacts.map(value=>c.esc(value)).join(' · ')}</p>`:''}${referenceInTitle?'':`<p class="selection-reference"><span>Riferimento operativo</span><strong>${c.esc(reference)}</strong></p>`}${canPlace?'':`<p class="selection-machine">${c.esc(c.machine(t.machineId)?.name)}</p>`}<p>${c.esc(c.type(t.typeId)?.name)}</p>${t.fixedStart?'<p class="planning-pin">Data fissata: conserva questo inizio finché non la rimuovi. <button type="button" class="button subtle" id="selection-unpin" aria-label="Rimuovi data fissata">Rimuovi</button></p>':''}
   ${['planned','unplanned'].includes(t.status)?`<form id="selection-placement"><h3>${t.status==='unplanned'?'Posiziona attività':'Modifica la posizione'}</h3>${machineField}<label>Posizione<select name="mode" aria-label="Inserisci attività"><optgroup label="Sequenza"><option value="end">In coda</option><option value="before" ${choices.length?'':'disabled'}>Prima</option><option value="after">Dopo</option></optgroup><optgroup label="Data"><option value="date" ${t.fixedStart?'selected':''}>Data precisa</option><option value="cascade">Data precisa e sposta successive</option></optgroup></select></label><label id="selection-reference-label" hidden>Attività di riferimento<select name="targetId" aria-label="Attività di riferimento"></select></label><label id="selection-start-label" hidden>Data e ora di inizio<input type="datetime-local" name="fixedStart" aria-label="Data e ora di inizio" value="${c.esc(t.fixedStart||t.start||(c.dateStart||'')+'T08:00')}" step="60"></label><p class="selection-help" id="selection-placement-help"></p><button type="submit" class="button primary">${submitLabel(t,t.fixedStart?'date':'end')}</button></form>`:`<p class="selection-help">${locked(t)?'Attività bloccata: puoi consultarla, ma non spostarla.':'Attività annullata: usa la scheda completa per ripristinarla.'}</p>`}
   ${warning?`<p class="selection-warning" role="status">${c.esc(warning)}</p>`:''}
-  <dl class="selection-facts"><div><dt>Prodotto</dt><dd>${c.esc(t.productCode||'Non indicato')}</dd></div><div><dt>Quantità prevista</dt><dd>${c.esc(quantity)}</dd></div><div><dt>Attrezzaggio</dt><dd>${c.mins(t.effectiveSetupMinutes??t.setupMinutes)}</dd></div><div><dt>Lavorazione</dt><dd>${c.mins(t.runMinutes)}</dd></div><div><dt>Inizio previsto</dt><dd>${c.fmt(t.start)}</dd></div><div><dt>Fine prevista</dt><dd>${t.end?c.fmt(t.end):'Non pianificata'}</dd></div></dl>
+  <dl class="selection-facts"><div><dt>Prodotto</dt><dd>${c.esc(t.productCode||'Non indicato')}</dd></div><div><dt>Quantità prevista</dt><dd>${c.esc(quantity)}</dd></div><div><dt>Attrezzaggio</dt><dd>${c.mins(t.effectiveSetupMinutes??t.setupOverrideMinutes??t.setupMinutes)}${t.setupOverrideMinutes!=null?` <small class="setup-modified">modificato · teorico ${c.mins(theoreticalSetup(c.state,t))}</small>`:''}${canPlace?' <button type="button" class="link-button" id="selection-setup-edit" aria-label="Modifica il tempo di attrezzaggio">Modifica</button>':''}</dd></div><div><dt>Lavorazione</dt><dd>${c.mins(t.runMinutes)}</dd></div><div><dt>Inizio previsto</dt><dd>${c.fmt(t.start)}</dd></div><div><dt>Fine prevista</dt><dd>${t.end?c.fmt(t.end):'Non pianificata'}</dd></div></dl>
   <details class="selection-materials"><summary>Componenti e descrizioni</summary>${c.materialDetails(t)}</details></div>
   <div class="selection-actions"><button class="button secondary" id="selection-details">Scheda completa</button>${t.start?'<button class="button secondary" id="selection-focus">Mostra giorno e macchina</button>':''}${t.status==='planned'?'<div class="selection-unplan"><button class="button subtle" id="selection-unplan">Togli dal piano</button><p>La rimozione arriva al reparto solo con il prossimo invio del piano; l’attività torna tra quelle da pianificare.</p></div>':''}</div></div>`;
 }
@@ -66,6 +82,7 @@ export function bindPlanningSelection(c) {
   root.onkeydown=e=>{if(e.key==='Escape'&&!e.target.matches('select')){e.preventDefault();c.clear();}};
   root.querySelector('#clear-planning-selection')?.addEventListener('click',c.clear);
   root.querySelector('#selection-details')?.addEventListener('click',()=>c.taskDetails(c.selectedTaskId));
+  root.querySelector('#selection-setup-edit')?.addEventListener('click',()=>c.setupDialog(c.selectedTaskId));
   root.querySelector('#selection-focus')?.addEventListener('click',c.focusTask);
   root.querySelector('#selection-unpin')?.addEventListener('click',async()=>{const task=c.state.tasks.find(t=>t.id===c.selectedTaskId),queue=c.state.tasks.filter(t=>t.machineId===task.machineId&&t.position!==null).sort((a,b)=>a.position-b.position),next=queue[queue.findIndex(t=>t.id===task.id)+1];try{await c.mutate({kind:'plan',id:task.id,beforeId:next?.id||''},true);}catch(error){c.toast(error.message,true);}});
   root.querySelector('#selection-unplan')?.addEventListener('click',async()=>{try{await c.mutate({kind:'plan',id:c.selectedTaskId,unplan:true},true);}catch(e){c.toast(e.message,true);}});

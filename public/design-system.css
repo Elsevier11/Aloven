@@ -15,7 +15,7 @@
   --mes-machine-7:#526815; --mes-machine-8:#77358F;
   --mes-space-1:4px; --mes-space-2:8px; --mes-space-3:12px;
   --mes-space-4:16px; --mes-space-5:20px; --mes-space-6:24px;
-  --mes-sidebar:224px; --mes-topbar:56px; --mes-control:38px;
+  --mes-sidebar:224px; --mes-sidebar-collapsed:60px; --mes-topbar:56px; --mes-control:38px;
   --mes-radius:8px; --mes-body:14px; --mes-label:12px; --mes-title:28px;
   --navy:var(--mes-navy); --ink:var(--mes-ink); --muted:var(--mes-muted);
   --paper:var(--mes-bg); --blue:var(--mes-blue); --line:var(--mes-border);
@@ -118,4 +118,42 @@ input::placeholder,textarea::placeholder { color:var(--mes-muted); opacity:1; }
   .shell main { margin-left:0; }
   .shell .page-heading h1 { font-size:24px; }
   .statistics-factor-grid { grid-template-columns:1fr; gap:12px; }
+}
+
+/* Official logo: original image, unaltered, on a white tile. */
+.brand.has-logo { display:block; padding:0; font-size:0; letter-spacing:0; line-height:0; }
+.brand.has-logo img { display:block; width:100%; max-width:150px; height:auto; padding:5px 9px; background:#fff; border-radius:7px; }
+.auth-brand .brand.has-logo img { max-width:200px; }
+.shop-header .brand.has-logo { display:flex; align-items:center; gap:12px; }
+.shop-header .brand.has-logo img { width:130px; }
+.shop-header .brand.has-logo span { position:static; display:inline; font-size:11px; letter-spacing:1px; line-height:1.2; color:#c4cfdd; }
+.shell .sidebar .sidebar-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-bottom:22px; }
+.shell .sidebar .sidebar-head .brand { padding-bottom:0; min-width:0; flex:1; }
+.shell .sidebar-toggle { flex:none; width:32px; min-width:32px; height:32px; min-height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid #ffffff2e; color:#BCC7D8; border-radius:7px; cursor:pointer; }
+.shell .sidebar-toggle:hover { color:#fff; background:#ffffff14; }
+.shell .sidebar-toggle svg { width:18px; height:18px; }
+.shell .sidebar nav button .nav-label { min-width:0; }
+
+/* Planner controls added with the manual setup time and the sequence realignment. */
+.link-button { border:0; background:none; padding:0 2px; color:var(--mes-blue); font:inherit; font-size:12px; text-decoration:underline; cursor:pointer; }
+.link-button:focus-visible { outline:2px solid var(--mes-blue); outline-offset:2px; border-radius:3px; }
+.setup-modified { display:block; color:#8a5a00; font-size:11px; }
+.sequence-header-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.choice-group { border:1px solid var(--mes-border); border-radius:8px; padding:8px 12px 10px; margin:10px 0; display:grid; gap:6px; }
+.choice-group legend { font-size:12px; font-weight:600; padding:0 4px; }
+.choice-group label { display:flex; align-items:center; gap:8px; font-size:13px; }
+
+@media(min-width:801px) {
+  .shell.sidebar-collapsed .sidebar { width:var(--mes-sidebar-collapsed); padding:16px 8px 14px; align-items:center; }
+  .shell.sidebar-collapsed main { margin-left:var(--mes-sidebar-collapsed); }
+  .shell.sidebar-collapsed .sidebar-head { flex-direction:column; align-items:center; padding-bottom:14px; }
+  .shell.sidebar-collapsed .sidebar-head .brand,.shell.sidebar-collapsed .nav-caption,.shell.sidebar-collapsed nav button .nav-label,.shell.sidebar-collapsed .user>div { display:none; }
+  .shell.sidebar-collapsed nav { width:100%; }
+  .shell.sidebar-collapsed nav button { justify-content:center; padding:9px 0; }
+  .shell.sidebar-collapsed .user { flex-direction:column; padding-top:12px; gap:8px; }
+}
+@media(max-width:800px) {
+  .shell .sidebar .sidebar-head { padding-bottom:0; flex:none; }
+  .shell .sidebar-toggle { display:none; }
+  .brand.has-logo img { max-width:96px; padding:3px 6px; }
 }

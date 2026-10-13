@@ -37,6 +37,8 @@ export function releasedPayload(task) {
   // Old release snapshots did not contain this field. Omitting the null value
   // keeps those snapshots comparable, while a real pin remains release data.
   if (value.fixedStart == null) delete value.fixedStart;
+  // Same rule for the manual setup time: absent in older snapshots, real data once set.
+  if (value.setupOverrideMinutes == null) delete value.setupOverrideMinutes;
   return value;
 }
 
@@ -107,6 +109,7 @@ export function releasedTasks(tasks) {
       ...task,
       ...released,
       fixedStart: Object.hasOwn(released, 'fixedStart') ? released.fixedStart : null,
+      setupOverrideMinutes: released.setupOverrideMinutes ?? null,
       status: operationalStatus,
       releasedPayload: task.releasedPayload,
       releasedVersion: task.releasedVersion,
@@ -316,7 +319,7 @@ export function respondExecutionInterruption(db, payload, user, makeId, now = ne
       }
       db.prepare(`UPDATE execution SET interruptedAt=?,interruptionReason=?,interruptionRequestId=?,interruptedByUserId=?,interruptedByUserName=? WHERE taskId=?`)
         .run(now,request.reason,requestId,user.id,user.name,task.id);
-      db.prepare("UPDATE tasks SET status='cancelled',position=NULL,start=NULL,end=NULL,segments='[]',effectiveSetupMinutes=NULL,fixedStart=NULL,releasedPayload=NULL,releasedVersion=NULL WHERE id=?").run(task.id);
+      db.prepare("UPDATE tasks SET status='cancelled',position=NULL,start=NULL,end=NULL,segments='[]',effectiveSetupMinutes=NULL,fixedStart=NULL,setupOverrideMinutes=NULL,releasedPayload=NULL,releasedVersion=NULL WHERE id=?").run(task.id);
       db.prepare(`UPDATE executionInterruptionRequests SET status='confirmed',respondedAt=?,respondedByUserId=?,respondedByUserName=?,responseReason=? WHERE id=?`)
         .run(now,user.id,user.name,typeof payload.reason==='string'?payload.reason.trim().slice(0,1000):null,requestId);
       if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mesAuditLog'").get()) recordMesAudit(db,{entityType:'execution',entityId:task.id,action:'interruption_confirmed',user,reason:request.reason,before:{phase:execution.phase,requestId},after:{phase:'cancelled',requestId,producedQuantity:declaration?.goodQuantity??null,scrapQuantity:declaration?.scrapQuantity??null,outputLot}},makeId,now);

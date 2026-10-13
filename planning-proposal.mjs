@@ -58,7 +58,7 @@ export function proposePeriod(input,{from,to,machineIds,taskIds},options={}){
       // Append from the later of the queue end and period start, without shifting existing work.
       const cursor=scheduled.length?scheduled.at(-1).end:anchor;
       const earliest=[cursor,start,notBefore].sort().at(-1);
-      const previous=sequence.at(-1),setup=previous?state.setupRules?.find(r=>r.machineId===id&&r.fromTypeId===previous.typeId&&r.toTypeId===candidate.typeId)?.minutes??candidate.setupMinutes:candidate.setupMinutes;
+      const previous=sequence.at(-1),setup=candidate.setupOverrideMinutes!=null?candidate.setupOverrideMinutes:previous?state.setupRules?.find(r=>r.machineId===id&&r.fromTypeId===previous.typeId&&r.toTypeId===candidate.typeId)?.minutes??candidate.setupMinutes:candidate.setupMinutes;
       let item;
       try{item=scheduleMachine([{...candidate,status:'planned',setupMinutes:setup}],earliest,cal)[0];}catch(error){excluded.push({id:candidate.id,reason:error.message});continue;}
       if(item.end>end){excluded.push({id:candidate.id,reason:'Non entra interamente nel periodo'});continue;}
