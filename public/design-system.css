@@ -198,3 +198,8 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
   .live-strip h2 { display:none; }
   .live-cell { padding:0 6px; font-size:11px; line-height:1.2; }
 }
+.period-range { font-weight:650; margin-right:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.period-range .range-short { display:none; }
+@media(min-width:801px) and (max-width:1200px) { .period-range .range-full { display:none; } .period-range .range-short { display:inline; } .period-range { margin-right:8px; } }
+.period-load .load-short { display:none; }
+@media(min-width:801px) and (max-width:1200px) { .period-load .load-full { display:none; } .period-load .load-short { display:inline; } }

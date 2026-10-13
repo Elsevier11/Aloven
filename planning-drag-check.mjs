@@ -67,7 +67,7 @@ try{
  await candidate.dragTo(busy,{targetPosition:await point(busy,9*60+45)});await page.waitForFunction(()=>document.querySelector('#toast')?.classList.contains('error'));assert.equal((await state()).revision,beforeReject.revision);
  await page.locator(`.backlog [data-select-task="${tasks[3].id}"]`).click();await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-11-12T14:07');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"]`),tasks[3].id);assert.equal((await state()).tasks.find(t=>t.id===tasks[3].id).start,'2026-11-12T14:07');
  await page.reload();await page.locator('#date-start').fill('2026-11-12');await page.locator('#date-start').dispatchEvent('change');assert.equal((await state()).tasks.find(t=>t.id===tasks[3].id).fixedStart,'2026-11-12T14:07');
- await page.getByRole('button',{name:'5 giorni',exact:true}).click();
+ await page.getByRole('button',{name:'Settimana',exact:true}).click();
  mkdirSync('.artifacts',{recursive:true});
  for(const [width,height] of [[1366,768],[1920,1080],[390,844]]){
   await page.setViewportSize({width,height});
