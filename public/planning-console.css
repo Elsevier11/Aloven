@@ -286,3 +286,4 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .resource-timeline .machine-tools .machine-actions{margin:0}
 .planning-workspace .resource-timeline .temporal-machine{min-height:0}
 .planning-workspace .resource-timeline .outside-sequence{display:inline;padding:0;min-height:0}
+.planning-workspace .gantt-row~.gantt-row .now-marker span{display:none}

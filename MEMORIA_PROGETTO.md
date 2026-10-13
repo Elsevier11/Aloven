@@ -473,3 +473,7 @@ Il controllo «Consegne · N» della barra comandi compare solo se almeno un'att
 ### Conteggi globali tolti — 13 ottobre 2026
 
 Decisione dell'utente (13 ottobre 2026): tolti dalla barra secondaria di Pianificazione i conteggi globali «N nel periodo · M fuori periodo» e il pulsante che apriva la ricerca limitata alle attività fuori periodo (modalità ora rimossa dal dialogo). Restano i conteggi per macchina nella colonna macchina («N nel periodo · M fuori», con M che apre la sequenza completa), la ricerca globale «Cerca attività» e il carico del periodo. Questa decisione sostituisce l'approvazione del 12 ottobre sui conteggi globali nel/fuori periodo. Confermato anche di lasciare il totale in sequenza di ciascuna macchina solo nel tooltip. planning-clarity-check verifica ora i conteggi nella colonna macchina. Verifiche: 114/114 unitari/HTTP; planning-clarity 8/8, planning-density, planning-unified, planner, planner-fluidity, dispatch, maintenance, interface, ui, design, desktop-flow.
+
+### Indicatore Adesso una sola volta — 13 ottobre 2026
+
+Nel Gantt la linea rossa dell'ora corrente resta su tutte le righe macchina, ma l'etichetta «Adesso» compare solo sulla prima riga invece di ripetersi su ciascuna. Solo CSS; posizione e aggiornamento dell'indicatore invariati. Verifiche: 114/114 unitari/HTTP; planner, planner-fluidity, planning-clarity, planning-density, planning-drag, interface.
