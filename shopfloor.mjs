@@ -1,5 +1,5 @@
 import { finalizeMesExecution } from './mes-records.mjs';
-import { executionMetrics, validateFinishDeclaration } from './quality.mjs';
+import { assessFinishPlausibility, executionMetrics, qualityStatusWithPlausibility, requirePlausibilityReason, validateFinishDeclaration } from './quality.mjs';
 
 const ACTIONS = ['start_setup','finish_setup','resume_setup','start_run','pause_run','resume_run','finish_run'];
 
@@ -165,6 +165,7 @@ export function shopfloorExecutions(db, at = new Date().toISOString()) {
       ...execution,
       phase: execution.interruptedAt ? 'cancelled' : execution.phase,
       qualityChecks: execution.qualityChecks === null ? null : JSON.parse(execution.qualityChecks),
+      plausibilityFlags: execution.plausibilityFlags ? JSON.parse(execution.plausibilityFlags) : [],
       setupActualSeconds: metrics.actualSetupSeconds,
       runActualSeconds: metrics.actualRunSeconds,
       metrics,
@@ -236,12 +237,16 @@ export function performShopfloorAction(db, payload, user, makeId, now = new Date
         : null;
       if (declaration.scrapQuantity > 0 && !scrapReason) fail('Seleziona una causale di scarto attiva.');
       const total = execution.runActiveSeconds + (execution.phase === 'run_running' ? elapsedSeconds(execution.lastRunStartedAt,now) : 0);
+      const plausibilityFlags = assessFinishPlausibility(declaration, execution, total);
+      const plausibilityReason = requirePlausibilityReason(payload, plausibilityFlags);
+      const recordedQualityStatus = qualityStatusWithPlausibility(declaration.qualityStatus, plausibilityFlags);
+      const recordedQualityNotes = plausibilityFlags.length ? (declaration.qualityNotes || plausibilityReason) : declaration.qualityNotes;
       const insert = db.prepare('INSERT INTO executionLots(id,taskId,component,articleCode,lot,quantity,unit,barcode) VALUES (?,?,?,?,?,?,?,?)');
       for (const lot of declaration.lots) {
         const prefix = lot.component;
         insert.run(makeId(),task.id,lot.component,execution[`${prefix}Code`],lot.lot,lot.quantity,execution[`${prefix}Unit`],lot.barcode);
       }
-      db.prepare("UPDATE execution SET phase='completed',runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=? WHERE taskId=?").run(now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,declaration.qualityStatus,declaration.qualityNotes,JSON.stringify(declaration.qualityChecks),task.id);
+      db.prepare("UPDATE execution SET phase='completed',runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=?,plausibilityFlags=?,plausibilityReason=? WHERE taskId=?").run(now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,recordedQualityStatus,recordedQualityNotes,JSON.stringify(declaration.qualityChecks),JSON.stringify(plausibilityFlags),plausibilityReason,task.id);
       db.prepare("UPDATE tasks SET status='completed' WHERE id=?").run(task.id);
       if(releaseEnabled)db.prepare("UPDATE executionInterruptionRequests SET status='cancelled',respondedAt=?,respondedByUserId=?,respondedByUserName=?,responseReason='Attività completata prima della risposta' WHERE taskId=? AND status='requested'").run(now,user.id,user.name,task.id);
       if(db.prepare("SELECT 1 FROM meta WHERE key='mes-records-v1'").get())finalizeMesExecution(db,task.id,payload,user,makeId,now);

@@ -73,6 +73,7 @@ test('bordo macchina gestisce concorrenza, pause ripetute e rifiuti atomici; la 
       revision: revision ?? state.revision,
       taskId,
       action: name,
+      ...(name === 'finish_run' ? {plausibilityReason:'Chiusura istantanea della prova automatica'} : {}),
       ...values,
     }, expected);
   }

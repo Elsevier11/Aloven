@@ -3,6 +3,7 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {validateFinishDeclaration} from './quality.mjs';
+import {releasedPayload} from './planning-release.mjs';
 
 // Explicit, one-time data operation. Never run automatically at startup.
 const dir=path.resolve(process.env.DATA_DIR||'data');
@@ -50,6 +51,10 @@ try{
     assert.equal(t.calculationMode,'manual');
     t.runMinutes=Math.max(1,Math.round(t.runMinutes/5));t.quantity=scale(t.quantity);
     if(t.start)Object.assign(t,shortenSegments(t.segments,t.runMinutes));
+    // A completed task is immutable for planning purposes, but its published
+    // historical view must follow intentional data migrations. Never create a
+    // snapshot for a draft or for work that was never released.
+    if(t.status==='completed'&&t.releasedVersion!=null&&t.releasedPayload!=null)t.releasedPayload=JSON.stringify(releasedPayload(t));
     update('tasks','id',t);
    }
    const removedIds=new Set();
@@ -98,7 +103,7 @@ try{
    // them even when a shortened simulated execution now finishes before a stop.
    assert.equal(db.prepare('PRAGMA foreign_key_check').all().length,0);
    assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
-   const report={updatedTasks:targets.size,historicalExecutions:executions,preservedOperatorExecutions:expected.execution.length-executions,scaledLots:expected.executionLots.filter(l=>l.id.startsWith('sim10m-v1-lot-')).length,removedObsoleteSimulatedEvents:removedEvents,setupUnchanged:true,startsAndPositionsUnchanged:true,publishedPlanUnchanged:true,backup};
+   const report={updatedTasks:targets.size,historicalExecutions:executions,preservedOperatorExecutions:expected.execution.length-executions,scaledLots:expected.executionLots.filter(l=>l.id.startsWith('sim10m-v1-lot-')).length,removedObsoleteSimulatedEvents:removedEvents,setupUnchanged:true,startsAndPositionsUnchanged:true,completedSnapshotsAligned:true,draftsPublished:false,backup};
    db.prepare('INSERT INTO meta(key,value) VALUES (?,?)').run(marker,JSON.stringify(report));
    db.prepare("UPDATE meta SET value=CAST(value AS INTEGER)+1 WHERE key='revision'").run();
    db.exec('COMMIT');writeFileSync(path.join(dir,'demo-reduction-report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));

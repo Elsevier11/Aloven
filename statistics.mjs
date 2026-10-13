@@ -84,6 +84,7 @@ function commonMetrics(rows) {
     plannedRunHours: secondsSum(rows,'plannedRunSeconds'),
     actualRunHours: hours(rows.reduce((sum,row) => sum + row.actualRunSeconds,0)),
     nonconformingCount: rows.filter(row => row.qualityStatus === 'nonconforming').length,
+    plausibilityFlaggedCount: rows.filter(row => row.plausibilityFlagged).length,
   };
 }
 
@@ -248,6 +249,9 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
         plannedRunSeconds:row.plannedRunMinutes == null ? null : row.plannedRunMinutes*60,
         actualRunSeconds:row.runActiveSeconds == null || !Number.isFinite(Number(row.runActiveSeconds)) ? null : Number(row.runActiveSeconds),
         qualityStatus:row.qualityStatus,
+        plausibilityFlagged:Boolean(row.plausibilityFlags && row.plausibilityFlags !== '[]'),
+        plausibilityFlags:row.plausibilityFlags ? JSON.parse(row.plausibilityFlags) : [],
+        plausibilityReason:row.plausibilityReason ?? null,
         nonconformingCount:row.qualityStatus === 'nonconforming' ? 1 : 0,
         scrapReasonCode:row.scrapReasonCode || UNCLASSIFIED_CODE,
         scrapReasonLabel:row.scrapReason || UNCLASSIFIED_LABEL,
@@ -315,6 +319,7 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
     count:all.count, plannedSetupHours:all.plannedSetupHours, actualSetupHours:all.actualSetupHours,
     plannedRunHours:all.plannedRunHours, actualRunHours:all.actualRunHours,
     nonconformingCount:all.nonconformingCount,
+    plausibilityFlaggedCount:all.plausibilityFlaggedCount,
     setupPairedCount:all.setupPairedCount,setupDeltaHours:all.setupDeltaHours,averageSetupDeltaMinutes:all.averageSetupDeltaMinutes,
     stoppedHours:hours(stops.reduce((sum,row)=>sum+row.durationSeconds,0)),
     stopCount:stops.length, closedStopCount:stops.filter(row=>row.endedAt !== null).length,
@@ -375,8 +380,8 @@ function zip(entries) {
 }
 
 const metricColumns = [
-  ['Numero attività','count'],['Quantità pianificata','plannedQuantity'],['Quantità buona','goodQuantity'],['Quantità scarto','scrapQuantity'],['Tasso scarto','scrapRate'],
-  ['Ore attrezzaggio pianificate','plannedSetupHours'],['Ore attrezzaggio effettive','actualSetupHours'],['Coppie attrezzaggio disponibili','setupPairedCount'],['Delta attrezzaggio (ore)','setupDeltaHours'],['Delta medio attrezzaggio (minuti)','averageSetupDeltaMinutes'],['Ore produzione pianificate','plannedRunHours'],['Ore produzione effettive','actualRunHours'],['Non conformi','nonconformingCount'],
+  ['Numero attività','count'],['Previsto lavorazioni chiuse','plannedQuantity'],['Quantità buona','goodQuantity'],['Quantità scarto','scrapQuantity'],['Tasso scarto','scrapRate'],
+  ['Ore attrezzaggio previste','plannedSetupHours'],['Ore attrezzaggio effettive','actualSetupHours'],['Coppie attrezzaggio disponibili','setupPairedCount'],['Delta attrezzaggio (ore)','setupDeltaHours'],['Delta medio attrezzaggio (minuti)','averageSetupDeltaMinutes'],['Ore produzione pianificate','plannedRunHours'],['Ore produzione effettive','actualRunHours'],['Non conformi','nonconformingCount'],['Fuori soglia','plausibilityFlaggedCount'],
 ];
 function table(rows,columns) { return [columns.map(x=>x[0]),rows.map(row=>columns.map(x=>row[x[1]]))]; }
 
@@ -399,13 +404,13 @@ export function buildStatisticsWorkbook(report) {
     {label:'Dal',value:report.filters.from},{label:'Al',value:report.filters.to},{label:'Macchina',value:report.filters.machineName||'Tutte'},
     {label:'Dati dimostrativi',value:report.filters.excludeDemo?'Esclusi':'Inclusi'},
     {label:'Generato il',value:report.generatedAt},{label:'Attività completate',value:report.totals.count},
-    {label:'Ore attrezzaggio pianificate',value:report.totals.plannedSetupHours},{label:'Ore attrezzaggio effettive',value:report.totals.actualSetupHours},
+    {label:'Ore attrezzaggio previste',value:report.totals.plannedSetupHours},{label:'Ore attrezzaggio effettive',value:report.totals.actualSetupHours},
     {label:'Coppie attrezzaggio disponibili',value:report.totals.setupPairedCount},{label:'Delta attrezzaggio (ore)',value:report.totals.setupDeltaHours},{label:'Delta medio attrezzaggio (minuti)',value:report.totals.averageSetupDeltaMinutes},
     {label:'Ore produzione pianificate',value:report.totals.plannedRunHours},{label:'Ore produzione effettive',value:report.totals.actualRunHours},
-    {label:'Controlli non conformi',value:report.totals.nonconformingCount},{label:'Ore fermo',value:report.totals.stoppedHours},{label:'Fermi',value:report.totals.stopCount},
+    {label:'Controlli non conformi',value:report.totals.nonconformingCount},{label:'Consuntivi fuori soglia',value:report.totals.plausibilityFlaggedCount},{label:'Ore fermo',value:report.totals.stoppedHours},{label:'Fermi',value:report.totals.stopCount},
     {label:'Fermi chiusi',value:report.totals.closedStopCount},{label:'Fermi aperti',value:report.totals.openStopCount},
     ...report.totals.quantities.flatMap(quantity=>[
-      {label:`Quantità pianificata (${quantity.unit})`,value:quantity.plannedQuantity},{label:`Quantità buona (${quantity.unit})`,value:quantity.goodQuantity},
+      {label:`Previsto lavorazioni chiuse (${quantity.unit})`,value:quantity.plannedQuantity},{label:`Quantità buona (${quantity.unit})`,value:quantity.goodQuantity},
       {label:`Quantità scarto (${quantity.unit})`,value:quantity.scrapQuantity},{label:`Tasso scarto (${quantity.unit})`,value:quantity.scrapRate},
     ]),
     {label:'Criterio attività',value:'Completamento runEndedAt nel giorno locale Europe/Rome'},
@@ -424,7 +429,7 @@ export function buildStatisticsWorkbook(report) {
   add('Attività giornaliera',[['Data','date'],['ID macchina','machineId'],['Macchina','machineName'],['Ore lavorazione attiva','activeRunHours']],report.dailyActivity);
   add('Dettaglio',[
     ['ID attività','taskId'],['Attività','taskTitle'],['Esito chiusura','closureStatus'],['Chiusa il','completedAt'],['ID macchina','machineId'],['Macchina','machineName'],['Codice prodotto','productCode'],['Descrizione prodotto','productDescription'],['Unità','unit'],
-    ['Quantità pianificata','plannedQuantity'],['Quantità buona','goodQuantity'],['Quantità scarto','scrapQuantity'],['Tasso scarto','scrapRate'],['Ore attrezzaggio pianificate','plannedSetupHours'],['Ore attrezzaggio effettive','actualSetupHours'],['Delta attrezzaggio (ore)','setupDeltaHours'],['Ore produzione pianificate','plannedRunHours'],['Ore produzione effettive','actualRunHours'],['Esito qualità','qualityStatus'],['Non conforme','nonconformingCount'],['Codice causale scarto','scrapReasonCode'],['Causale scarto','scrapReasonLabel'],
+    ['Previsto lavorazione chiusa','plannedQuantity'],['Quantità buona','goodQuantity'],['Quantità scarto','scrapQuantity'],['Tasso scarto','scrapRate'],['Ore attrezzaggio previste','plannedSetupHours'],['Ore attrezzaggio effettive','actualSetupHours'],['Delta attrezzaggio (ore)','setupDeltaHours'],['Ore produzione pianificate','plannedRunHours'],['Ore produzione effettive','actualRunHours'],['Esito qualità','qualityStatus'],['Non conforme','nonconformingCount'],['Fuori soglia','plausibilityFlagged'],['Motivazione fuori soglia','plausibilityReason'],['Codice causale scarto','scrapReasonCode'],['Causale scarto','scrapReasonLabel'],
   ],report.details.map(row=>({...row,completedAt:romeDateTime(row.completedAt)})));
   const contentTypes=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;
   const workbook=`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map(([name],i)=>`<sheet name="${xml(name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`;

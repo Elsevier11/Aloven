@@ -18,6 +18,8 @@ import { migratePlanningCompatibility, compatibilityFields, proposePeriod } from
 import { migratePlanningRelease, decoratePlanningTasks, releasedTasks, planningInfo, interruptionRequests, releasePlanning, requestExecutionInterruption, respondExecutionInterruption } from './planning-release.mjs';
 import { migrateFixedStart } from './fixed-start.mjs';
 import { effectiveMachineCalendar } from './public/calendar.js';
+import { taskWarnings } from './task-warnings.mjs';
+import {migrateAuditIntegrity,verifyAuditIntegrity} from './audit-integrity.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
@@ -40,7 +42,7 @@ function passwordHash(password) { const salt = randomBytes(16).toString('hex'); 
 function passwordMatches(password, encoded) { const [salt, value] = encoded.split(':'); return timingSafeEqual(Buffer.from(value, 'hex'), scryptSync(password, salt, 64)); }
 function fail(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
 const weekly = {0:[],1:[['08:00','12:00'],['13:00','17:00']],2:[['08:00','12:00'],['13:00','17:00']],3:[['08:00','12:00'],['13:00','17:00']],4:[['08:00','12:00'],['13:00','17:00']],5:[['08:00','12:00'],['13:00','17:00']],6:[]};
-const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date());
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date(process.env.ALOVEN_NOW||Date.now()));
 if (!db.prepare('SELECT 1 FROM meta WHERE key=?').get('revision')) {
   db.exec('BEGIN');
   try {
@@ -62,6 +64,7 @@ migrateQuality(db);
 migrateDowntime(db);
 migrateReasonCatalogs(db);
 migrateMesRecords(db);
+migrateAuditIntegrity(db);
 migratePlanningCompatibility(db);
 migrateFixedStart(db);
 migratePlanningRelease(db,uid);
@@ -139,12 +142,22 @@ function orderFields(values,existing={}) {
 }
 const units=['m','m2','kg'],articleKinds=['component','product','both'];
 const supportsRole=(article,role)=>article.kind===role||article.kind==='both';
-function applyAction(state,action,actorRole='admin') {
+function romeMinute(value=new Date()){
+  const date=value instanceof Date?value:new Date(value);
+  if(!Number.isFinite(date.getTime()))fail('Ora corrente non valida.');
+  // Scheduling has minute precision: round up so even the remaining seconds are respected.
+  const minimumDate=new Date(Math.ceil(date.getTime()/60000)*60000);
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(minimumDate).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+function planningNow(){return process.env.ALOVEN_NOW||new Date();}
+function applyAction(state,action,actorRole='admin',options={}) {
   const affected = new Set();
   const preserveStartIdsByMachine=new Map();
   const minimumStartsByMachine=new Map();
   let fixedPlacementTaskId=null,fixedPlacementBefore=null;
   let cascadePlacement=false;
+  let preventPastRecalculation=false;
   const releasedValue=(task,key)=>{if(!task.releasedPayload)return null;try{return JSON.parse(task.releasedPayload)?.[key]??null;}catch{return null;}};
   const taskById = id => {const t=state.tasks.find(x=>x.id===id); if(!t) fail('Attività non trovata.',404); return t;};
   const machineById = id => {const m=state.machines.find(x=>x.id===id); if(!m) fail('Macchina non trovata.',404); return m;};
@@ -177,6 +190,9 @@ function applyAction(state,action,actorRole='admin') {
     cascadePlacement=hasFixedStart&&action.shiftFollowing===true;
     if(Object.hasOwn(action,'shiftFollowing')&&typeof action.shiftFollowing!=='boolean')fail('Modalità di spostamento non valida.');
     const requestedFixedStart=hasFixedStart?checkDate(action.fixedStart):null;
+    const notBefore=options.now==null?null:romeMinute(options.now);
+    if(hasFixedStart&&requestedFixedStart<notBefore&&requestedFixedStart!==t.fixedStart)fail('Scegli un inizio non precedente all’ora corrente.');
+    preventPastRecalculation=true;
     if(hasFixedStart&&!cascadePlacement){fixedPlacementTaskId=t.id;fixedPlacementBefore=new Map(state.tasks.filter(item=>item.id!==t.id&&item.position!=null).map(item=>[item.id,{start:item.start,end:item.end,segments:structuredClone(item.segments),effectiveSetupMinutes:item.effectiveSetupMinutes??null}]));}
     const oldMachineId=t.machineId,targetMachineId=action.machineId??t.machineId;
     if(!(t.compatibleMachineIds||[t.machineId]).includes(targetMachineId))fail('La macchina selezionata non è compatibile con questa attività.');
@@ -206,7 +222,7 @@ function applyAction(state,action,actorRole='admin') {
     const existing=action.id?taskById(action.id):null;
     if(existing&&locked(existing)) fail('Le attività in corso o completate sono protette da modifiche e cancellazione.');
     if(existing&&state.executions?.some(execution=>execution.taskId===existing.id&&execution.interruptedAt))fail('Le attività interrotte restano nello storico e non possono essere modificate o eliminate.');
-    if(action.remove) {if(existing.releasedVersion!=null)fail('Ritira l’attività dal piano e rilascia la modifica prima di eliminarla.');state.tasks=state.tasks.filter(x=>x.id!==existing.id);affected.add(existing.machineId); }
+    if(action.remove) {if(existing.releasedVersion!=null)fail('Ritira l’attività dal piano e rilascia la modifica prima di eliminarla.');state.tasks=state.tasks.filter(x=>x.id!==existing.id);if(existing.position!=null){affected.add(existing.machineId);preventPastRecalculation=true;} }
     else {
       const v=action.values||{},machine=machineById(v.machineId); if(!state.types.some(x=>x.id===v.typeId)) fail('Seleziona una tipologia valida.');
       const calculationMode=v.calculationMode??existing?.calculationMode??'manual';if(!['manual','automatic'].includes(calculationMode))fail('Modalità di calcolo non valida.');
@@ -219,9 +235,14 @@ function applyAction(state,action,actorRole='admin') {
       const clean={title:text(v.title,'Titolo'),typeId:v.typeId,machineId:v.machineId,setupMinutes:duration(v.setupMinutes,'Attrezzaggio',true),runMinutes,quantity,calculationMode,notes:typeof v.notes==='string'?v.notes.slice(0,2000):'',...articleFields,...orderFields(v,existing||{}),...compatibilityFields(v,existing,state.machines)};
       // Validate even unplanned activities: the setup must fit an available shift.
       scheduleMachine([{id:'validation',...clean,status:'planned'}],machineById(v.machineId).anchor,calendarFor(state,v.machineId));
-      if(existing) { affected.add(existing.machineId); if(existing.machineId!==clean.machineId) Object.assign(existing,{position:null,start:null,end:null,segments:[],status:'unplanned',effectiveSetupMinutes:null,fixedStart:null});Object.assign(existing,clean); }
+      if(existing) {
+        const wasPlanned=existing.position!=null;
+        if(wasPlanned){affected.add(existing.machineId);preventPastRecalculation=true;}
+        if(existing.machineId!==clean.machineId)Object.assign(existing,{position:null,start:null,end:null,segments:[],status:'unplanned',effectiveSetupMinutes:null,fixedStart:null});
+        Object.assign(existing,clean);
+      }
       else state.tasks.push({id:uid(),...clean,status:'unplanned',position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null});
-      affected.add(clean.machineId);
+      if(existing?.position!=null)affected.add(clean.machineId);
     }
   } else if(action.kind==='status') {
     const t=taskById(action.id);const allowed={unplanned:['cancelled'],planned:['in_progress','cancelled'],in_progress:['completed'],cancelled:['unplanned'],completed:[]};
@@ -236,7 +257,7 @@ function applyAction(state,action,actorRole='admin') {
     }
     t.status=action.status;
     if(action.status==='cancelled'||action.status==='unplanned') Object.assign(t,{position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null,fixedStart:null});
-    affected.add(t.machineId);
+    affected.add(t.machineId);preventPastRecalculation=true;
   } else if(action.kind==='machine') {
     const existing=action.id?machineById(action.id):null;
     if(action.remove) {
@@ -246,7 +267,7 @@ function applyAction(state,action,actorRole='admin') {
     } else {
       const clean={name:text(action.values?.name,'Nome macchina'),description:String(action.values?.description||'').slice(0,500),anchor:checkDate(action.values?.anchor),speed:positiveNumber(action.values?.speed??existing?.speed??10,'Velocità'),speedUnit:action.values?.speedUnit??existing?.speedUnit??'m'};if(!units.includes(clean.speedUnit))fail('Unità velocità non valida.');
       if(state.machines.some(x=>x.id!==existing?.id&&x.name.toLowerCase()===clean.name.toLowerCase())) fail('Esiste già una macchina con questo nome.');
-      if(existing) {Object.assign(existing,clean);for(const task of state.tasks.filter(t=>t.machineId===existing.id&&t.calculationMode==='automatic'&&!locked(t))){const product=task.productArticleId?articleById(task.productArticleId):null;if(!product||product.unit!==clean.speedUnit)fail('La nuova unità della macchina non è compatibile con le attività automatiche.');task.runMinutes=duration(Math.ceil(task.quantity/clean.speed),'Esecuzione');}affected.add(existing.id);} else state.machines.push({id:uid(),...clean});
+      if(existing) {Object.assign(existing,clean);for(const task of state.tasks.filter(t=>t.machineId===existing.id&&t.calculationMode==='automatic'&&!locked(t))){const product=task.productArticleId?articleById(task.productArticleId):null;if(!product||product.unit!==clean.speedUnit)fail('La nuova unità della macchina non è compatibile con le attività automatiche.');task.runMinutes=duration(Math.ceil(task.quantity/clean.speed),'Esecuzione');}affected.add(existing.id);preventPastRecalculation=true;} else state.machines.push({id:uid(),...clean});
     }
   } else if(action.kind==='article') {
     const existing=action.id?articleById(action.id):null;
@@ -262,8 +283,8 @@ function applyAction(state,action,actorRole='admin') {
     }
   } else if(action.kind==='setupRule') {
     const existing=state.setupRules.find(rule=>rule.id===action.id);if(action.id&&!existing)fail('Regola di attrezzaggio non trovata.',404);
-    if(action.remove){if(!existing)fail('Regola di attrezzaggio non trovata.',404);state.setupRules=state.setupRules.filter(rule=>rule.id!==existing.id);affected.add(existing.machineId);}
-    else {const clean={machineId:action.values?.machineId,fromTypeId:action.values?.fromTypeId,toTypeId:action.values?.toTypeId,minutes:duration(action.values?.minutes,'Attrezzaggio',true)};machineById(clean.machineId);if(!state.types.some(type=>type.id===clean.fromTypeId)||!state.types.some(type=>type.id===clean.toTypeId))fail('Seleziona tipologie valide.');if(state.setupRules.some(rule=>rule.id!==existing?.id&&rule.machineId===clean.machineId&&rule.fromTypeId===clean.fromTypeId&&rule.toTypeId===clean.toTypeId))fail('Esiste già una regola per questa transizione.');if(existing){affected.add(existing.machineId);Object.assign(existing,clean);}else state.setupRules.push({id:uid(),...clean});affected.add(clean.machineId);}
+    if(action.remove){if(!existing)fail('Regola di attrezzaggio non trovata.',404);state.setupRules=state.setupRules.filter(rule=>rule.id!==existing.id);affected.add(existing.machineId);preventPastRecalculation=true;}
+    else {const clean={machineId:action.values?.machineId,fromTypeId:action.values?.fromTypeId,toTypeId:action.values?.toTypeId,minutes:duration(action.values?.minutes,'Attrezzaggio',true)};machineById(clean.machineId);if(!state.types.some(type=>type.id===clean.fromTypeId)||!state.types.some(type=>type.id===clean.toTypeId))fail('Seleziona tipologie valide.');if(state.setupRules.some(rule=>rule.id!==existing?.id&&rule.machineId===clean.machineId&&rule.fromTypeId===clean.fromTypeId&&rule.toTypeId===clean.toTypeId))fail('Esiste già una regola per questa transizione.');if(existing){affected.add(existing.machineId);Object.assign(existing,clean);}else state.setupRules.push({id:uid(),...clean});affected.add(clean.machineId);preventPastRecalculation=true;}
   } else if(action.kind==='type') {
     const existing=state.types.find(x=>x.id===action.id); if(action.id&&!existing) fail('Tipologia non trovata.',404);
     if(action.remove) {if(state.tasks.some(x=>x.typeId===existing.id||releasedValue(x,'typeId')===existing.id)) fail('Tipologia utilizzata da attività in bozza o rilasciate.');if(state.setupRules.some(x=>x.fromTypeId===existing.id||x.toTypeId===existing.id))fail('Tipologia utilizzata da regole di attrezzaggio.');state.types=state.types.filter(x=>x.id!==existing.id);}
@@ -278,14 +299,14 @@ function applyAction(state,action,actorRole='admin') {
     for(const [id,exceptions] of Object.entries(value.machineExceptions)) {machineById(id);validateCalendar({weekly:value.weekly,exceptions});}
     value.maintenanceBlocks??=state.calendar.maintenanceBlocks??[];
     validateMaintenanceBlocks(value.maintenanceBlocks,state.machines);
-    state.calendar=value;state.machines.forEach(m=>affected.add(m.id));
+    state.calendar=value;state.machines.forEach(m=>affected.add(m.id));preventPastRecalculation=true;
   } else if(action.kind==='maintenance') {
     state.calendar.maintenanceBlocks??=[];
     const existing=action.id?state.calendar.maintenanceBlocks.find(block=>block.id===action.id):null;
     if(action.id&&!existing)fail('Intervallo di manutenzione non trovato.',404);
     if(action.remove){
       if(!existing)fail('Intervallo di manutenzione non trovato.',404);
-      state.calendar.maintenanceBlocks=state.calendar.maintenanceBlocks.filter(block=>block.id!==existing.id);affected.add(existing.machineId);
+      state.calendar.maintenanceBlocks=state.calendar.maintenanceBlocks.filter(block=>block.id!==existing.id);affected.add(existing.machineId);preventPastRecalculation=true;
       preserveStartIdsByMachine.set(existing.machineId,state.tasks.filter(task=>task.machineId===existing.machineId&&task.position!=null&&task.end&&task.end<=existing.start).map(task=>task.id));
     } else {
       const machineId=action.machineId??existing?.machineId;machineById(machineId);
@@ -302,14 +323,19 @@ function applyAction(state,action,actorRole='admin') {
         if(impacted?.start)minimumStartsByMachine.set(machineId,{[impacted.id]:impacted.start});
       }
       if(existing){affected.add(existing.machineId);Object.assign(existing,clean);affected.add(machineId);}else {state.calendar.maintenanceBlocks.push({id:uid(),...clean});affected.add(machineId);}
-      state.calendar.maintenanceBlocks.sort((a,b)=>a.start.localeCompare(b.start)||a.machineId.localeCompare(b.machineId)||a.id.localeCompare(b.id));
+      state.calendar.maintenanceBlocks.sort((a,b)=>a.start.localeCompare(b.start)||a.machineId.localeCompare(b.machineId)||a.id.localeCompare(b.id));preventPastRecalculation=true;
     }
   } else fail('Operazione non riconosciuta.');
   for(const id of affected) {
     const sequence=state.tasks.filter(t=>t.machineId===id&&t.position!==null).sort((a,b)=>a.position-b.position);
     sequence.forEach((t,i)=>t.position=i);
     const prepared=sequence.map((task,index)=>{let actual=task.setupMinutes;if(locked(task))actual=task.effectiveSetupMinutes??task.setupMinutes;else if(index>0){const previous=sequence[index-1];actual=state.setupRules.find(rule=>rule.machineId===id&&rule.fromTypeId===previous.typeId&&rule.toTypeId===task.typeId)?.minutes??task.setupMinutes;}return {...task,setupMinutes:actual};});
-    const scheduled=scheduleMachine(prepared,machineById(id).anchor,calendarFor(state,id),{preserveStarts:Boolean(fixedPlacementTaskId),preserveStartIds:preserveStartIdsByMachine.get(id)||[],minimumStarts:minimumStartsByMachine.get(id)||{}});
+    const minimumStarts={...(minimumStartsByMachine.get(id)||{})};
+    if(preventPastRecalculation&&options.now!=null){
+      const notBefore=romeMinute(options.now);
+      for(const task of prepared)if(!locked(task)&&task.fixedStart==null)minimumStarts[task.id]=minimumStarts[task.id]==null?notBefore:(minimumStarts[task.id]>notBefore?minimumStarts[task.id]:notBefore);
+    }
+    const scheduled=scheduleMachine(prepared,machineById(id).anchor,calendarFor(state,id),{preserveStarts:Boolean(fixedPlacementTaskId),preserveStartIds:preserveStartIdsByMachine.get(id)||[],minimumStarts});
     for(let index=0;index<scheduled.length;index++){const target=taskById(scheduled[index].id),baseSetup=sequence[index].setupMinutes;Object.assign(target,scheduled[index]);target.setupMinutes=baseSetup;target.effectiveSetupMinutes=prepared[index].setupMinutes;}
   }
   if(fixedPlacementTaskId){
@@ -397,7 +423,7 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname==='/api/mes/trace'&&req.method==='GET'){send(res,200,traceLots(db,{lot:url.searchParams.get('lot')??'',articleCode:url.searchParams.get('articleCode')||undefined,direction:url.searchParams.get('direction')||undefined}));return;}
     if(url.pathname==='/api/mes/correction'&&req.method==='POST'){send(res,200,correctFinishedExecution(db,payload,user,uid));return;}
     if(url.pathname==='/api/mes/quality'&&req.method==='POST'){send(res,200,decideQualityDisposition(db,payload,user,uid));return;}
-    if(url.pathname==='/api/mes/audit'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,listMesAudit(db,{entityType:url.searchParams.get('entityType')||undefined,entityId:url.searchParams.get('entityId')||url.searchParams.get('taskId')||undefined,limit:Number(url.searchParams.get('limit')||25),offset:Number(url.searchParams.get('offset')||0)}));return;}
+    if(url.pathname==='/api/mes/audit'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,{...listMesAudit(db,{entityType:url.searchParams.get('entityType')||undefined,entityId:url.searchParams.get('entityId')||url.searchParams.get('taskId')||undefined,limit:Number(url.searchParams.get('limit')||25),offset:Number(url.searchParams.get('offset')||0)}),integrity:verifyAuditIntegrity(db)});return;}
     if(url.pathname==='/api/backups'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,backups.getStatus());return;}
     if(url.pathname==='/api/backups/run'&&req.method==='POST'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);await backups.runNow();send(res,200,backups.getStatus());return;}
     if(url.pathname==='/api/shopfloor/action'&&req.method==='POST') {send(res,200,performShopfloorAction(db,payload,user,uid));return;}
@@ -430,7 +456,7 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname==='/api/preview'&&req.method==='POST') {
       if(['machine','type','calendar','maintenance','article','setupRule','periodProposal'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
       const old=snapshot('draft',['task','status'].includes(payload.action?.kind)?'full':'mutation');if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
-      let proposal,next;try{proposal=payload.action?.kind==='periodProposal'?proposePeriod(structuredClone(old),payload.action):null;next=proposal?.state??applyAction(structuredClone(old),payload.action,user.role);}catch(error){throw readablePlanningError(error,old);}
+      const now=planningNow();let proposal,next;try{proposal=payload.action?.kind==='periodProposal'?proposePeriod(structuredClone(old),payload.action,{notBefore:romeMinute(now)}):null;next=proposal?.state??applyAction(structuredClone(old),payload.action,user.role,{now});}catch(error){throw readablePlanningError(error,old);}
       const oldTasksById=new Map(old.tasks.map(task=>[task.id,task]));
       const changes=next.tasks.flatMap(task=>{const previous=oldTasksById.get(task.id);return previous&&(previous.start!==task.start||previous.end!==task.end||previous.machineId!==task.machineId||previous.runMinutes!==task.runMinutes||previous.effectiveSetupMinutes!==task.effectiveSetupMinutes)?[{id:task.id,title:task.title,oldStart:previous.start,oldEnd:previous.end,start:task.start,end:task.end,oldRunMinutes:previous.runMinutes,runMinutes:task.runMinutes,oldSetupMinutes:previous.effectiveSetupMinutes,setupMinutes:task.effectiveSetupMinutes}]:[];});
       const summary=proposal?{included:proposal.included,excluded:proposal.excluded,load:proposal.load,from:proposal.from,to:proposal.to}:undefined;
@@ -441,7 +467,8 @@ const server=http.createServer(async(req,res)=>{
       const token=uid()+uid(),collection={task:'tasks',machine:'machines',type:'types',article:'articles',setupRule:'setupRules'}[payload.action.kind];
       const maintenanceBlock=payload.action.kind==='maintenance'?(payload.action.remove?old.calendar.maintenanceBlocks.find(block=>block.id===payload.action.id):payload.action.id?next.calendar.maintenanceBlocks.find(block=>block.id===payload.action.id):next.calendar.maintenanceBlocks.find(block=>!old.calendar.maintenanceBlocks.some(previous=>previous.id===block.id))):null;
       const entityId=payload.action.id||maintenanceBlock?.id||(collection?next[collection].find(item=>!old[collection].some(previous=>previous.id===item.id))?.id:null)||payload.action.kind;
-      for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,previous:old,next,entityId,expires:Date.now()+300000});send(res,200,{token,changes,...(maintenanceBlock?{maintenance:{operation:payload.action.remove?'remove':payload.action.id?'update':'add',block:maintenanceBlock}}:{}),...(summary?{proposal:summary}:{}),...(placement?{placement}:{}),...(placements?{placements}:{})});return;
+      const warnings=payload.action.kind==='task'&&!payload.action.remove?taskWarnings(next.tasks.find(task=>task.id===entityId)):[];
+      for(const [k,v] of previews)if(v.expires<Date.now())previews.delete(k);previews.set(token,{userId:user.id,revision:old.revision,action:payload.action,previous:old,next,entityId,expires:Date.now()+300000});send(res,200,{token,changes,warnings,...(maintenanceBlock?{maintenance:{operation:payload.action.remove?'remove':payload.action.id?'update':'add',block:maintenanceBlock}}:{}),...(summary?{proposal:summary}:{}),...(placement?{placement}:{}),...(placements?{placements}:{})});return;
     }
     if(url.pathname==='/api/commit'&&req.method==='POST') {
       const p=previews.get(payload.token);if(!p||p.userId!==user.id||p.expires<Date.now())fail('Anteprima scaduta. Ripeti l’operazione.',409);
@@ -469,6 +496,7 @@ const server=http.createServer(async(req,res)=>{
       else {
         const name=text(payload.name,'Nome'),username=text(payload.username,'Nome utente',80).toLowerCase();if(!['admin','operator'].includes(payload.role))fail('Ruolo non valido.');
         if(db.prepare('SELECT id FROM users WHERE username=? AND id<>?').get(username,existing?.id||''))fail('Nome utente già esistente.');
+        if(db.prepare('SELECT id,name FROM users WHERE id<>?').all(existing?.id||'').some(other=>other.name.trim().toLocaleLowerCase('it')===name.toLocaleLowerCase('it')))fail('Nome visualizzato già utilizzato. Usa un nome che identifichi chiaramente la persona.');
         let encoded=existing?.password;if(payload.password||!existing){const password=text(payload.password,'Password',200);if(password.length<10)fail('La password deve contenere almeno 10 caratteri.');encoded=passwordHash(password);}
         if(existing){db.prepare('UPDATE users SET name=?,username=?,password=?,role=? WHERE id=?').run(name,username,encoded,payload.role,existing.id);if(payload.password)db.prepare('DELETE FROM sessions WHERE user_id=?').run(existing.id);}
         else db.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run(targetId,name,username,encoded,payload.role);

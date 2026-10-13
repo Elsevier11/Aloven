@@ -24,7 +24,7 @@ test('il piano a data fissa persiste, entra nello snapshot rilasciato e viene pu
   const data=mkdtempSync(path.join(tmpdir(),'aloven-fixed-start-'));
   let child,base,cookie='';
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups'),ALOVEN_NOW:'2026-10-08T06:00:00Z'},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='',errors='';const timer=setTimeout(()=>reject(new Error(`Server non avviato: ${errors}`)),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(`Server terminato: ${output}\n${errors}`));});});
   }
   async function stop(){const exited=once(child,'exit');child.kill();await exited;}
@@ -102,7 +102,7 @@ test('spostare un task automatico conserva date e assenza di pin dei successori'
   const data=mkdtempSync(path.join(tmpdir(),'aloven-fixed-move-'));
   let child,base,cookie='';
   async function start(){
-    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});
+    child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups'),ALOVEN_NOW:'2026-10-08T06:00:00Z'},stdio:['ignore','pipe','pipe']});
     return new Promise((resolve,reject)=>{let output='',errors='';const timer=setTimeout(()=>reject(new Error(`Server non avviato: ${errors}`)),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(`Server terminato: ${output}\n${errors}`));});});
   }
   async function stop(){const exited=once(child,'exit');child.kill();await exited;}
@@ -176,14 +176,12 @@ test('spostare un task automatico conserva date e assenza di pin dei successori'
     assert.equal(successor.start,originalSecond.start);assert.equal(successor.fixedStart,null);
 
     const early=`${businessDate(machine.anchor,-1,-1)}T08:00`;
-    state=await change({kind:'plan',id:first.id,machineId:first.machineId,fixedStart:early});
-    moved=state.tasks.find(task=>task.id===first.id);successor=state.tasks.find(task=>task.id===second.id);
-    assert.equal(moved.start,early,'il pin può precedere l’anchor in uno spazio libero');
-    assert.equal(successor.start,originalSecond.start);assert.equal(successor.end,originalSecond.end);
-    assert.equal(successor.fixedStart,null,'preservare l’inizio non deve creare altri pin');
-    assert.equal(state.tasks.find(task=>task.id===targetTask.id).start,originalTarget.start);
+    const beforePastPin=structuredClone(state.tasks);
+    await change({kind:'plan',id:first.id,machineId:first.machineId,fixedStart:early},400);
+    state=await request('state');assert.deepEqual(state.tasks,beforePastPin,'un nuovo pin nel passato deve essere rifiutato senza spostamenti');
+    moved=state.tasks.find(task=>task.id===first.id);
 
-    state=await change({kind:'task',id:first.id,values:{...moved,machineId:targetMachine.id,compatibleMachineIds:[machine.id,targetMachine.id],preferredMachineId:targetMachine.id}});
+    state=await change({kind:'task',id:first.id,values:{...moved,machineId:machine.id,compatibleMachineIds:[machine.id,targetMachine.id],preferredMachineId:machine.id}});
     moved=state.tasks.find(task=>task.id===first.id);
     assert.equal(moved.status,'unplanned');assert.equal(moved.position,null);assert.equal(moved.start,null);
     assert.equal(moved.fixedStart,null,'il cambio macchina che ritira l’attività deve eliminare il pin precedente');

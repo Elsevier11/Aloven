@@ -45,7 +45,7 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     return json;
   }
   async function change(action){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});if(action.kind==='plan'){const next=await request('state');await request('planning/release',{revision:next.revision});}return request('state');}
-  async function shopfloor(taskId,action,values={},expected=200,revision){const state=revision===undefined?await request('state'):null;return request('shopfloor/action',{revision:revision??state.revision,taskId,action,...values},expected);}
+  async function shopfloor(taskId,action,values={},expected=200,revision){const state=revision===undefined?await request('state'):null;return request('shopfloor/action',{revision:revision??state.revision,taskId,action,...(action==='finish_run'?{plausibilityReason:'Chiusura istantanea della prova automatica'}:{}),...values},expected);}
   async function login(username){await request('login',{username,password:'PasswordTest123!'});return cookie;}
   async function stop(){if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}}
   const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
@@ -108,11 +108,14 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
     const beforeMissingScrapReason=(await request('state')).revision;
     await shopfloor(first.id,'finish_run',{producedQuantity:12,scrapQuantity:.5,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots},400,beforeMissingScrapReason);
     assert.equal((await request('state')).revision,beforeMissingScrapReason,'la causale mancante non salva lotti o dichiarazione');
+    await shopfloor(first.id,'finish_run',{producedQuantity:999999,scrapQuantity:0,plausibilityReason:null,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots},400);
+    assert.equal((await request('state')).executions.find(item=>item.taskId===first.id).phase,'run_running','un valore fuori soglia senza motivazione è atomico');
     await shopfloor(first.id,'finish_run',{producedQuantity:12,scrapQuantity:.5,scrapReasonId:scrapReason.id,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},lots:validLots,at:'1900-01-01T00:00:00.000Z'});
     state=await request('state');execution=state.executions.find(item=>item.taskId===first.id);
     assert.equal(execution.phase,'completed');assert.equal(execution.producedQuantity,12);assert.equal(execution.scrapQuantity,.5);assert.equal(execution.lots.length,3);
     assert.deepEqual({id:execution.scrapReasonId,code:execution.scrapReasonCode,label:execution.scrapReason},{id:scrapReason.id,code:scrapReason.code,label:scrapReason.description});
     assert.deepEqual(execution.events.map(event=>event.action),['start_setup','finish_setup','start_run','pause_run','resume_run','finish_run']);
+    assert.ok(execution.plausibilityFlags.length>0);assert.equal(execution.plausibilityReason,'Chiusura istantanea della prova automatica');assert.equal(execution.qualityDisposition,'pending');
     assert.equal(execution.events[3].reason,'Cambio bobina');assert.ok(execution.events.every(event=>event.userName==='Operatrice Reparto'));
     assert.ok(execution.runActualSeconds>=pausedSeconds);assert.ok(execution.runEndedAt);assert.equal(execution.lastRunStartedAt,null);
     assert.deepEqual({start:state.tasks.find(task=>task.id===first.id).start,end:state.tasks.find(task=>task.id===first.id).end},plannedDates,'i tempi reali non ripianificano le date');

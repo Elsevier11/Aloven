@@ -1,4 +1,4 @@
-import { validateFinishDeclaration } from './quality.mjs';
+import { assessFinishPlausibility, qualityStatusWithPlausibility, requirePlausibilityReason, validateFinishDeclaration } from './quality.mjs';
 import { recordMesAudit, validateOutputLot } from './mes-records.mjs';
 
 function fail(message, status = 400) {
@@ -29,7 +29,7 @@ function requiredText(value, label, maximum = 1000) {
   return value.trim();
 }
 
-function releasedPayload(task) {
+export function releasedPayload(task) {
   const value = {...task};
   for (const key of ['releasedPayload', 'releasedVersion', 'planningState', 'releasedMachineId', 'releasedPosition', 'releasedStart', 'releasedEnd', 'releasedSegments', 'releasedEffectiveSetupMinutes']) delete value[key];
   if (typeof value.segments === 'string') value.segments = JSON.parse(value.segments || '[]');
@@ -215,12 +215,14 @@ export function releasePlanning(db, payload, user, makeId, now = new Date().toIS
     const tasks = db.prepare('SELECT * FROM tasks ORDER BY rowid').all();
     const before = planningInfo(db, tasks);
     if (!before.hasDraftChanges) fail('Il piano non contiene modifiche da rilasciare.');
-    for (const task of tasks.filter(item => item.releasedVersion != null && ['in_progress','completed'].includes(item.status))) {
+    const changedStartedTasks=[];
+    for (const task of tasks.filter(item => item.releasedVersion != null && item.status === 'in_progress')) {
       const released = parseReleased(task);
       if (!released || JSON.stringify(comparable(task)) !== JSON.stringify(comparable(released))) {
-        fail('Le attività iniziate o completate non possono essere modificate nel piano.', 409);
+        changedStartedTasks.push(task.id);
       }
     }
+    if(changedStartedTasks.length) fail(`Le attività iniziate non possono essere modificate nel piano: ${changedStartedTasks.join(', ')}.`,409);
     validateDraftQueue(tasks);
     const version = before.version + 1;
     const publish = db.prepare('UPDATE tasks SET releasedPayload=?,releasedVersion=? WHERE id=?');
@@ -303,10 +305,14 @@ export function respondExecutionInterruption(db, payload, user, makeId, now = ne
         const scrapReason = declaration.scrapQuantity > 0 ? db.prepare('SELECT id,code,description FROM scrapReasons WHERE id=? AND active=1').get(declaration.scrapReasonId) : null;
         if (declaration.scrapQuantity > 0 && !scrapReason) fail('Seleziona una causale di scarto attiva.');
         total += execution.phase === 'run_running' ? elapsedSeconds(execution.lastRunStartedAt,now) : 0;
+        const plausibilityFlags = assessFinishPlausibility(declaration, execution, total);
+        const plausibilityReason = requirePlausibilityReason(payload, plausibilityFlags);
+        const recordedQualityStatus = qualityStatusWithPlausibility(declaration.qualityStatus, plausibilityFlags);
+        const recordedQualityNotes = plausibilityFlags.length ? (declaration.qualityNotes || plausibilityReason) : declaration.qualityNotes;
         const insert = db.prepare('INSERT INTO executionLots(id,taskId,component,articleCode,lot,quantity,unit,barcode) VALUES (?,?,?,?,?,?,?,?)');
         for (const lot of declaration.lots) insert.run(makeId(),task.id,lot.component,execution[`${lot.component}Code`],lot.lot,lot.quantity,execution[`${lot.component}Unit`],lot.barcode);
-        db.prepare(`UPDATE execution SET runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=?,outputLot=?,qualityDisposition='pending' WHERE taskId=?`).run(
-          now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,declaration.qualityStatus,declaration.qualityNotes,JSON.stringify(declaration.qualityChecks),outputLot,task.id);
+        db.prepare(`UPDATE execution SET runEndedAt=?,runActiveSeconds=?,lastRunStartedAt=NULL,producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,qualityStatus=?,qualityNotes=?,qualityChecks=?,outputLot=?,qualityDisposition='pending',plausibilityFlags=?,plausibilityReason=? WHERE taskId=?`).run(
+          now,total,declaration.goodQuantity,declaration.scrapQuantity,scrapReason?.description??null,scrapReason?.id??null,scrapReason?.code??null,recordedQualityStatus,recordedQualityNotes,JSON.stringify(declaration.qualityChecks),outputLot,JSON.stringify(plausibilityFlags),plausibilityReason,task.id);
       }
       db.prepare(`UPDATE execution SET interruptedAt=?,interruptionReason=?,interruptionRequestId=?,interruptedByUserId=?,interruptedByUserName=? WHERE taskId=?`)
         .run(now,request.reason,requestId,user.id,user.name,task.id);

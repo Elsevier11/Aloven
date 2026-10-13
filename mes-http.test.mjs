@@ -64,7 +64,7 @@ test('API MES: ordine, consuntivo, tracciabilità, rettifiche, qualità, audit, 
 
   async function shopfloor(taskId, action, values = {}, session = cookie) {
     const state = await request('state', undefined, 200, session);
-    await request('shopfloor/action', {revision: state.revision, taskId, action, ...values}, 200, session);
+    await request('shopfloor/action', {revision: state.revision, taskId, action, ...(action === 'finish_run' ? {plausibilityReason:'Chiusura istantanea della prova automatica'} : {}), ...values}, 200, session);
     return request('state', undefined, 200, session);
   }
 

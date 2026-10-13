@@ -34,12 +34,14 @@ const validDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.i
 function minutes(v){return Date.parse(v+'Z')/60000;}
 
 /** Explicit candidates are appended to the existing queue; no existing activity is removed. */
-export function proposePeriod(input,{from,to,machineIds,taskIds}){
+export function proposePeriod(input,{from,to,machineIds,taskIds},options={}){
   if(!validDate(from)||!validDate(to)||from>to||Date.parse(to)-Date.parse(from)>366*86400000)throw new Error('Seleziona un periodo valido, massimo un anno.');
   if(!Array.isArray(machineIds)||!machineIds.length||new Set(machineIds).size!==machineIds.length||machineIds.some(id=>!input.machines.some(m=>m.id===id)))throw new Error('Seleziona macchine valide.');
   if(!Array.isArray(taskIds)||new Set(taskIds).size!==taskIds.length||taskIds.some(id=>!input.tasks.some(t=>t.id===id)))throw new Error('Seleziona attività valide.');
   const state=structuredClone(input),included=[],excluded=[],load=[];
   const start=from+'T00:00',end=to+'T23:59';
+  const notBefore=options.notBefore??start;
+  if(typeof notBefore!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(notBefore)||!Number.isFinite(Date.parse(notBefore+'Z')))throw new Error('Ora minima della proposta non valida.');
   const candidates=taskIds.map(id=>state.tasks.find(t=>t.id===id)).sort((a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999')||a.title.localeCompare(b.title)||a.id.localeCompare(b.id));
   for(const t of candidates)if(t.status!=='unplanned'||!machineIds.includes(t.machineId))excluded.push({id:t.id,reason:t.status!=='unplanned'?'Attività già pianificata o non disponibile':'Macchina di destinazione fuori dalla selezione'});
   for(const id of machineIds){
@@ -55,7 +57,7 @@ export function proposePeriod(input,{from,to,machineIds,taskIds}){
       if(stopped){excluded.push({id:candidate.id,reason:'Fermo macchina aperto: disponibilità da verificare'});continue;}
       // Append from the later of the queue end and period start, without shifting existing work.
       const cursor=scheduled.length?scheduled.at(-1).end:anchor;
-      const earliest=cursor<start?start:cursor;
+      const earliest=[cursor,start,notBefore].sort().at(-1);
       const previous=sequence.at(-1),setup=previous?state.setupRules?.find(r=>r.machineId===id&&r.fromTypeId===previous.typeId&&r.toTypeId===candidate.typeId)?.minutes??candidate.setupMinutes:candidate.setupMinutes;
       let item;
       try{item=scheduleMachine([{...candidate,status:'planned',setupMinutes:setup}],earliest,cal)[0];}catch(error){excluded.push({id:candidate.id,reason:error.message});continue;}

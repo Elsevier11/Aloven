@@ -130,6 +130,8 @@ Le viste temporali dispongono di zoom compatto/normale/dettaglio, intestazioni p
 
 Variabili d'ambiente: `PORT` (3000), `HOST` (127.0.0.1), `DATA_DIR` (cartella data), `COOKIE_SECURE` (1 per cookie HTTPS).
 
+Le soglie conservative per segnalare i consuntivi anomali sono configurabili con `PLAUSIBILITY_QUANTITY_MIN_RATIO` (`0.25`), `PLAUSIBILITY_QUANTITY_MAX_RATIO` (`2`), `PLAUSIBILITY_RUN_TIME_MIN_RATIO` (`0.1`), `PLAUSIBILITY_RUN_TIME_MAX_RATIO` (`5`), `PLAUSIBILITY_SPEED_MAX_RATIO` (`3`), `PLAUSIBILITY_CONSUMPTION_MIN_RATIO` (`0.25`) e `PLAUSIBILITY_CONSUMPTION_MAX_RATIO` (`4`). I consumi sono confrontati con l'uscita solo quando le unità coincidono. Un valore fuori soglia richiede una motivazione e resta da verificare nelle statistiche e nel flusso qualità.
+
 Per l'accesso da altri PC della rete del reparto:
 
 ```powershell
@@ -173,6 +175,18 @@ Verifica: node backup-cli.mjs verify <file.sqlite>. Prova recupero: node backup-
 - Suite operatore, statistiche, operative, UI e interfaccia restano disponibili. I runner browser richiedono Edge e Playwright, individuabile tramite PLAYWRIGHT_PATH come nei runner esistenti.
 
 Arca Evolution e le regole delle due fasi restano rinviati: nessun connettore, semilavorato o avanzamento parziale è assunto.
+
+### Correzioni della revisione MES (13 ottobre 2026)
+
+Creazione, modifica ed eliminazione di un'attività da pianificare conservano le date delle altre attività. I ricalcoli richiesti non anticipano attività non avviate oltre l'ora corrente di Roma; inizi già fissati e attività avviate restano protetti. `ALOVEN_NOW` è un orologio iniettabile per le prove con fixture storiche: lasciarlo assente nell'installazione operativa.
+
+L'anteprima mostra componenti uguali, quantità/consegna mancanti e consegne passate. Il gestionale richiede conferma prima di salvare questi casi; l'API mantiene i due passaggi espliciti preview e commit. Non viene dedotto un tipo commessa dai riferimenti manuali.
+
+Configurazione → Calendario → Aggiungi festività italiane propone le chiusure dell'anno visualizzato, con anteprima delle variazioni. Conserva le eccezioni esistenti e la precedenza dei calendari macchina. Include Pasqua/Pasquetta e, dal 2026, il 4 ottobre ([legge 151/2025](https://www.gazzettaufficiale.it/eli/id/2025/10/10/25G00153/SG)). Festa patronale e chiusure aziendali richiedono le date del cliente; nessuna chiusura viene aggiunta automaticamente ai dati operativi.
+
+Il registro modifiche conserva una catena SHA-256 separata dai record storici, con impronta finale nei metadati. La verifica completa è visibile nel registro e nell'API riservata agli amministratori. Rileva alterazioni e troncamenti rispetto alla catena conservata; chi controlla l'intero database può riscrivere anche catena e impronta. Per una prova indipendente conservare backup e impronte su un dispositivo separato. I nomi visualizzati duplicati già esistenti sono segnalati; nuove duplicazioni sono rifiutate, e il registro mostra anche l'ID dell'autore.
+
+HTTPS/reverse proxy, `COOKIE_SECURE=1` e `BACKUP_DIR` su un dispositivo separato restano configurazioni dell'installazione: questa correzione non configura infrastrutture o destinazioni inesistenti. Tipo ordine, proprietà materiali, anagrafica rotoli, giacenze, Arca e vincoli delle due fasi richiedono ancora definizione con il cliente.
 ### Pianificazione e rilascio
 
 La vista principale separa attività disponibili, sequenza macchina e rilascio al reparto. Le modifiche salvate aggiornano la **bozza**; solo **Rilascia piano / Rilascia modifiche** aggiorna il bordo macchina. La versione rilasciata resta disponibile agli operatori finché il pianificatore non pubblica quella successiva. Attrezzaggi e produzioni avviati sono protetti e gli avvii concorrenti invalidano le conferme obsolete.

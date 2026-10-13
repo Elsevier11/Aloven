@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { validateFinishDeclaration } from './quality.mjs';
+import { assessFinishPlausibility, qualityStatusWithPlausibility, validateFinishDeclaration } from './quality.mjs';
+import { appendAuditIntegrity } from './audit-integrity.mjs';
 
 const DISPOSITIONS = new Set(['pending', 'released', 'scrapped', 'rework']);
 
@@ -83,6 +84,8 @@ export function migrateMesRecords(db) {
     for (const [column, definition] of [
       ['outputLot', 'TEXT'],
       ['qualityDisposition', "TEXT CHECK(qualityDisposition IS NULL OR qualityDisposition IN ('pending','released','scrapped','rework'))"],
+      ['plausibilityFlags', 'TEXT'],
+      ['plausibilityReason', 'TEXT'],
     ]) {
       if (!hasColumn(db, 'execution', column)) {
         db.exec(`ALTER TABLE execution ADD COLUMN ${column} ${definition}`);
@@ -181,6 +184,7 @@ export function recordMesAudit(db, {entityType, entityId, action, user, reason, 
   };
   db.prepare(`INSERT INTO mesAuditLog(id,entityType,entityId,action,at,userId,userName,reason,beforeJson,afterJson,operationId)
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(...Object.values(row));
+  appendAuditIntegrity(db, row);
   return row;
 }
 
@@ -193,7 +197,8 @@ export function finalizeMesExecution(db, taskId, payload, user, makeId, now = ne
   const candidate = Object.hasOwn(payload, 'outputLot') ? payload.outputLot : task.outputLot;
   // Existing clients did not collect output lots. New clients require the field before calling this helper.
   const outputLot = validateOutputLot(candidate, {required: explicitlyProvided && Number(execution.producedQuantity) > 0});
-  const qualityDisposition = execution.qualityStatus === 'conforming' ? 'released' : 'pending';
+  const hasPlausibilityFlags = Boolean(execution.plausibilityFlags && JSON.parse(execution.plausibilityFlags).length);
+  const qualityDisposition = execution.qualityStatus === 'conforming' && !hasPlausibilityFlags ? 'released' : 'pending';
   db.prepare('UPDATE execution SET outputLot=?,qualityDisposition=? WHERE taskId=?').run(outputLot, qualityDisposition, taskId);
   recordMesAudit(db, {
     entityType: 'execution', entityId: taskId, action: 'finish', user,
@@ -243,6 +248,10 @@ export function correctFinishedExecution(db, payload, user, makeId, now = new Da
     const before = executionSnapshot(db, taskId);
     if (!before || !(before.phase === 'completed' || (before.interruptedAt && before.producedQuantity != null))) fail('Consuntivo chiuso non trovato.', 404);
     const declaration = validateFinishDeclaration(payload, before);
+    const plausibilityFlags = assessFinishPlausibility(declaration, before, Number(before.runActiveSeconds || 0));
+    const plausibilityReason = plausibilityFlags.length ? reason : null;
+    const recordedQualityStatus = qualityStatusWithPlausibility(declaration.qualityStatus, plausibilityFlags);
+    const recordedQualityNotes = plausibilityFlags.length ? (declaration.qualityNotes || reason) : declaration.qualityNotes;
     const outputLot = validateOutputLot(payload.outputLot, {required: declaration.goodQuantity > 0});
     const keepsHistoricalReason = declaration.scrapQuantity > 0 && declaration.scrapReasonId === before.scrapReasonId;
     const scrapReason = declaration.scrapQuantity > 0
@@ -257,9 +266,10 @@ export function correctFinishedExecution(db, payload, user, makeId, now = new Da
       insertLot.run(makeId(), taskId, lot.component, before[`${lot.component}Code`], lot.lot, lot.quantity, before[`${lot.component}Unit`], lot.barcode);
     }
     db.prepare(`UPDATE execution SET producedQuantity=?,scrapQuantity=?,scrapReason=?,scrapReasonId=?,scrapReasonCode=?,
-      qualityStatus=?,qualityNotes=?,qualityChecks=?,outputLot=?,qualityDisposition='pending' WHERE taskId=?`).run(
+      qualityStatus=?,qualityNotes=?,qualityChecks=?,outputLot=?,qualityDisposition='pending',plausibilityFlags=?,plausibilityReason=? WHERE taskId=?`).run(
       declaration.goodQuantity, declaration.scrapQuantity, scrapReason?.description ?? null, scrapReason?.id ?? null,
-      scrapReason?.code ?? null, declaration.qualityStatus, declaration.qualityNotes, JSON.stringify(declaration.qualityChecks), outputLot, taskId,
+      scrapReason?.code ?? null, recordedQualityStatus, recordedQualityNotes, JSON.stringify(declaration.qualityChecks), outputLot,
+      JSON.stringify(plausibilityFlags), plausibilityReason, taskId,
     );
     const after = executionSnapshot(db, taskId);
     recordMesAudit(db, {entityType: 'execution', entityId: taskId, action: 'correction', user, reason, before, after, operationId: operation.id}, makeId, now);

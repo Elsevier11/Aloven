@@ -2,6 +2,23 @@ const QUALITY_STATUSES = new Set(['conforming','nonconforming','review']);
 const CHECK_RESULTS = new Set(['pass','fail','na']);
 const COMPONENTS = new Set(['component1','component2']);
 
+function positiveEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function plausibilityThresholds() {
+  return {
+    quantityMinRatio: positiveEnv('PLAUSIBILITY_QUANTITY_MIN_RATIO', 0.25),
+    quantityMaxRatio: positiveEnv('PLAUSIBILITY_QUANTITY_MAX_RATIO', 2),
+    runTimeMinRatio: positiveEnv('PLAUSIBILITY_RUN_TIME_MIN_RATIO', 0.1),
+    runTimeMaxRatio: positiveEnv('PLAUSIBILITY_RUN_TIME_MAX_RATIO', 5),
+    speedMaxRatio: positiveEnv('PLAUSIBILITY_SPEED_MAX_RATIO', 3),
+    consumptionMinRatio: positiveEnv('PLAUSIBILITY_CONSUMPTION_MIN_RATIO', 0.25),
+    consumptionMaxRatio: positiveEnv('PLAUSIBILITY_CONSUMPTION_MAX_RATIO', 4),
+  };
+}
+
 function fail(message) {
   const error = new Error(message);
   error.status = 400;
@@ -93,6 +110,58 @@ export function validateFinishDeclaration(payload, execution) {
   return {goodQuantity,scrapQuantity,scrapReasonId,qualityStatus,qualityNotes,qualityChecks:{appearance:checks.appearance,bonding:checks.bonding},lots};
 }
 
+export function assessFinishPlausibility(declaration, execution, actualRunSeconds, thresholds = plausibilityThresholds()) {
+  const flags = [];
+  const actualQuantity = declaration.goodQuantity + declaration.scrapQuantity;
+  const plannedQuantity = Number(execution?.plannedQuantity);
+  const plannedRunSeconds = Number(execution?.plannedRunMinutes) * 60;
+  const actualSeconds = Number(actualRunSeconds);
+  const add = (code, message, values) => flags.push({code,message,...values});
+  if (plannedQuantity > 0) {
+    const ratio = actualQuantity / plannedQuantity;
+    if (ratio < thresholds.quantityMinRatio || ratio > thresholds.quantityMaxRatio) {
+      add('quantity_vs_planned', `Quantità totale ${actualQuantity} rispetto alla prevista ${plannedQuantity}.`, {actual:actualQuantity,planned:plannedQuantity,ratio});
+    }
+  }
+  if (plannedRunSeconds > 0 && actualSeconds >= 0) {
+    const ratio = actualSeconds / plannedRunSeconds;
+    if (ratio < thresholds.runTimeMinRatio || ratio > thresholds.runTimeMaxRatio) {
+      add('run_time_vs_planned', `Tempo attivo ${Math.round(actualSeconds)} s rispetto ai ${Math.round(plannedRunSeconds)} s previsti.`, {actual:actualSeconds,planned:plannedRunSeconds,ratio});
+    }
+    if (plannedQuantity > 0 && actualSeconds > 0) {
+      const speedRatio = (actualQuantity / actualSeconds) / (plannedQuantity / plannedRunSeconds);
+      if (speedRatio > thresholds.speedMaxRatio) add('output_vs_time', `Produzione per tempo ${speedRatio.toFixed(2)} volte lo standard pianificato.`, {ratio:speedRatio});
+    } else if (actualQuantity > 0 && actualSeconds === 0) {
+      add('output_without_time', 'Quantità dichiarata con tempo attivo pari a zero.', {actualQuantity,actualRunSeconds:actualSeconds});
+    }
+  }
+  if (actualQuantity > 0) {
+    for (const component of COMPONENTS) {
+      if (execution?.[`${component}Unit`] !== execution?.productUnit) continue;
+      const consumed = declaration.lots.filter(lot => lot.component === component).reduce((sum,lot) => sum + lot.quantity,0);
+      const ratio = consumed / actualQuantity;
+      if (ratio < thresholds.consumptionMinRatio || ratio > thresholds.consumptionMaxRatio) {
+        add('consumption_vs_output', `Consumo ${execution[`${component}Code`]} ${consumed} ${execution.productUnit} rispetto all’uscita ${actualQuantity} ${execution.productUnit}.`, {component,consumed,output:actualQuantity,unit:execution.productUnit,ratio});
+      }
+    }
+  }
+  return flags;
+}
+
+export function requirePlausibilityReason(payload, flags) {
+  if (!flags.length) return null;
+  const detail = flags.map(flag => flag.message).join(' ');
+  if (typeof payload.plausibilityReason !== 'string' || !payload.plausibilityReason.trim()) {
+    fail(`Valori fuori soglia: ${detail} Inserisci una motivazione per continuare; il consuntivo resterà da verificare.`);
+  }
+  if (payload.plausibilityReason.trim().length > 1000) fail('Motivazione dei valori fuori soglia non valida (massimo 1000 caratteri).');
+  return payload.plausibilityReason.trim();
+}
+
+export function qualityStatusWithPlausibility(declaredStatus, flags) {
+  return flags.length && declaredStatus === 'conforming' ? 'review' : declaredStatus;
+}
+
 function elapsedSeconds(from, to) {
   if (!from) return 0;
   const start = Date.parse(from), end = Date.parse(to);
@@ -131,11 +200,9 @@ export function migrateQuality(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') throw new TypeError('Database SQLite non valido.');
   db.exec('BEGIN IMMEDIATE');
   try {
-    if (db.prepare("SELECT 1 FROM meta WHERE key='shopfloor-v2'").get()) {
-      db.exec('COMMIT');
-      return {migrated:false};
-    }
-    db.exec(`
+    let changed = false;
+    if (!db.prepare("SELECT 1 FROM meta WHERE key='shopfloor-v2'").get()) {
+      db.exec(`
       ALTER TABLE execution ADD COLUMN scrapQuantity REAL CHECK(scrapQuantity IS NULL OR (scrapQuantity >= 0 AND scrapQuantity <= 1000000000));
       ALTER TABLE execution ADD COLUMN scrapReason TEXT;
       ALTER TABLE execution ADD COLUMN qualityStatus TEXT CHECK(qualityStatus IS NULL OR qualityStatus IN ('conforming','nonconforming','review'));
@@ -145,18 +212,27 @@ export function migrateQuality(db) {
       ALTER TABLE execution ADD COLUMN plannedRunMinutes REAL;
       ALTER TABLE execution ADD COLUMN plannedQuantity REAL;
       ALTER TABLE executionLots ADD COLUMN barcode TEXT;
-    `);
-    db.exec(`
+      `);
+      db.exec(`
       UPDATE execution
       SET plannedSetupMinutes=(SELECT COALESCE(tasks.effectiveSetupMinutes,tasks.setupMinutes) FROM tasks WHERE tasks.id=execution.taskId),
           plannedRunMinutes=(SELECT tasks.runMinutes FROM tasks WHERE tasks.id=execution.taskId),
           plannedQuantity=(SELECT tasks.quantity FROM tasks WHERE tasks.id=execution.taskId)
       WHERE EXISTS (SELECT 1 FROM tasks WHERE tasks.id=execution.taskId);
-    `);
-    db.prepare("INSERT INTO meta(key,value) VALUES ('shopfloor-v2','1')").run();
-    db.prepare("INSERT INTO meta(key,value) VALUES ('revision','1') ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1").run();
+      `);
+      db.prepare("INSERT INTO meta(key,value) VALUES ('shopfloor-v2','1')").run();
+      changed = true;
+    }
+    if (!db.prepare("SELECT 1 FROM meta WHERE key='plausibility-v1'").get()) {
+      const columns = new Set(db.prepare('PRAGMA table_info(execution)').all().map(column => column.name));
+      if (!columns.has('plausibilityFlags')) db.exec('ALTER TABLE execution ADD COLUMN plausibilityFlags TEXT');
+      if (!columns.has('plausibilityReason')) db.exec('ALTER TABLE execution ADD COLUMN plausibilityReason TEXT');
+      db.prepare("INSERT INTO meta(key,value) VALUES ('plausibility-v1','1')").run();
+      changed = true;
+    }
+    if (changed) db.prepare("INSERT INTO meta(key,value) VALUES ('revision','1') ON CONFLICT(key) DO UPDATE SET value=CAST(value AS INTEGER)+1").run();
     db.exec('COMMIT');
-    return {migrated:true};
+    return {migrated:changed};
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {spawn,execFileSync} from 'node:child_process';
+import {mkdtempSync,readdirSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {once} from 'node:events';
@@ -28,12 +28,48 @@ test('la migrazione considera rilasciato il piano esistente ed è idempotente',(
   assert.equal(releasedTasks(tasks).find(task=>task.id==='U1').position,null);
   assert.deepEqual(migratePlanningRelease(db),{migrated:false});
   assert.equal(db.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'8');
+  db.prepare("UPDATE tasks SET status='completed',title='Pianificata ridotta' WHERE id='P1'").run();
   db.prepare("INSERT INTO tasks(id,title,status,position,machineId,start,end,segments,effectiveSetupMinutes) VALUES ('C1','Storica','completed',NULL,'M1',NULL,NULL,'[]',NULL)").run();
   db.prepare("INSERT INTO tasks(id,title,status,position,machineId,start,end,segments,effectiveSetupMinutes) VALUES ('N1','Nuova','planned',1,'M1','2026-10-12T10:00','2026-10-12T11:00','[]',10)").run();
   const released=releasePlanning(db,{revision:8,reason:'Nuovo piano'},{id:'A1',name:'Admin',role:'admin'},()=> 'release-id','2026-10-11T13:00:00.000Z');
   assert.equal(released.version,2,'lo storico completato senza snapshot non blocca nuovi rilasci');
+  assert.equal(db.prepare("SELECT json_extract(releasedPayload,'$.title') title FROM tasks WHERE id='P1'").get().title,'Pianificata','il rilascio non riscrive implicitamente lo snapshot storico');
   assert.equal(db.prepare("SELECT releasedVersion FROM tasks WHERE id='C1'").get().releasedVersion,null);
   db.close();
+});
+
+test('la riparazione riallinea solo snapshot completati, crea un backup verificato ed è idempotente',()=>{
+  const data=mkdtempSync(path.join(tmpdir(),'aloven-release-repair-'));
+  const dbPath=path.join(data,'aloven.sqlite');
+  const db=new DatabaseSync(dbPath);
+  db.exec(`
+    CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+    INSERT INTO meta VALUES ('revision','12');
+    CREATE TABLE tasks(id TEXT PRIMARY KEY,title TEXT,status TEXT,position INTEGER,machineId TEXT,start TEXT,end TEXT,segments TEXT,effectiveSetupMinutes INTEGER,releasedPayload TEXT,releasedVersion INTEGER);
+    INSERT INTO tasks VALUES ('C1','Completata ridotta','completed',0,'M1','2026-09-01T08:00','2026-09-01T09:00','[]',10,'{"id":"C1","title":"Completata originale","status":"planned","position":0,"machineId":"M1","start":"2026-09-01T08:00","end":"2026-09-01T12:00","segments":[],"effectiveSetupMinutes":10}',1);
+    INSERT INTO tasks VALUES ('D1','Bozza','planned',1,'M1','2026-10-13T08:00','2026-10-13T09:00','[]',10,NULL,NULL);
+    INSERT INTO tasks VALUES ('U1','Mai pubblicata','completed',NULL,'M1',NULL,NULL,'[]',NULL,NULL,NULL);
+  `);
+  db.close();
+  try{
+    const env={...process.env,DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')};
+    const first=JSON.parse(execFileSync(process.execPath,['repair-release-snapshots.mjs'],{cwd:path.resolve('.'),env,encoding:'utf8'}));
+    assert.equal(first.updatedSnapshots,1);
+    assert.equal(first.backupVerified,true);
+    let check=new DatabaseSync(dbPath);
+    assert.equal(check.prepare("SELECT json_extract(releasedPayload,'$.title') title FROM tasks WHERE id='C1'").get().title,'Completata ridotta');
+    assert.equal(check.prepare("SELECT releasedPayload FROM tasks WHERE id='D1'").get().releasedPayload,null,'la bozza non viene pubblicata');
+    assert.equal(check.prepare("SELECT releasedPayload FROM tasks WHERE id='U1'").get().releasedPayload,null,'una completata mai pubblicata resta senza snapshot');
+    assert.equal(check.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'13');
+    check.close();
+    const backups=readdirSync(path.join(data,'backups'));
+    assert.equal(backups.length,1);
+    const second=JSON.parse(execFileSync(process.execPath,['repair-release-snapshots.mjs'],{cwd:path.resolve('.'),env,encoding:'utf8'}));
+    assert.equal(second.updatedSnapshots,0);
+    assert.equal(second.backup,null);
+    assert.equal(readdirSync(path.join(data,'backups')).length,1,'la seconda esecuzione non crea backup inutili');
+    check=new DatabaseSync(dbPath);assert.equal(check.prepare("SELECT value FROM meta WHERE key='revision'").get().value,'13');check.close();
+  }finally{rmSync(data,{recursive:true,force:true});}
 });
 
 test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorrenti e atomici',async()=>{
@@ -156,7 +192,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     await request('shopfloor/interruption',{revision:interruption.revision,requestId:interruption.request.id,action:'confirm'},400);
     operatorState=await request('state?view=shopfloor');
     const task=operatorState.tasks.find(item=>item.id===second.id);
-    const declaration={revision:operatorState.revision,requestId:interruption.request.id,action:'confirm',goodQuantity:2,scrapQuantity:0,qualityStatus:'conforming',qualityNotes:'',qualityChecks:{appearance:'pass',bonding:'pass'},outputLot:'OUT-PARTIAL-1',lots:[{component:'component1',lot:'LOT-A',quantity:1},{component:'component2',lot:'LOT-B',quantity:1}]};
+    const declaration={revision:operatorState.revision,requestId:interruption.request.id,action:'confirm',goodQuantity:2,scrapQuantity:0,qualityStatus:'conforming',qualityNotes:'',plausibilityReason:'Chiusura parziale per annullamento ordine',qualityChecks:{appearance:'pass',bonding:'pass'},outputLot:'OUT-PARTIAL-1',lots:[{component:'component1',lot:'LOT-A',quantity:1},{component:'component2',lot:'LOT-B',quantity:1}]};
     await request('shopfloor/interruption',declaration);
     operatorState=await request('state?view=shopfloor');const execution=operatorState.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,2);assert.equal(execution.outputLot,'OUT-PARTIAL-1');assert.equal(execution.lots.length,2);assert.ok(execution.runEndedAt);

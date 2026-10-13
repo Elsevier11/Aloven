@@ -14,6 +14,10 @@ test('proposal fills capacity by delivery, skips indivisible work beyond period 
 test('proposal retains existing scheduled work and only appends in requested week',()=>{
  const s=base();const existing=task('old',60,{status:'planned',position:0,start:'2026-10-05T08:00',end:'2026-10-05T09:30',segments:[{kind:'setup',start:'2026-10-05T08:00',end:'2026-10-05T08:30'},{kind:'run',start:'2026-10-05T08:30',end:'2026-10-05T09:30'}]});s.tasks=[existing,task('new',60)];const p=propose(s);assert.deepEqual(p.state.tasks[0],existing);assert.equal(p.state.tasks[1].start,'2026-10-12T08:00');assert.deepEqual(p.included,['new']);assert.equal(p.excluded[0].id,'old');
 });
+test('proposal does not add new work before the injected current time',()=>{
+ const s=base();s.tasks=[task('new',60)];const p=proposePeriod(s,{from:'2026-10-12',to:'2026-10-16',machineIds:['m'],taskIds:['new']},{notBefore:'2026-10-13T14:15'});
+ assert.deepEqual(p.included,['new']);assert.equal(p.state.tasks[0].start,'2026-10-13T14:15');
+});
 test('machine closures, setup transitions and open stops constrain proposal',()=>{
  const s=base();s.calendar.machineExceptions.m={'2026-10-12':[]};s.tasks=[task('a',60),task('b',60,{typeId:'second'})];s.setupRules=[{machineId:'m',fromTypeId:'type',toTypeId:'second',minutes:0}];let p=propose(s);assert.equal(p.state.tasks[0].start,'2026-10-13T08:00');assert.equal(p.state.tasks[1].effectiveSetupMinutes,0);assert.equal(p.load[0].available,1920);s.machineStops=[{machineId:'m',endedAt:null}];p=propose(s);assert.equal(p.included.length,0);assert.equal(p.excluded.length,2);assert.equal(p.load[0].uncertain,true);
 });
