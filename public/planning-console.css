@@ -152,7 +152,6 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .resource-timeline .temporal-machine{background:white;padding:14px 16px}
 .planning-workspace .resource-timeline .temporal-machine>strong{font-size:13px;display:flex;align-items:center;gap:8px}
 .machine-color-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--machine-color);flex:none}
-.planning-workspace .compact-task-title .machine-color-dot{margin-right:6px}
 .machine-description{display:block;font-size:11px;line-height:1.4;color:var(--mes-muted);margin-top:3px}
 .planning-workspace .resource-timeline .temporal-machine small{font-size:11px;color:var(--mes-muted)}
 .planning-workspace .resource-timeline .gantt-row>.temporal-cell{height:104px;background:#f5f7fa;border-bottom:1px solid #e5eaf0}

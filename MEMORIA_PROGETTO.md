@@ -419,3 +419,9 @@ Adeguamenti ai comportamenti già approvati e non ai test: conferma «Conferma e
 Anche planner-backend.test.mjs dipendeva dall'ora reale (la cascata partiva dal primo inizio calcolato da «adesso» e a certe ore cadeva fuori turno, 113/114 alle 9:09 del 13 ottobre): ora usa il clock condiviso. Per lo stesso motivo tutti i test HTTP che avviano il server (downtime, maintenance, planning-release, production, resilience, revision-remediation, scrap-reasons, shopfloor, shopfloor-edge, statistics, mes-http) usano ora il clock condiviso: 114/114 non dipendono più dall'ora o dal giorno di esecuzione.
 
 Regola per i prossimi test: nessuna data assoluta nelle fixture senza il clock condiviso; attese esplicite per ogni passaggio asincrono (anteprima, conferma, caricamento dettagli).
+
+### Card del backlog e pannello Attività selezionata senza ripetizioni — 13 ottobre 2026
+
+Card del backlog: tolto il pallino di colore accanto al titolo (la macchina è già indicata dallo sfondo e dal codice). Pannello Attività selezionata: la quantità compare una sola volta (nei dati, non più anche sotto il titolo; la consegna resta sotto il titolo); il «Riferimento operativo» compare solo se non è già contenuto nel titolo; la macchina sotto il titolo compare solo per le attività non riposizionabili, perché nel modulo di posizionamento c'è già «Macchina di destinazione». Nessuna modifica a dati, API o regole. Verifiche: 114/114 unitari/HTTP; planner 10/10, planning-clarity 8/8, planning-unified 10/10, planner-fluidity 10/10, planning-density 5/5, dispatch 9/9, ui, interface, desktop-flow, design.
+
+Restano candidati: chip «Consegne · 0» quando non ci sono consegne (oggi un test di unità ne fissa lo stato vuoto «Nessuna consegna registrata», da rivedere insieme); duplicazione di descrizione macchina e tipo lavorazione nella colonna macchina e nel pannello; sezione «Componenti e descrizioni» e Scheda completa che ripetono i dati già nel pannello.
