@@ -437,3 +437,7 @@ Nella sequenza completa le azioni di riga si sovrapponevano (frecce, «Togli dal
 ### Prepara periodo: righe senza rumore — 13 ottobre 2026
 
 Nel dialogo Prepara il piano del periodo ogni attività ripeteva «Consegna Non indicata · Destinazione univoca · macchina · descrizione». Ora la riga mostra la consegna solo se dichiarata e il codice macchina (o «N macchine compatibili · preferita X»). Tolti «Non indicata», «Destinazione univoca» e la descrizione della macchina, già nell'elenco delle macchine incluse. Rimossa la funzione taskDestinationCaption. Logica della proposta, selezione e conferma invariate. Verifiche: 114/114 unitari/HTTP; dispatch 9/9, planning-unified 10/10, planning-clarity 8/8, planner 10/10, interface, ui.
+
+### Cerca attività: risultati su tre righe — 13 ottobre 2026
+
+I risultati della ricerca globale occupavano quattro righe e ripetevano lo stato («Pianificata» nel testo e di nuovo nel badge; «Da pianificare», «Data non pianificata» e «Non inviata al reparto» insieme). Ora: riferimento, titolo e una riga con codice macchina, data (o «Da pianificare») e, solo se diverso dal predefinito, lo stato di invio come badge. Lo stato di pianificazione scritto compare solo per attività in lavorazione, completate o annullate. I pulsanti Vai alla posizione / Seleziona attività e la ricerca non cambiano. Verifiche: 114/114 unitari/HTTP; planning-clarity 8/8, dispatch 9/9, planning-unified 10/10, planner 10/10, interface.
