@@ -467,3 +467,7 @@ Nel bordo macchina classico tolti: la riga di stato «Piano rilasciato e rilevaz
 ### Paginazione nascosta quando non serve — 13 ottobre 2026
 
 Le liste con al massimo 25 elementi (utenti, macchine, causali, regole…) mostravano comunque Righe, Precedente, «1 / 1» e Successiva. Ora, finché tutto entra in una pagina da 25, resta solo il conteggio («1–1 di 1 elementi»); selettore e comandi tornano oltre i 25 elementi o dopo aver scelto un'altra dimensione di pagina. Filtri, paginazione, gestione dello zero e focus invariati. Verifiche: premium, ui, interface, desktop-flow, design, task-list, operational 18/18.
+
+### Verifiche qualità, Tracciabilità e Registro: paginazione e testi — 13 ottobre 2026
+
+La paginazione di Verifiche qualità, Tracciabilità e Registro modifiche mostrava «1 risultati · pagina 1 di 1» con Precedente e Successiva disabilitati: ora con una sola pagina resta solo il conteggio, con il singolare corretto («1 risultato»). Tolto il sottotitolo di Tracciabilità (lo stato vuoto spiega già come cercare). mes-check aggiornato: attende il conteggio dei risultati e non più la dicitura «pagina 1 di». Verifiche: 114/114 unitari/HTTP; mes 9/9, revision 5/5, statistics, design, premium.
