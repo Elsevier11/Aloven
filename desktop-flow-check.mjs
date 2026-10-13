@@ -37,6 +37,9 @@ try{
   await page.getByRole('button',{name:'Crea amministratore'}).click();
   await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
 
+  // The Consegne control only appears when at least one open activity has a declared delivery date.
+  const delivery=await page.evaluate(async()=>{const h={'Content-Type':'application/json','X-Aloven-Request':'1'},s=await(await fetch('/api/state')).json(),t=s.tasks.find(x=>x.status==='unplanned'),p=await(await fetch('/api/preview',{method:'POST',headers:h,body:JSON.stringify({revision:s.revision,action:{kind:'task',id:t.id,values:{...t,dueDate:'2026-10-20'}}})})).json(),c=await fetch('/api/commit',{method:'POST',headers:h,body:JSON.stringify({token:p.token})});return c.status;});
+  assert.equal(delivery,200);await page.reload();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
   await test('consegne prioritarie: dettaglio, Escape e clic esterno',async()=>{
     const panel=page.locator('.planning-priorities'),summary=panel.locator('summary');
     await summary.click();

@@ -15,7 +15,7 @@ Riepilogo per orientarsi; le sezioni datate qui sotto sono la cronologia e, in c
 - **Dati e sicurezza:** SQLite con backup automatico ogni 24 ore e verifica di recupero; migrazioni additive; nessuna modifica ai dati operativi senza backup.
 - **Test:** unitari/HTTP con `npm test`, suite browser con Edge e Playwright (`npm run test:*`); l'orologio dei test è unico (test-clock.mjs, sostituibile con ALOVEN_NOW).
 - **Da definire o futuri, non implementare senza richiesta:** integrazione Arca ed ERP, ordini a più fasi, sequenziamento automatico per caratteristiche (es. spessore), OEE, rotoli individuali e magazzino, validazione sul campo con pianificatori e operatori, prove su tablet fisici.
-- **In discussione:** si veda l'ultima serie «Punti in discussione» in fondo (totale in sequenza per macchina, descrizione macchina e tipo ripetuti, chip Consegne a zero, conteggi globali nel/fuori periodo).
+- **In discussione:** si veda l'ultima serie «Punti in discussione» in fondo (totale in sequenza per macchina, descrizione macchina e tipo ripetuti, conteggi globali nel/fuori periodo).
 
 ## Contesto e funzioni presenti
 
@@ -465,3 +465,7 @@ Le liste con al massimo 25 elementi (utenti, macchine, causali, regole…) mostr
 ### Verifiche qualità, Tracciabilità e Registro: paginazione e testi — 13 ottobre 2026
 
 La paginazione di Verifiche qualità, Tracciabilità e Registro modifiche mostrava «1 risultati · pagina 1 di 1» con Precedente e Successiva disabilitati: ora con una sola pagina resta solo il conteggio, con il singolare corretto («1 risultato»). Tolto il sottotitolo di Tracciabilità (lo stato vuoto spiega già come cercare). mes-check aggiornato: attende il conteggio dei risultati e non più la dicitura «pagina 1 di». Verifiche: 114/114 unitari/HTTP; mes 9/9, revision 5/5, statistics, design, premium.
+
+### Consegne mostrato solo quando serve — 13 ottobre 2026
+
+Il controllo «Consegne · N» della barra comandi compare solo se almeno un'attività aperta (nel filtro macchina corrente) ha una consegna dichiarata; con zero consegne non occupa spazio. La funzione planningPriorities e il suo stato vuoto («Nessuna consegna registrata») restano invariati e testati. desktop-flow-check imposta una consegna prima di provare il pannello. Verifiche: 114/114 unitari/HTTP; desktop-flow, design, planning-clarity, planning-unified, planner, dispatch, interface, ui.
