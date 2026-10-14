@@ -71,14 +71,14 @@ try {
 
   // I selettori di flusso sono intenzionalmente semantici: verificano la UI usata dall'operatore.
   await test('ciclo setup/run: doppio tap, pausa, stop e ripresa esplicita',async()=>{
-    const waitPhase=async phase=>{await page.waitForFunction(async ({id,phase})=>{const s=await (await fetch('/api/state')).json();return s.executions.some(e=>e.taskId===id&&e.phase===phase);},{id:taskId,phase});assert.equal(await page.locator('#operator-dialog').evaluate(d=>d.open),false);};
+    const waitPhase=async phase=>{await page.waitForFunction(async ({id,phase})=>{const s=await (await fetch('/api/state?view=shopfloor')).json();return s.executions.some(e=>e.taskId===id&&e.phase===phase);},{id:taskId,phase});assert.equal(await page.locator('#operator-dialog').evaluate(d=>d.open),false);};
     const primary=page.locator('.primary-action');await primary.dblclick();await waitPhase('setup_running');
     let current=await state();const firstExecution=current.executions.find(x=>x.taskId===taskId);assert.ok(firstExecution);assert.equal(current.executions.filter(x=>x.taskId===taskId).length,1,'Il doppio tap ha duplicato l’esecuzione');assert.equal(firstExecution.events.filter(x=>x.action==='start_setup').length,1,'Il doppio tap ha duplicato l’evento');
     await page.locator('[data-stop="stop"]').click();await page.locator('#stop-form select[name="reasonId"]').selectOption({index:1});await page.locator('#stop-form [type="submit"]').click();await waitDialogClosed();
     await page.locator('.machine-hero.stopped').waitFor();const pausedSetup=(await execution()).setupActualSeconds;await page.waitForTimeout(1100);assert.ok(Math.abs((await execution()).setupActualSeconds-pausedSetup)<1e-6,'Il timer preparazione avanza durante il fermo');
-    await page.locator('[data-stop="resume"]').click();await page.waitForFunction(async()=>!(await (await fetch('/api/state')).json()).machineStops.some(s=>!s.endedAt));
+    await page.locator('[data-stop="resume"]').click();await page.waitForFunction(async()=>!(await (await fetch('/api/state?view=shopfloor')).json()).machineStops.some(s=>!s.endedAt));
     assert.equal((await execution()).phase,'setup_running');assert.ok((await execution()).setupPausedAt,'La riattivazione macchina ha ripreso la preparazione');assert.match(await page.locator('.primary-action').textContent(),/Riprendi preparazione|Resume preparation/i);
-    await page.locator('.primary-action').dblclick();await page.waitForFunction(async id=>{const e=(await (await fetch('/api/state')).json()).executions.find(x=>x.taskId===id);return e&&!e.setupPausedAt;},taskId);
+    await page.locator('.primary-action').dblclick();await page.waitForFunction(async id=>{const e=(await (await fetch('/api/state?view=shopfloor')).json()).executions.find(x=>x.taskId===id);return e&&!e.setupPausedAt;},taskId);
     current=await state();assert.equal(current.executions.find(x=>x.taskId===taskId).events.filter(x=>x.action==='resume_setup').length,1,'Il doppio tap ha duplicato la ripresa preparazione');
     await page.locator('.primary-action').click();await waitPhase('setup_done');
     await page.locator('.primary-action').click();await waitPhase('run_running');
@@ -86,7 +86,7 @@ try {
     await page.locator('[data-action="pause_run"]').click();await page.getByLabel(/Motivo|Reason/i).fill('Fine turno');await page.locator('#action-form [type="submit"]').click();await waitDialogClosed();
     current=await state();const stopReason=current.machineStopReasons.find(x=>x.active);assert.ok(stopReason,'Nessuna causale fermo attiva');await apiPost(adminApi,'/api/machine-stop',{revision:current.revision,machineId:'CNC-01',action:'stop',reasonId:stopReason.id});await page.getByRole('button',{name:/Aggiorna|Refresh/i}).click();
     await page.locator('.machine-hero.stopped').waitFor();assert.equal(await page.locator('[data-action="resume_run"]').count(),0,'Ripresa esposta durante fermo');assert.equal((await execution()).phase,'run_paused');
-    await page.locator('[data-stop="resume"]').click();await page.waitForFunction(async()=>!(await (await fetch('/api/state')).json()).machineStops.some(s=>!s.endedAt));assert.equal(await page.locator('#operator-dialog').evaluate(d=>d.open),false);
+    await page.locator('[data-stop="resume"]').click();await page.waitForFunction(async()=>!(await (await fetch('/api/state?view=shopfloor')).json()).machineStops.some(s=>!s.endedAt));assert.equal(await page.locator('#operator-dialog').evaluate(d=>d.open),false);
     assert.equal((await execution()).phase,'run_paused','La riattivazione ha ripreso automaticamente la lavorazione');assert.match(await page.locator('[data-action="resume_run"]').textContent(),/Riprendi|Resume/i);
     await page.locator('.primary-action').click();await waitPhase('run_running');
   });

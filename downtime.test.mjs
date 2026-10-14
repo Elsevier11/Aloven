@@ -59,7 +59,7 @@ test('API fermi macchina blocca gli avvii, sospende la lavorazione e conserva lo
   try {
     base=await start();
     await request('setup',{name:'Amministratore',username:'admin',password:'PasswordTest123!'});const adminCookie=cookie;
-    await request('users',{name:'Operatore Fermi',username:'operator',password:'PasswordTest123!',role:'operator'});
+    await request('users',{name:'Operatore Fermi',username:'operator',password:'PasswordTest123!',role:'planner'});
     let state=await request('state');assert.deepEqual(state.machineStops,[]);
     const task=state.tasks.find(item=>item.status==='unplanned'&&item.setupMinutes>0), machineId=task.machineId;
     state=await change({kind:'plan',id:task.id});

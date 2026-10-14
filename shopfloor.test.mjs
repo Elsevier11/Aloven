@@ -52,7 +52,7 @@ test('reparto registra tempi reali, pause, dichiarazioni e snapshot senza altera
   const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
   try {
     base=await start();await request('setup',{name:'Amministratore',username:'admin',password:'PasswordTest123!'});const adminCookie=cookie;
-    await request('users',{name:'Operatrice Reparto',username:'operator',password:'PasswordTest123!',role:'operator'});
+    await request('users',{name:'Operatrice Reparto',username:'operator',password:'PasswordTest123!',role:'planner'});
     let state=await request('state');assert.deepEqual(state.executions,[]);
     const scrapReason=state.scrapReasons.find(item=>item.code==='fabric-defect');
     const machine=state.machines[0], candidates=state.tasks.filter(task=>task.machineId===machine.id&&task.status==='unplanned').slice(0,2);

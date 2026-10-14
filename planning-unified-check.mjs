@@ -20,7 +20,7 @@ try{
  const getState=async(p=admin,scope='')=>await(await p.request.get(base+'/api/state'+scope)).json();
  const post=async(p,endpoint,data,expected=200)=>{const r=await p.request.post(base+'/api/'+endpoint,{data,headers:{'X-Aloven-Request':'1'}});assert.equal(r.status(),expected,await r.text());return r.json();};
  const action=async(value,p=admin)=>{const state=await getState(p),preview=await post(p,'preview',{revision:state.revision,action:value});await post(p,'commit',{token:preview.token});return getState(p);};
- await post(admin,'users',{name:'Pianificatore operatore',username:'unified-operator',password:'UnifiedCheck123!',role:'operator'});
+ await post(admin,'users',{name:'Pianificatore',username:'unified-operator',password:'UnifiedCheck123!',role:'planner'});
  let state=await getState();const machine=state.machines[0],tasks=state.tasks.filter(t=>t.status==='unplanned'&&t.machineId===machine.id).slice(0,3);assert.equal(tasks.length,3);
  for(const t of tasks)await action({kind:'task',id:t.id,values:{...t,setupMinutes:0,runMinutes:60,calculationMode:'manual'}});
  await action({kind:'plan',id:tasks[0].id,machineId:machine.id,fixedStart:'2026-10-14T08:00'});state=await getState();await post(admin,'planning/release',{revision:state.revision});
@@ -29,7 +29,7 @@ try{
  await op.goto(base);await op.getByLabel('Nome utente',{exact:true}).fill('unified-operator');await op.getByLabel('Password',{exact:true}).fill('UnifiedCheck123!');await op.getByRole('button',{name:'Accedi',exact:true}).click();await op.locator('.timeline-scroll').waitFor();
  await op.locator('#date-start').fill('2026-10-15');await op.locator('#date-start').dispatchEvent('change');assert.equal(await op.locator(`.time-block[data-task="${tasks[0].id}"]`).count(),1);
  assert.equal((await getState(op)).tasks.find(t=>t.id===tasks[0].id).start,'2026-10-15T08:00');assert.equal((await getState(op,'?view=shopfloor')).tasks.find(t=>t.id===tasks[0].id).start,'2026-10-14T08:00');assert.equal((await getState(admin,'?view=shopfloor')).tasks.find(t=>t.id===tasks[0].id).start,'2026-10-14T08:00');
- assert.equal(await op.locator('#release-plan').count(),1,'anche l’utente non amministratore vede il comando di rilascio');passed.push('Operatore vede e modifica bozza; entrambe le console leggono solo il piano rilasciato');
+ assert.equal(await op.locator('#release-plan').count(),1,'il pianificatore vede il comando di rilascio');passed.push('Pianificatore vede e modifica bozza; entrambe le console leggono solo il piano rilasciato');
  const cell=op.locator(`[data-drop-machine="${machine.id}"]`).first(),point=async minute=>cell.evaluate((el,m)=>({x:(m-Number(el.dataset.lo))*Number(el.dataset.scale),y:40}),minute);
  const initialTaskCount=(await getState(op)).tasks.length;const dragRequests=[];const recordDragRequest=req=>{if(/\/api\/(preview|commit|state)(?:\?|$)/.test(req.url()))dragRequests.push({endpoint:new URL(req.url()).pathname,body:req.postDataJSON()});};op.on('request',recordDragRequest);
  await op.evaluate(id=>{document.addEventListener('drop',()=>{window.dropTiming={start:performance.now()};const observer=new MutationObserver(()=>{if(document.querySelector(`.time-block[data-task="${id}"]`)){window.dropTiming.elapsed=performance.now()-window.dropTiming.start;observer.disconnect();}});observer.observe(document.querySelector('#app'),{childList:true,subtree:true});},{capture:true,once:true});},tasks[1].id);

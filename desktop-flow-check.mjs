@@ -143,7 +143,37 @@ try{
     await page.locator('#modal').waitFor({state:'hidden'});
   });
 
-  await test('permessi operatore invariati',async()=>{
+  await test('permessi del pianificatore: calendario modificabile, utenti e anagrafiche no',async()=>{
+    await nav('users');
+    await page.getByRole('button',{name:'Nuovo utente'}).click();
+    await page.getByLabel('Nome e cognome').fill('Pianificatore desktop');
+    await page.getByLabel('Nome utente').fill('pianificatore');
+    await page.getByLabel('Ruolo').selectOption('planner');
+    await page.getByLabel('Password').fill('PasswordTest123!');
+    await page.getByRole('button',{name:'Salva',exact:true}).click();
+    await page.locator('#modal').waitFor({state:'hidden'});
+    const plannerContext=await browser.newContext({viewport:{width:1366,height:768}}),planner=await plannerContext.newPage();
+    await planner.goto(base);
+    await planner.getByLabel('Nome utente').fill('pianificatore');
+    await planner.getByLabel('Password').fill('PasswordTest123!');
+    await planner.getByRole('button',{name:'Accedi'}).click();
+    await planner.getByRole('heading',{name:'Piano di produzione'}).waitFor();
+    assert.ok(await planner.locator('#release-plan').count(),'il pianificatore rilascia il piano');
+    await planner.locator('[data-nav-group="settings"]').click();
+    assert.equal(await planner.locator('[data-nav="users"]').count(),0);
+    assert.equal(await planner.locator('[data-nav="backups"]').count(),0);
+    await planner.locator('[data-nav="calendar"]').click();
+    assert.equal(await planner.getByRole('button',{name:'Imposta periodo'}).count(),1,'il pianificatore gestisce il calendario');
+    assert.equal(await planner.locator('#weekly-form fieldset').evaluate(fieldset=>fieldset.disabled),false);
+    await planner.locator('[data-nav-group="catalogues"]').click();
+    await planner.locator('[data-nav="machines"]').click();
+    assert.equal(await planner.locator('[data-edit^="machine:"],[data-delete^="machine:"]').count(),0,'le anagrafiche restano all’amministratore');
+    await planner.locator('[data-nav="scrapReasons"]').click();
+    assert.equal(await planner.locator('#new-cause').count(),1,'il pianificatore gestisce le causali');
+    await plannerContext.close();
+  });
+
+  await test('operatore: atterra sulla vista touch e non accede alla pianificazione',async()=>{
     await nav('users');
     await page.getByRole('button',{name:'Nuovo utente'}).click();
     await page.getByLabel('Nome e cognome').fill('Operatore desktop');
@@ -156,15 +186,11 @@ try{
     await operator.getByLabel('Nome utente').fill('operatore');
     await operator.getByLabel('Password').fill('PasswordTest123!');
     await operator.getByRole('button',{name:'Accedi'}).click();
-    await operator.getByRole('heading',{name:'Piano di produzione'}).waitFor();
-    await operator.locator('[data-nav-group="settings"]').click();
-    assert.equal(await operator.locator('[data-nav="users"]').count(),0);
-    await operator.locator('[data-nav="calendar"]').click();
-    assert.equal(await operator.getByRole('button',{name:'Imposta periodo'}).count(),0);
-    assert.ok(await operator.locator('#weekly-form fieldset').evaluate(fieldset=>fieldset.disabled));
-    await operator.locator('[data-nav-group="catalogues"]').click();
-    await operator.locator('[data-nav="machines"]').click();
-    assert.equal(await operator.locator('[data-edit^="machine:"],[data-delete^="machine:"]').count(),0);
+    await operator.waitForURL('**/operatore');
+    assert.equal(await operator.evaluate(()=>fetch('/api/state').then(r=>r.status)),403,'lo stato della pianificazione è negato all’operatore');
+    assert.equal(await operator.evaluate(()=>fetch('/api/state?view=shopfloor').then(r=>r.status)),200);
+    await operator.goto(base);
+    await operator.waitForURL('**/operatore');
     await operatorContext.close();
   });
 }catch(error){results.push({name:'bootstrap',status:'failed',error:error.stack||String(error)});console.error(error);}

@@ -119,7 +119,7 @@ test('bordo macchina gestisce concorrenza, pause ripetute e rifiuti atomici; la 
   try {
     base = await start();
     await request('setup', {name: 'Amministratore', username: 'admin', password: 'PasswordTest123!'});
-    await request('users', {name: 'Operatore Edge', username: 'edge', password: 'PasswordTest123!', role: 'operator'});
+    await request('users', {name: 'Operatore Edge', username: 'edge', password: 'PasswordTest123!', role: 'planner'});
     const adminCookie = cookie;
 
     let state = await request('state');

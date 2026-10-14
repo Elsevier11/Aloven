@@ -64,9 +64,9 @@ test('API MES: ordine, consuntivo, tracciabilità, rettifiche, qualità, audit, 
   }
 
   async function shopfloor(taskId, action, values = {}, session = cookie) {
-    const state = await request('state', undefined, 200, session);
+    const state = await request('state?view=shopfloor', undefined, 200, session);
     await request('shopfloor/action', {revision: state.revision, taskId, action, ...(action === 'finish_run' ? {plausibilityReason:'Chiusura istantanea della prova automatica'} : {}), ...values}, 200, session);
-    return request('state', undefined, 200, session);
+    return request('state?view=shopfloor', undefined, 200, session);
   }
 
   async function login(username) {
@@ -129,15 +129,16 @@ test('API MES: ordine, consuntivo, tracciabilità, rettifiche, qualità, audit, 
       {phase: 'completed', outputLot: 'LOT-OUT-001', qualityDisposition: 'pending'},
     );
 
-    const inputTrace = await request('mes/trace?lot=lot-in-a&direction=input', undefined, 200, operatorCookie);
+    await request('mes/trace?lot=lot-in-a&direction=input', undefined, 403, operatorCookie);
+    const inputTrace = await request('mes/trace?lot=lot-in-a&direction=input', undefined, 200, adminCookie);
     assert.equal(inputTrace.records.length, 1);
     assert.deepEqual(inputTrace.records[0].matchedDirections, ['input']);
     assert.equal(inputTrace.records[0].outputLot, 'LOT-OUT-001');
-    const outputTrace = await request(`mes/trace?lot=lot-out-001&direction=output&articleCode=${encodeURIComponent(completed.productCode)}`, undefined, 200, operatorCookie);
+    const outputTrace = await request(`mes/trace?lot=lot-out-001&direction=output&articleCode=${encodeURIComponent(completed.productCode)}`, undefined, 200, adminCookie);
     assert.equal(outputTrace.records.length, 1);
     assert.deepEqual(outputTrace.records[0].inputLots.map(item => item.lot).sort(), ['LOT-IN-A', 'LOT-IN-B']);
-    assert.equal((await request('mes/trace?lot=lot-out-001&direction=input', undefined, 200, operatorCookie)).records.length, 0);
-    assert.equal((await request('mes/trace?lot=lot-out-001&direction=output&articleCode=ALTRO', undefined, 200, operatorCookie)).records.length, 0);
+    assert.equal((await request('mes/trace?lot=lot-out-001&direction=input', undefined, 200, adminCookie)).records.length, 0);
+    assert.equal((await request('mes/trace?lot=lot-out-001&direction=output&articleCode=ALTRO', undefined, 200, adminCookie)).records.length, 0);
 
     const correctionBase = {
       taskId: task.id, operationId: 'correction-http-1', reason: 'Rettifica dopo controllo documentale',

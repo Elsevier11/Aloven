@@ -22,6 +22,8 @@ import { machineLiveStatus } from './live-status.mjs';
 import { effectiveMachineCalendar } from './public/calendar.js';
 import { taskWarnings } from './task-warnings.mjs';
 import {migrateAuditIntegrity,verifyAuditIntegrity} from './audit-integrity.mjs';
+import {can,canAct,ROLES} from './roles.mjs';
+import {migrateUserRoles} from './users-roles.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
@@ -33,7 +35,7 @@ const initialBackup=databaseExisted?await createConsistentBackup(db,backupOption
 if(initialBackup)testRestore(initialBackup.file,{tempRoot:backupOptions.backupDir});
 db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,username TEXT NOT NULL UNIQUE,password TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('admin','operator')));
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,username TEXT NOT NULL UNIQUE,password TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('admin','planner','operator')));
 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS machines(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,description TEXT NOT NULL,anchor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS types(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,color TEXT NOT NULL);
@@ -42,6 +44,7 @@ const uid = () => randomBytes(12).toString('hex');
 const hash = value => createHash('sha256').update(value).digest('hex');
 function passwordHash(password) { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
 function passwordMatches(password, encoded) { const [salt, value] = encoded.split(':'); return timingSafeEqual(Buffer.from(value, 'hex'), scryptSync(password, salt, 64)); }
+const actionDenied=kind=>['machine','type','article','setupRule'].includes(kind)?'Operazione riservata agli amministratori.':'Operazione non consentita al tuo ruolo.';
 function fail(message, status = 400) { const e = new Error(message); e.status = status; throw e; }
 const weekly = {0:[],1:[['08:00','12:00'],['13:00','17:00']],2:[['08:00','12:00'],['13:00','17:00']],3:[['08:00','12:00'],['13:00','17:00']],4:[['08:00','12:00'],['13:00','17:00']],5:[['08:00','12:00'],['13:00','17:00']],6:[]};
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date(process.env.ALOVEN_NOW||Date.now()));
@@ -58,6 +61,7 @@ if (!db.prepare('SELECT 1 FROM meta WHERE key=?').get('revision')) {
     db.exec('COMMIT');
   } catch(e) { db.exec('ROLLBACK'); throw e; }
 }
+migrateUserRoles(db);
 migrateTextile(db,`${today}T08:00`);
 migrateProduction(db);
 migrateArticleLanguages(db);
@@ -411,7 +415,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,'http://localhost');
     if(!url.pathname.startsWith('/api/')) {
       if(req.method!=='GET')fail('Metodo non consentito.',405);
-      const files={'/planning-presentation.js':['planning-presentation.js','text/javascript'],'/planning-live.js':['planning-live.js','text/javascript'],'/reparto.js':['reparto.js','text/javascript'],'/planning-week.js':['planning-week.js','text/javascript'],'/scheduler.mjs':['../scheduler.mjs','text/javascript'],'/mes-console.js':['mes-console.js','text/javascript'],'/mes-console.css':['mes-console.css','text/css'],'/planning-console.css':['planning-console.css','text/css'],'/design-system.css':['design-system.css','text/css'],'/task-list.css':['task-list.css','text/css'],'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/calendar.js':['calendar.js','text/javascript'],'/maintenance.js':['maintenance.js','text/javascript'],'/statistics-detail.js':['statistics-detail.js','text/javascript'], '/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/planning-priorities.js':['planning-priorities.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
+      const files={'/planning-presentation.js':['planning-presentation.js','text/javascript'],'/planning-live.js':['planning-live.js','text/javascript'],'/roles.mjs':['../roles.mjs','text/javascript'],'/reparto.js':['reparto.js','text/javascript'],'/planning-week.js':['planning-week.js','text/javascript'],'/scheduler.mjs':['../scheduler.mjs','text/javascript'],'/mes-console.js':['mes-console.js','text/javascript'],'/mes-console.css':['mes-console.css','text/css'],'/planning-console.css':['planning-console.css','text/css'],'/design-system.css':['design-system.css','text/css'],'/task-list.css':['task-list.css','text/css'],'/aloven-logo.png':['aloven-logo.png','image/png'],'/':['index.html','text/html'],'/bordo-macchina':['index.html','text/html'],'/operatore':['operator.html','text/html'],'/operator.js':['operator.js','text/javascript'],'/operator.css':['operator.css','text/css'],'/app.js':['app.js','text/javascript'],'/calendar.js':['calendar.js','text/javascript'],'/maintenance.js':['maintenance.js','text/javascript'],'/statistics-detail.js':['statistics-detail.js','text/javascript'], '/statistics.js':['statistics.js','text/javascript'],'/planner-controls.js':['planner-controls.js','text/javascript'],'/planning-insights.js':['planning-insights.js','text/javascript'],'/planning-priorities.js':['planning-priorities.js','text/javascript'],'/shopfloor.js':['shopfloor.js','text/javascript'],'/timeline.js':['timeline.js','text/javascript'],'/ui-refinements.css':['ui-refinements.css','text/css'],'/statistics.css':['statistics.css','text/css'],'/style.css':['style.css','text/css'],'/shopfloor.css':['shopfloor.css','text/css'],'/timeline.css':['timeline.css','text/css']};const file=files[url.pathname];if(!file)fail('Pagina non trovata.',404);
       res.writeHead(200,{'Content-Type':file[1]+'; charset=utf-8','Cache-Control':'no-cache'});res.end(readFileSync(path.join(root,'public',file[0])));return;
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
@@ -433,27 +437,31 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname==='/api/logout'&&req.method==='POST') {const token=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('aloven_session='))?.slice(15);if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));send(res,200,{ok:true},{'Set-Cookie':cookie('',req,true)});return;}
     if(url.pathname==='/api/state'&&req.method==='GET') {
       const requestedView=url.searchParams.get('view'),view=requestedView==='shopfloor'?'shopfloor':'draft',detail=requestedView==='planning'?'planning':'full';
+      if(view!=='shopfloor'&&!can(user.role,'plan'))fail('Questa sezione non è disponibile per il tuo ruolo.',403);
       send(res,200,{...snapshot(view,detail,{includeCompleted:url.searchParams.get('includeCompleted')==='1'}),user,users:user.role==='admin'?publicUsers():[]});return;
     }
     if(url.pathname==='/api/statistics'&&req.method==='GET') {
+      if(!can(user.role,'statistics'))fail('Questa sezione non è disponibile per il tuo ruolo.',403);
       send(res,200,buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined,excludeDemo:url.searchParams.get('excludeDemo')??undefined}));return;
     }
     if(url.pathname==='/api/statistics/export'&&req.method==='GET') {
+      if(!can(user.role,'statistics'))fail('Questa sezione non è disponibile per il tuo ruolo.',403);
       const report=buildStatisticsReport(db,{from:url.searchParams.get('from')??undefined,to:url.searchParams.get('to')??undefined,machineId:url.searchParams.get('machineId')??undefined,excludeDemo:url.searchParams.get('excludeDemo')??undefined});
       const workbook=buildStatisticsWorkbook(report);
       sendFile(res,200,workbook,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="statistiche-${report.filters.from}-${report.filters.to}.xlsx"`});return;
     }
-    if(url.pathname==='/api/mes/trace'&&req.method==='GET'){send(res,200,traceLots(db,{lot:url.searchParams.get('lot')??'',articleCode:url.searchParams.get('articleCode')||undefined,direction:url.searchParams.get('direction')||undefined}));return;}
+    if(url.pathname==='/api/mes/trace'&&req.method==='GET'){if(!can(user.role,'statistics'))fail('Questa sezione non è disponibile per il tuo ruolo.',403);send(res,200,traceLots(db,{lot:url.searchParams.get('lot')??'',articleCode:url.searchParams.get('articleCode')||undefined,direction:url.searchParams.get('direction')||undefined}));return;}
     if(url.pathname==='/api/mes/correction'&&req.method==='POST'){send(res,200,correctFinishedExecution(db,payload,user,uid));return;}
     if(url.pathname==='/api/mes/quality'&&req.method==='POST'){send(res,200,decideQualityDisposition(db,payload,user,uid));return;}
-    if(url.pathname==='/api/mes/audit'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,{...listMesAudit(db,{entityType:url.searchParams.get('entityType')||undefined,entityId:url.searchParams.get('entityId')||url.searchParams.get('taskId')||undefined,limit:Number(url.searchParams.get('limit')||25),offset:Number(url.searchParams.get('offset')||0)}),integrity:verifyAuditIntegrity(db)});return;}
-    if(url.pathname==='/api/backups'&&req.method==='GET'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);send(res,200,backups.getStatus());return;}
-    if(url.pathname==='/api/backups/run'&&req.method==='POST'){if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);await backups.runNow();send(res,200,backups.getStatus());return;}
+    if(url.pathname==='/api/mes/audit'&&req.method==='GET'){if(!can(user.role,'audit'))fail('Operazione riservata agli amministratori.',403);send(res,200,{...listMesAudit(db,{entityType:url.searchParams.get('entityType')||undefined,entityId:url.searchParams.get('entityId')||url.searchParams.get('taskId')||undefined,limit:Number(url.searchParams.get('limit')||25),offset:Number(url.searchParams.get('offset')||0)}),integrity:verifyAuditIntegrity(db)});return;}
+    if(url.pathname==='/api/backups'&&req.method==='GET'){if(!can(user.role,'backups'))fail('Operazione riservata agli amministratori.',403);send(res,200,backups.getStatus());return;}
+    if(url.pathname==='/api/backups/run'&&req.method==='POST'){if(!can(user.role,'backups'))fail('Operazione riservata agli amministratori.',403);await backups.runNow();send(res,200,backups.getStatus());return;}
     if(url.pathname==='/api/shopfloor/action'&&req.method==='POST') {send(res,200,performShopfloorAction(db,payload,user,uid));return;}
     if(url.pathname==='/api/shopfloor/interruption'&&req.method==='POST') {send(res,200,respondExecutionInterruption(db,payload,user,uid));return;}
     if(url.pathname==='/api/planning/interruption-request'&&req.method==='POST') {send(res,200,requestExecutionInterruption(db,payload,user,uid));return;}
     if(url.pathname==='/api/planning/release'&&req.method==='POST') {send(res,200,releasePlanning(db,payload,user,uid));return;}
     if(url.pathname==='/api/planning/undo'&&req.method==='POST') {
+      if(!can(user.role,'plan'))fail('Questa operazione non è disponibile per il tuo ruolo.',403);
       const undo=planningUndos.get(payload.token);
       if(!undo||undo.userId!==user.id||undo.expires<Date.now()||payload.revision!==undo.revision)fail('L’ultimo spostamento non può più essere annullato. Aggiorna il piano.',409);
       let current,restored,difference;
@@ -471,13 +479,13 @@ const server=http.createServer(async(req,res)=>{
     }
     if(url.pathname==='/api/machine-stop'&&req.method==='POST') {send(res,200,performMachineStopAction(db,payload,user,uid));return;}
     if(['/api/scrap-reasons','/api/machine-stop-reasons'].includes(url.pathname)&&req.method==='POST'){
-      if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      if(!can(user.role,'reasons'))fail('Operazione riservata agli amministratori.',403);
       const kind=url.pathname==='/api/scrap-reasons'?'scrap':'machineStop',before=reasonCatalog(db,kind);
       // Catalog function owns its transaction; audit hook passed to it for atomic persistence.
       send(res,200,updateReasonCatalog(db,kind,payload,uid,(after)=>recordMesAudit(db,{entityType:kind+'Reason',entityId:payload.id||after.find(x=>!before.some(b=>b.id===x.id))?.id||kind,action:payload.remove?'delete':'save',user,reason:'Gestione causale',before,after},uid)));return;
     }
     if(url.pathname==='/api/preview'&&req.method==='POST') {
-      if(['machine','type','calendar','maintenance','article','setupRule','periodProposal'].includes(payload.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      if(!canAct(user.role,payload.action?.kind))fail(actionDenied(payload.action?.kind),403);
       const old=snapshot('draft',['task','status'].includes(payload.action?.kind)?'full':'mutation');if(payload.revision!==old.revision)fail('I dati sono cambiati. Aggiorna la pagina e riprova.',409);
       const now=planningNow();let proposal,next;try{proposal=payload.action?.kind==='periodProposal'?proposePeriod(structuredClone(old),payload.action,{notBefore:romeMinute(now)}):null;next=proposal?.state??applyAction(structuredClone(old),payload.action,user.role,{now});}catch(error){throw readablePlanningError(error,old);}
       const oldTasksById=new Map(old.tasks.map(task=>[task.id,task]));
@@ -495,7 +503,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(url.pathname==='/api/commit'&&req.method==='POST') {
       const p=previews.get(payload.token);if(!p||p.userId!==user.id||p.expires<Date.now())fail('Anteprima scaduta. Ripeti l’operazione.',409);
-      if(['machine','type','calendar','maintenance','article','setupRule','periodProposal'].includes(p.action?.kind)&&user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      if(!canAct(user.role,p.action?.kind))fail(actionDenied(p.action?.kind),403);
       const includeFullState=payload.includeState===true,includePlannerState=payload.includeState==='planner',includePlanningState=payload.includeState==='planning'&&isPlanningKind(p.action.kind);let committedSnapshot,responseSnapshot,difference,undo;
       db.exec('BEGIN IMMEDIATE');try {if(currentRevision()!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);if(isPlanningKind(p.action.kind)){savePlanningAction(p.previous,p.next);committedSnapshot=includeFullState?snapshot('draft'):{...p.next,revision:p.revision+1,tasks:decoratePlanningTasks(p.next.tasks)};}else{save(p.next);committedSnapshot=snapshot('draft',includeFullState?'full':'mutation');}difference=auditDifference(p.previous,committedSnapshot);recordMesAudit(db,{entityType:p.action.kind,entityId:p.entityId,action:'commit',user,reason:(typeof p.action.values?.notes==='string'&&p.action.values.notes.trim()?p.action.values.notes:typeof p.action.reason==='string'&&p.action.reason.trim()?p.action.reason.trim():'Modifica '+p.action.kind+' confermata').slice(0,1000),before:difference.before,after:difference.after},uid);if(includePlannerState)responseSnapshot=snapshot('draft','planning',{includeCompleted:payload.includeCompleted===true});db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
       if(isPlanningKind(p.action.kind)){
@@ -509,7 +517,7 @@ const server=http.createServer(async(req,res)=>{
       send(res,200,{ok:true,...(state?{state}:{}),...(planningState?{planningState}:{}),...(undo?{undo}:{})});return;
     }
     if(url.pathname==='/api/users'&&req.method==='POST') {
-      if(user.role!=='admin')fail('Operazione riservata agli amministratori.',403);
+      if(!can(user.role,'users'))fail('Operazione riservata agli amministratori.',403);
       const existing=payload.id?db.prepare('SELECT * FROM users WHERE id=?').get(payload.id):null;if(payload.id&&!existing)fail('Utente non trovato.',404);
       if(existing?.id===user.id&&payload.remove)fail('Non puoi eliminare il tuo account.');
       if(existing?.role==='admin'&&(payload.remove||payload.role!=='admin')&&db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin'").get().n<=1)fail('Deve rimanere almeno un amministratore.');
@@ -517,9 +525,9 @@ const server=http.createServer(async(req,res)=>{
       db.exec('BEGIN IMMEDIATE');try {
       if(payload.remove)db.prepare('DELETE FROM users WHERE id=?').run(existing.id);
       else {
-        const name=text(payload.name,'Nome'),username=text(payload.username,'Nome utente',80).toLowerCase();if(!['admin','operator'].includes(payload.role))fail('Ruolo non valido.');
+        const name=text(payload.name,'Nome'),username=text(payload.username,'Nome utente',80).toLowerCase();if(!ROLES.includes(payload.role))fail('Ruolo non valido.');
         if(db.prepare('SELECT id FROM users WHERE username=? AND id<>?').get(username,existing?.id||''))fail('Nome utente già esistente.');
-        if(db.prepare('SELECT id,name FROM users WHERE id<>?').all(existing?.id||'').some(other=>other.name.trim().toLocaleLowerCase('it')===name.toLocaleLowerCase('it')))fail('Nome visualizzato già utilizzato. Usa un nome che identifichi chiaramente la persona.');
+        if(!(existing&&existing.name.trim().toLocaleLowerCase('it')===name.toLocaleLowerCase('it'))&&db.prepare('SELECT id,name FROM users WHERE id<>?').all(existing?.id||'').some(other=>other.name.trim().toLocaleLowerCase('it')===name.toLocaleLowerCase('it')))fail('Nome visualizzato già utilizzato. Usa un nome che identifichi chiaramente la persona.');
         let encoded=existing?.password;if(payload.password||!existing){const password=text(payload.password,'Password',200);if(password.length<10)fail('La password deve contenere almeno 10 caratteri.');encoded=passwordHash(password);}
         if(existing){db.prepare('UPDATE users SET name=?,username=?,password=?,role=? WHERE id=?').run(name,username,encoded,payload.role,existing.id);if(payload.password)db.prepare('DELETE FROM sessions WHERE user_id=?').run(existing.id);}
         else db.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run(targetId,name,username,encoded,payload.role);

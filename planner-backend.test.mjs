@@ -18,7 +18,7 @@ test('cascata esplicita, anteprima completa e annullamento sicuro dell’ultimo 
   async function commit(action,includeState='planning'){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});const result=await request('commit',{token:preview.token,includeState});return {preview,result,state:await request('state')};}
   try{
     base=await start();await request('setup',{name:'Admin',username:'admin',password:'PasswordTest123!'});const adminCookie=cookie;
-    await request('users',{name:'Operatore',username:'operator',password:'PasswordTest123!',role:'operator'});
+    await request('users',{name:'Operatore',username:'operator',password:'PasswordTest123!',role:'planner'});
     let state=await request('state');const cnc=state.tasks.filter(task=>task.machineId==='CNC-01').slice(0,4),other=state.tasks.find(task=>task.machineId==='TOR-02');
     assert.equal(cnc.length,4);assert.ok(other);
     for(const task of [...cnc.slice(0,3),other])({state}=await commit({kind:'plan',id:task.id}));

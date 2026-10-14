@@ -92,6 +92,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     base=await start();
     await request('setup',{name:'Responsabile',username:'admin',password:'PasswordTest123!'});const adminCookie=cookie;
     await request('users',{name:'Operatore',username:'operator',password:'PasswordTest123!',role:'operator'});
+    await request('users',{name:'Pianificatore',username:'planner',password:'PasswordTest123!',role:'planner'});
     let state=await request('state');
     let first=state.tasks.find(task=>task.status==='unplanned'&&task.setupMinutes>0);
     assert.ok(first);
@@ -106,6 +107,9 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     assert.equal(state.tasks.find(task=>task.id===first.id).planningState,'unreleased');
     const staleRevision=state.revision;
     await request('login',{username:'operator',password:'PasswordTest123!'});const operatorCookie=cookie;
+    await request('planning/release',{revision:(await request('state?view=shopfloor')).revision,reason:'Tentativo operatore'},403);
+    await request('state',undefined,403);
+    await request('login',{username:'planner',password:'PasswordTest123!'});const plannerCookie=cookie;
     let operatorDraft=await request('state');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).position,state.tasks.find(task=>task.id===first.id).position,'anche l’operatore vede la bozza nell’area di pianificazione');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).planningState,'unreleased');
@@ -115,7 +119,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     cookie=adminCookie;
     const adminShopfloorBeforeRelease=await request('state?view=shopfloor');
     assert.equal(adminShopfloorBeforeRelease.tasks.find(task=>task.id===first.id).position,null,'anche l’amministratore vede solo il rilasciato sul bordo macchina');
-    cookie=operatorCookie;const releaseResult=await release();assert.equal(releaseResult.version,1,'chi pianifica può rilasciare anche senza essere amministratore');cookie=adminCookie;
+    cookie=plannerCookie;const releaseResult=await release();assert.equal(releaseResult.version,1,'chi pianifica può rilasciare anche senza essere amministratore');cookie=adminCookie;
     await request('planning/release',{revision:staleRevision,reason:'obsoleta'},409);
     state=await request('state');assert.equal(state.planning.hasDraftChanges,false);
     const released=state.tasks.find(task=>task.id===first.id);assert.equal(released.planningState,'released');
@@ -123,7 +127,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     // A later draft withdrawal does not alter the queue already published to the operator.
     state=await change({kind:'plan',id:first.id,unplan:true});
     assert.equal(state.tasks.find(task=>task.id===first.id).planningState,'pending_removal');
-    cookie=operatorCookie;operatorDraft=await request('state');
+    cookie=plannerCookie;operatorDraft=await request('state');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).position,null,'l’operatore che pianifica vede il ritiro in bozza');
     operatorState=await request('state?view=shopfloor');
     assert.equal(operatorState.tasks.find(task=>task.id===first.id).position,released.position);
@@ -133,7 +137,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     assert.equal(state.tasks.find(task=>task.id===first.id).machineId,otherMachine.id);
     assert.equal(state.tasks.find(task=>task.id===first.id).fixedStart,'2026-11-02T10:00');
     assert.equal(state.tasks.find(task=>task.id===first.id).runMinutes,Math.ceil(100/otherSpeed),'il cambio macchina ricalcola solo le durate automatiche');
-    cookie=operatorCookie;operatorDraft=await request('state');
+    cookie=plannerCookie;operatorDraft=await request('state');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).machineId,otherMachine.id,'la pianificazione operatore espone la macchina della bozza');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).fixedStart,'2026-11-02T10:00','la pianificazione operatore espone la data della bozza anche senza attività rilasciate quel giorno');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).planningState,'modified');
@@ -197,6 +201,7 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     operatorState=await request('state?view=shopfloor');const execution=operatorState.executions.find(item=>item.taskId===task.id);
     assert.equal(execution.phase,'cancelled');assert.equal(execution.producedQuantity,2);assert.equal(execution.outputLot,'OUT-PARTIAL-1');assert.equal(execution.lots.length,2);assert.ok(execution.runEndedAt);
     // Il report usa il giorno aziendale Europe/Rome, anche vicino alla mezzanotte UTC.
+    cookie=plannerCookie;
     const closedDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(execution.runEndedAt)),report=await request(`statistics?from=${closedDate}&to=${closedDate}`);
     assert.equal(report.details.find(item=>item.taskId===task.id)?.closureStatus,'Interrotta','il consuntivo parziale entra nelle statistiche');
     cookie=adminCookie;state=await request('state');

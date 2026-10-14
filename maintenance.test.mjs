@@ -45,7 +45,7 @@ test('API manutenzione mantiene una bozza separata dal piano rilasciato, control
     assert.equal(result.preview.maintenance.operation,'add');assert.equal(result.preview.maintenance.block.name,'Tagliando annuale');const block=result.preview.maintenance.block;
     assert.equal(result.state.planning.hasDraftChanges,true);assert.equal(result.state.planning.hasMaintenanceChanges,true);assert.deepEqual(result.state.planning.changedMaintenanceIds,[block.id]);
     assert.equal((await request('state?view=shopfloor')).calendar.maintenanceBlocks.length,0,'la bozza non deve raggiungere il reparto');
-    await request('login',{username:'operator',password:'PasswordTest123!'});await request('preview',{revision:(await request('state')).revision,action:{kind:'maintenance',id:block.id,remove:true}},403);
+    await request('login',{username:'operator',password:'PasswordTest123!'});await request('preview',{revision:(await request('state?view=shopfloor')).revision,action:{kind:'maintenance',id:block.id,remove:true}},403);
     cookie=adminCookie;let state=await request('state');const released=await request('planning/release',{revision:state.revision,reason:'Manutenzione confermata'});assert.equal(released.maintenanceChanged,true);
     assert.equal((await request('state?view=shopfloor')).calendar.maintenanceBlocks[0].id,block.id);
     result=await previewCommit({kind:'maintenance',id:block.id,machineId:'CNC-01',start:'2027-01-02T10:00',end:'2027-01-03T12:00',name:'Tagliando aggiornato'});assert.equal(result.preview.maintenance.operation,'update');

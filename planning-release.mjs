@@ -1,5 +1,6 @@
 import { assessFinishPlausibility, qualityStatusWithPlausibility, requirePlausibilityReason, validateFinishDeclaration } from './quality.mjs';
 import { recordMesAudit, validateOutputLot } from './mes-records.mjs';
+import { can } from './roles.mjs';
 
 function fail(message, status = 400) {
   const error = new Error(message);
@@ -209,7 +210,7 @@ export function migratePlanningRelease(db, makeId = () => `migration-${Date.now(
 }
 
 export function releasePlanning(db, payload, user, makeId, now = new Date().toISOString()) {
-  if (!user) fail('Autenticazione richiesta.', 401);
+  if (!can(user?.role, 'plan')) fail('Il rilascio del piano è riservato a chi pianifica.', 403);
   if (!Number.isInteger(payload?.revision)) fail('Revisione non valida.');
   const reason = typeof payload.reason === 'string' && payload.reason.trim() ? requiredText(payload.reason, 'Motivazione') : 'Rilascio del piano di produzione';
   db.exec('BEGIN IMMEDIATE');
@@ -252,7 +253,7 @@ export function releasePlanning(db, payload, user, makeId, now = new Date().toIS
 }
 
 export function requestExecutionInterruption(db, payload, user, makeId, now = new Date().toISOString()) {
-  if (user?.role !== 'admin') fail('Operazione riservata agli amministratori.', 403);
+  if (!can(user?.role, 'plan')) fail('La richiesta di interruzione è riservata a chi pianifica.', 403);
   if (!Number.isInteger(payload?.revision)) fail('Revisione non valida.');
   const taskId = requiredText(payload.taskId, 'Attività', 200), reason = requiredText(payload.reason, 'Motivazione');
   db.exec('BEGIN IMMEDIATE');

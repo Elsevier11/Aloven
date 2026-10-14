@@ -90,9 +90,15 @@ test('API cataloghi è riservata agli amministratori',async()=>{
     assert.equal(state.scrapReasons.length,6);assert.equal(state.machineStopReasons.length,6);
     await request('users',{name:'Operatore',username:'operator',password:'PasswordTest123!',role:'operator'});
     await request('login',{username:'operator',password:'PasswordTest123!'});
-    state=await request('state');
+    state=await request('state?view=shopfloor');
     await request('scrap-reasons',{revision:state.revision,code:'x',description:'X',active:true},403);
     await request('machine-stop-reasons',{revision:state.revision,code:'x',description:'X',active:true},403);
+    // Il pianificatore gestisce le causali come l'amministratore.
+    await request('login',{username:'admin',password:'PasswordTest123!'});
+    await request('users',{name:'Pianificatore',username:'planner',password:'PasswordTest123!',role:'planner'});
+    await request('login',{username:'planner',password:'PasswordTest123!'});
+    state=await request('state');
+    await request('scrap-reasons',{revision:state.revision,code:'plan-x',description:'Causale del pianificatore',active:true});
   } finally {
     if(child?.exitCode===null){const done=once(child,'exit');child.kill();await done;}
     rmSync(data,{recursive:true,force:true});

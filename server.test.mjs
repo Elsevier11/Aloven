@@ -57,8 +57,9 @@ test('Database, multiutente, CRUD, riordino confermato e conflitti concorrenti',
     const conflicting=structuredClone(s.calendar);conflicting.exceptions[frozen.start.slice(0,10)]=[];
     await request('preview',{revision:s.revision,action:{kind:'calendar',values:conflicting}},400);
     await request('users',{name:'Operatore',username:'operator',password:'PasswordTest123!',role:'operator'});
-    await request('login',{username:'operator',password:'PasswordTest123!'});assert.equal((await request('state')).users.length,0);
-    const operatorState=await request('state');await request('preview',{revision:operatorState.revision,action:{kind:'machine',id:mid,remove:true}},403);
+    await request('login',{username:'operator',password:'PasswordTest123!'});assert.equal((await request('state?view=shopfloor')).users.length,0);
+    await request('state',undefined,403);
+    const operatorState=await request('state?view=shopfloor');await request('preview',{revision:operatorState.revision,action:{kind:'machine',id:mid,remove:true}},403);
     await request('users',{name:'Abuso',username:'abuse',password:'PasswordTest123!',role:'admin'},403);
     cookie=adminCookie;const admin=(await request('state')).users.find(u=>u.username==='admin');await request('users',{id:admin.id,remove:true},400);
     const op=(await request('state')).users.find(u=>u.username==='operator');
