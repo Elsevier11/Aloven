@@ -37,3 +37,61 @@ test('proposal honours a manual setup time over catalog rules and the base setup
  assert.deepEqual(p.included,['a','b','c']);
  assert.equal(by('a').effectiveSetupMinutes,0);assert.equal(by('b').effectiveSetupMinutes,45,'il valore manuale prevale sulla regola');assert.equal(by('c').effectiveSetupMinutes,30,'senza override né regola second→second resta il valore base');
 });
+
+// --- Riempimento dei buchi (mode: 'fill') ---
+import {scheduleTask} from './scheduler.mjs';
+import {effectiveMachineCalendar} from './public/calendar.js';
+const placed=(id,fixedStart,runMinutes,extra={})=>{
+ const t=task(id,runMinutes,{status:'planned',...extra}),effective=extra.effectiveSetupMinutes??t.setupMinutes;
+ const item=scheduleTask({...t,setupMinutes:effective},fixedStart,effectiveMachineCalendar(base().calendar,'m'));
+ return {...t,start:item.start,end:item.end,segments:item.segments,fixedStart,effectiveSetupMinutes:effective};
+};
+// Lunedì 12 ottobre: A 08:00–09:30, pausa pranzo, B 13:00–14:30. Libero 09:30–12:00 e dopo B.
+const withGap=extra=>{const s=base();s.tasks=[placed('A','2026-10-12T08:00',60,{position:0}),placed('B','2026-10-12T13:00',60,{position:1,...extra})];return s;};
+const snapshot=(p,id)=>{const t=p.state.tasks.find(x=>x.id===id);return {start:t.start,end:t.end,segments:t.segments,fixedStart:t.fixedStart};};
+
+test('fill: un candidato che entra nel buco viene messo lì con inizio fissato; le altre attività non cambiano',()=>{
+ const s=withGap();s.tasks.push(task('fit',90));const before=structuredClone(s);
+ const p=propose(s,{mode:'fill'}),by=id=>p.state.tasks.find(t=>t.id===id);
+ assert.deepEqual(p.included,['fit']);
+ assert.equal(by('fit').start,'2026-10-12T09:30');assert.equal(by('fit').end,'2026-10-12T11:30');assert.equal(by('fit').fixedStart,'2026-10-12T09:30','il buco richiede l’inizio fissato per restare stabile');
+ for(const id of ['A','B'])assert.deepEqual(snapshot(p,id),snapshot({state:before},id),`${id} resta identica`);
+ assert.deepEqual(['A','fit','B'].map(id=>by(id).position),[0,1,2],'le posizioni seguono l’ordine temporale');
+ assert.deepEqual(s,before,'l’input non viene modificato');
+});
+
+test('append (predefinito): lo stesso candidato va dopo l’ultima attività, senza inizio fissato',()=>{
+ const s=withGap();s.tasks.push(task('fit',90));
+ const p=propose(s),fit=p.state.tasks.find(t=>t.id==='fit');
+ assert.ok(fit.start>=p.state.tasks.find(t=>t.id==='B').end);assert.equal(fit.position,2);assert.equal(fit.fixedStart??null,null);
+});
+
+test('fill: un candidato troppo lungo per il buco viene accodato; con più candidati il buco va al primo che ci sta',()=>{
+ const s=withGap();s.tasks.push(task('big',200,{dueDate:'2026-10-13'}),task('fit',60,{dueDate:'2026-10-14'}));
+ const p=propose(s,{mode:'fill'}),by=id=>p.state.tasks.find(t=>t.id===id);
+ assert.equal(by('fit').start,'2026-10-12T09:30','fit ci sta nel buco anche se arriva dopo per consegna');
+ assert.ok(by('big').start>=by('B').end,'big non entra nel buco: coda');assert.equal(by('big').fixedStart??null,null);
+ assert.deepEqual(p.included.sort(),['big','fit']);
+});
+
+test('fill: il buco prima della prima attività è usato, ma non nel passato',()=>{
+ const s=base();s.tasks=[placed('A','2026-10-12T10:00',60,{position:0}),task('early',60)];
+ let p=propose(s,{mode:'fill'});assert.equal(p.state.tasks.find(t=>t.id==='early').start,'2026-10-12T08:00');assert.equal(p.state.tasks.find(t=>t.id==='A').position,1);
+ p=proposePeriod(s,{from:'2026-10-12',to:'2026-10-16',machineIds:['m'],taskIds:['early'],mode:'fill'},{notBefore:'2026-10-12T09:00'});
+ assert.ok(p.state.tasks.find(t=>t.id==='early').start>=p.state.tasks.find(t=>t.id==='A').end,'con ora minima 09:00 il buco 09:00–10:00 non basta e il candidato va in coda');
+});
+
+test('fill: se l’inserimento cambierebbe il setup dell’attività seguente, il buco è scartato',()=>{
+ const s=base();s.setupRules=[{machineId:'m',fromTypeId:'type',toTypeId:'second',minutes:0}];
+ // B (second) segue A (type) con setup 0 da regola; un candidato di altro tipo davanti a B farebbe tornare il setup a 30
+ s.tasks=[placed('A','2026-10-12T08:00',60,{position:0}),placed('B','2026-10-12T13:00',60,{position:1,typeId:'second',effectiveSetupMinutes:0}),task('other',60,{typeId:'other'})];
+ const p=propose(s,{mode:'fill'}),other=p.state.tasks.find(t=>t.id==='other');
+ assert.ok(other.start>=p.state.tasks.find(t=>t.id==='B').end,'in coda, il buco avrebbe spostato i tempi di B');
+ assert.deepEqual(snapshot(p,'B'),snapshot({state:s},'B'));
+});
+
+test('fill: non usa buchi davanti ad attività bloccate e rifiuta una modalità sconosciuta',()=>{
+ const s=base();const running=placed('run','2026-10-12T10:00',60,{position:0,status:'in_progress'});s.tasks=[running,task('x',30)];
+ const p=propose(s,{mode:'fill'});assert.ok(p.state.tasks.find(t=>t.id==='x').start>=running.end);
+ assert.throws(()=>propose(s,{mode:'altro'}),/Modalità/);
+});

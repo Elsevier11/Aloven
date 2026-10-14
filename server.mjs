@@ -469,9 +469,11 @@ const server=http.createServer(async(req,res)=>{
         if(currentRevision()!==undo.revision)fail('Il piano è stato modificato dopo lo spostamento. Aggiorna la pagina.',409);
         current=snapshot('draft','mutation');restored={...undo.previous,revision:current.revision};
         savePlanningAction(current,restored);
+        // La proposta di periodo può alzare l'ancoraggio di una macchina: va riportato com'era.
+        for(const machine of undo.previous.machines||[]){const now=current.machines.find(item=>item.id===machine.id);if(now&&now.anchor!==machine.anchor)db.prepare('UPDATE machines SET anchor=? WHERE id=?').run(machine.anchor,machine.id);}
         restored={...restored,revision:current.revision+1,tasks:decoratePlanningTasks(restored.tasks)};
         difference=auditDifference(current,restored);
-        recordMesAudit(db,{entityType:'plan',entityId:undo.entityId,action:'undo',user,reason:'Annullamento ultimo spostamento',before:difference.before,after:difference.after},uid);
+        recordMesAudit(db,{entityType:'plan',entityId:undo.entityId,action:'undo',user,reason:undo.reason||'Annullamento ultimo spostamento',before:difference.before,after:difference.after},uid);
         db.exec('COMMIT');planningUndos.delete(payload.token);
       }catch(error){db.exec('ROLLBACK');throw error;}
       const planningState={revision:restored.revision,tasks:difference.after.tasks||[],planning:payload.plannerProjection?planningInfoForPlanner(restored.tasks,payload.includeCompleted===true):planningInfo(db,restored.tasks)};
@@ -494,7 +496,7 @@ const server=http.createServer(async(req,res)=>{
       const placed=payload.action?.kind==='plan'&&Object.hasOwn(payload.action,'fixedStart')?next.tasks.find(task=>task.id===payload.action.id):null;
       const placement=placed?structuredClone(placed):undefined;
       const planningFields=['machineId','runMinutes','status','position','start','end','segments','effectiveSetupMinutes','fixedStart'];
-      const placements=isPlanningKind(payload.action?.kind)?next.tasks.flatMap(task=>{if(task.position==null)return [];const previous=oldTasksById.get(task.id);return planningFields.some(field=>JSON.stringify(previous?.[field]??null)!==JSON.stringify(task[field]??null))?[structuredClone(task)]:[];}):undefined;
+      const placements=payload.action?.kind==='periodProposal'?next.tasks.filter(task=>proposal.included.includes(task.id)).map(task=>structuredClone(task)):isPlanningKind(payload.action?.kind)?next.tasks.flatMap(task=>{if(task.position==null)return [];const previous=oldTasksById.get(task.id);return planningFields.some(field=>JSON.stringify(previous?.[field]??null)!==JSON.stringify(task[field]??null))?[structuredClone(task)]:[];}):undefined;
       const token=uid()+uid(),collection={task:'tasks',machine:'machines',type:'types',article:'articles',setupRule:'setupRules'}[payload.action.kind];
       const maintenanceBlock=payload.action.kind==='maintenance'?(payload.action.remove?old.calendar.maintenanceBlocks.find(block=>block.id===payload.action.id):payload.action.id?next.calendar.maintenanceBlocks.find(block=>block.id===payload.action.id):next.calendar.maintenanceBlocks.find(block=>!old.calendar.maintenanceBlocks.some(previous=>previous.id===block.id))):null;
       const entityId=payload.action.id||(payload.action.kind==='realign'?payload.action.machineId:null)||maintenanceBlock?.id||(collection?next[collection].find(item=>!old[collection].some(previous=>previous.id===item.id))?.id:null)||payload.action.kind;
@@ -506,11 +508,11 @@ const server=http.createServer(async(req,res)=>{
       if(!canAct(user.role,p.action?.kind))fail(actionDenied(p.action?.kind),403);
       const includeFullState=payload.includeState===true,includePlannerState=payload.includeState==='planner',includePlanningState=payload.includeState==='planning'&&isPlanningKind(p.action.kind);let committedSnapshot,responseSnapshot,difference,undo;
       db.exec('BEGIN IMMEDIATE');try {if(currentRevision()!==p.revision)fail('Un altro utente ha modificato i dati. Aggiorna e riprova.',409);if(isPlanningKind(p.action.kind)){savePlanningAction(p.previous,p.next);committedSnapshot=includeFullState?snapshot('draft'):{...p.next,revision:p.revision+1,tasks:decoratePlanningTasks(p.next.tasks)};}else{save(p.next);committedSnapshot=snapshot('draft',includeFullState?'full':'mutation');}difference=auditDifference(p.previous,committedSnapshot);recordMesAudit(db,{entityType:p.action.kind,entityId:p.entityId,action:'commit',user,reason:(typeof p.action.values?.notes==='string'&&p.action.values.notes.trim()?p.action.values.notes:typeof p.action.reason==='string'&&p.action.reason.trim()?p.action.reason.trim():'Modifica '+p.action.kind+' confermata').slice(0,1000),before:difference.before,after:difference.after},uid);if(includePlannerState)responseSnapshot=snapshot('draft','planning',{includeCompleted:payload.includeCompleted===true});db.exec('COMMIT');previews.delete(payload.token);}catch(e){db.exec('ROLLBACK');throw e;}
-      if(isPlanningKind(p.action.kind)){
+      if(isPlanningKind(p.action.kind)||p.action.kind==='periodProposal'){
         for(const [token,value] of planningUndos)if(value.expires<Date.now()||value.userId===user.id)planningUndos.delete(token);
         const token=uid()+uid(),task=p.previous.tasks.find(item=>item.id===p.action.id);
-        planningUndos.set(token,{userId:user.id,revision:committedSnapshot.revision,previous:p.previous,entityId:p.entityId,expires:Date.now()+600000});
-        undo={token,revision:committedSnapshot.revision,label:p.action.kind==='realign'?'Riallineamento':task?.title||'Ultimo spostamento'};
+        planningUndos.set(token,{userId:user.id,revision:committedSnapshot.revision,previous:p.previous,entityId:p.entityId,reason:p.action.kind==='periodProposal'?'Annullamento proposta del periodo':'Annullamento ultimo spostamento',expires:Date.now()+600000});
+        undo={token,revision:committedSnapshot.revision,label:p.action.kind==='periodProposal'?'Proposta del periodo':p.action.kind==='realign'?'Riallineamento':task?.title||'Ultimo spostamento'};
       }
       const state=includeFullState||includePlannerState?{...(responseSnapshot||committedSnapshot),user,users:user.role==='admin'?publicUsers():[]}:undefined;
       const planningState=includePlanningState?{revision:committedSnapshot.revision,tasks:difference.after.tasks||[],planning:payload.plannerProjection?planningInfoForPlanner(committedSnapshot.tasks,payload.includeCompleted===true):planningInfo(db,committedSnapshot.tasks),liveMachines:machineLiveStatus(db,{machines:committedSnapshot.machines,tasks:committedSnapshot.tasks,now:liveNow()}),serverNow:liveNow()}:undefined;

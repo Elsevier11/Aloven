@@ -33,8 +33,14 @@ const calendarFor=(s,id)=>effectiveMachineCalendar(s.calendar,id);
 const validDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00Z'))&&new Date(v+'T12:00Z').toISOString().slice(0,10)===v;
 function minutes(v){return Date.parse(v+'Z')/60000;}
 
-/** Explicit candidates are appended to the existing queue; no existing activity is removed. */
-export function proposePeriod(input,{from,to,machineIds,taskIds},options={}){
+/**
+ * Explicit candidates are placed on their machine; no existing activity is removed or moved.
+ * mode 'append' (default) adds them after the last activity; mode 'fill' first tries the free gaps between
+ * activities already planned (a candidate placed in a gap gets a fixed start so later recalculations keep it there).
+ */
+export const PROPOSAL_MODES=['append','fill'];
+export function proposePeriod(input,{from,to,machineIds,taskIds,mode='append'},options={}){
+  if(!PROPOSAL_MODES.includes(mode))throw new Error('Modalità della proposta non valida.');
   if(!validDate(from)||!validDate(to)||from>to||Date.parse(to)-Date.parse(from)>366*86400000)throw new Error('Seleziona un periodo valido, massimo un anno.');
   if(!Array.isArray(machineIds)||!machineIds.length||new Set(machineIds).size!==machineIds.length||machineIds.some(id=>!input.machines.some(m=>m.id===id)))throw new Error('Seleziona macchine valide.');
   if(!Array.isArray(taskIds)||new Set(taskIds).size!==taskIds.length||taskIds.some(id=>!input.tasks.some(t=>t.id===id)))throw new Error('Seleziona attività valide.');
@@ -53,12 +59,46 @@ export function proposePeriod(input,{from,to,machineIds,taskIds},options={}){
     // Existing dates are retained. An empty queue starts in the requested period.
     if(!sequence.length&&anchor<start)anchor=start;
     let scheduled=structuredClone(sequence);
+    const setupFor=(task,previous)=>task.setupOverrideMinutes!=null?task.setupOverrideMinutes:previous?state.setupRules?.find(r=>r.machineId===id&&r.fromTypeId===previous.typeId&&r.toTypeId===task.typeId)?.minutes??task.setupMinutes:task.setupMinutes;
+    const isLocked=task=>task.status==='in_progress'||task.status==='completed';
+    // Places the candidate in the first free gap before an existing activity, leaving every other activity untouched.
+    const placeInGap=candidate=>{
+      for(let index=0;index<sequence.length;index++){
+        const previous=sequence[index-1],next=sequence[index];
+        if(!next.start||isLocked(next))continue;
+        const nextStart=next.segments?.[0]?.start??next.start;
+        const gapStart=[previous?.end??start,start,notBefore].sort().at(-1);
+        if(gapStart>=nextStart)continue;
+        const setup=setupFor(candidate,previous);
+        // The activity that follows must keep the same setup, otherwise its own times would change.
+        if(setupFor(next,candidate)!==(next.effectiveSetupMinutes??next.setupMinutes))continue;
+        let item;
+        try{item=scheduleMachine([{...candidate,status:'planned',setupMinutes:setup}],gapStart,cal)[0];}catch{continue;}
+        if(item.end>nextStart||item.end>end)continue;
+        const assigned={...item,setupMinutes:candidate.setupMinutes,effectiveSetupMinutes:setup,fixedStart:item.start,position:index};
+        const trial=[...sequence.slice(0,index),assigned,...sequence.slice(index)];
+        // Confirm with the real scheduler that every other activity keeps exactly its current times.
+        try{
+          const checked=scheduleMachine(trial.map(task=>({...task,setupMinutes:task.effectiveSetupMinutes??task.setupMinutes})),machine.anchor,cal,{preserveStarts:true});
+          if(checked.some((row,position)=>row.start!==trial[position].start||row.end!==trial[position].end))continue;
+        }catch{continue;}
+        sequence.splice(index,0,assigned);scheduled.splice(index,0,assigned);
+        sequence.forEach((task,position)=>{task.position=position;});scheduled.forEach((task,position)=>{task.position=position;});
+        Object.assign(candidate,assigned);
+        return assigned;
+      }
+      return null;
+    };
     for(const candidate of candidates.filter(t=>t.status==='unplanned'&&t.machineId===id)){
       if(stopped){excluded.push({id:candidate.id,reason:'Fermo macchina aperto: disponibilità da verificare'});continue;}
+      if(mode==='fill'){
+        const placed=placeInGap(candidate);
+        if(placed){included.push(candidate.id);continue;}
+      }
       // Append from the later of the queue end and period start, without shifting existing work.
       const cursor=scheduled.length?scheduled.at(-1).end:anchor;
       const earliest=[cursor,start,notBefore].sort().at(-1);
-      const previous=sequence.at(-1),setup=candidate.setupOverrideMinutes!=null?candidate.setupOverrideMinutes:previous?state.setupRules?.find(r=>r.machineId===id&&r.fromTypeId===previous.typeId&&r.toTypeId===candidate.typeId)?.minutes??candidate.setupMinutes:candidate.setupMinutes;
+      const previous=sequence.at(-1),setup=setupFor(candidate,previous);
       let item;
       try{item=scheduleMachine([{...candidate,status:'planned',setupMinutes:setup}],earliest,cal)[0];}catch(error){excluded.push({id:candidate.id,reason:error.message});continue;}
       if(item.end>end){excluded.push({id:candidate.id,reason:'Non entra interamente nel periodo'});continue;}

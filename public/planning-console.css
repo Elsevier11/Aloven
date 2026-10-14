@@ -282,3 +282,35 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .gantt-row~.gantt-row .now-marker span{display:none}
 .planning-workspace .resource-timeline .machine-actions>summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;min-width:30px;min-height:30px;padding:0 6px;font-size:18px;line-height:1;border:1px solid var(--line);border-radius:8px;background:#fff;color:#365b84;cursor:pointer}
 .planning-workspace .resource-timeline .machine-actions>summary::-webkit-details-marker{display:none}
+
+/* Prepara periodo: anteprima sul calendario, saturazione per macchina, riepilogo del rilascio */
+.proposal-banner{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px;padding:6px 10px;border:1px dashed var(--mes-blue);border-radius:8px;background:#eef4ff}
+.proposal-banner-text{display:flex;flex-direction:column;min-width:0;font-size:12px;line-height:1.3}
+.proposal-banner-text strong{font-size:13px}
+.proposal-banner-text span{color:var(--mes-muted)}
+.proposal-actions{display:flex;gap:6px;flex:none}
+.proposal-actions .button{height:30px;min-height:30px;padding:4px 10px;font-size:12px}
+.planning-workspace .resource-timeline .proposal-ghost{position:absolute;z-index:2;top:30px;height:44px;box-sizing:border-box;padding:6px 9px;overflow:hidden;border:2px dashed var(--machine-color);border-radius:6px;background:color-mix(in srgb,var(--machine-color) 16%,white);color:#193c70;pointer-events:none;font-size:12px;line-height:1.2}
+.planning-workspace .resource-timeline .proposal-ghost.setup{border-color:var(--mes-amber);background:repeating-linear-gradient(135deg,#fff3d6 0 6px,#ffe6ad 6px 12px);color:#422B0C}
+.proposal-ghost strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proposal-ghost span{display:block;white-space:nowrap}
+.proposal-ghost.compact span{display:none}
+.proposal-fill-option{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:600}
+.machine-load{position:relative;height:16px;margin-top:4px;border-radius:4px;background:#e8edf5;overflow:hidden;font-size:11px;font-variant-numeric:tabular-nums}
+.machine-load>i{position:absolute;inset:0 auto 0 0;background:#9cc7a8}
+.machine-load[data-level=high]>i{background:#f0c36a}
+.machine-load[data-level=full]>i{background:#e48a7f}
+.machine-load>span{position:relative;display:block;padding:0 6px;line-height:16px;color:var(--mes-ink)}
+.machine-load[data-level=none]{background:transparent;color:var(--mes-muted)}
+.release-weeks{margin:10px 0}
+.release-weeks h3{margin:0 0 4px;font-size:13px}
+.release-weeks table{width:100%;border-collapse:collapse;font-size:12px}
+.release-weeks th,.release-weeks td{padding:3px 6px;border-bottom:1px solid var(--mes-border);text-align:center}
+.release-weeks tbody th{text-align:left;font-weight:650}
+.release-weeks td[data-level=high]{background:#fff3d6}
+.release-weeks td[data-level=full]{background:#fde1dd}
+.release-weeks td[data-level=none]{color:var(--mes-muted)}
+.release-left{margin:6px 0 2px;font-size:13px}
+.release-due{margin:0;padding-left:18px;font-size:12px}
+.release-due li{display:flex;gap:8px;justify-content:space-between}
+@media(max-width:800px){.proposal-banner{flex-direction:column;align-items:stretch}.proposal-actions{flex-wrap:wrap}}
