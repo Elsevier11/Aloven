@@ -209,7 +209,7 @@ export function migratePlanningRelease(db, makeId = () => `migration-${Date.now(
 }
 
 export function releasePlanning(db, payload, user, makeId, now = new Date().toISOString()) {
-  if (user?.role !== 'admin') fail('Operazione riservata agli amministratori.', 403);
+  if (!user) fail('Autenticazione richiesta.', 401);
   if (!Number.isInteger(payload?.revision)) fail('Revisione non valida.');
   const reason = typeof payload.reason === 'string' && payload.reason.trim() ? requiredText(payload.reason, 'Motivazione') : 'Rilascio del piano di produzione';
   db.exec('BEGIN IMMEDIATE');

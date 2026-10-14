@@ -31,7 +31,8 @@
     "test:design": "node mes-design-check.mjs",
     "test:desktop-flow": "node desktop-flow-check.mjs",
     "test:planning-live": "node planning-live-check.mjs",
-    "test:planning-week": "node planning-week-check.mjs"
+    "test:planning-week": "node planning-week-check.mjs",
+    "test:reparto": "node reparto-check.mjs"
   },
   "engines": {
     "node": ">=22.13"

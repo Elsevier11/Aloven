@@ -38,7 +38,7 @@ try{
   browser=await chromium.launch({channel:'msedge',headless:process.env.HEADFUL!=='1'});
   const context=await browser.newContext({viewport:{width:1366,height:768}});
   context.setDefaultTimeout(8000);
-  await context.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-plan-zoom','1');localStorage.setItem('aloven-drag-mode','single');});
+  await context.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-plan-zoom','1');});
   page=await context.newPage();page.on('pageerror',error=>report.pageErrors.push(error.message));
   page.on('request',request=>{if(/\/api\/(preview|commit|planning\/undo)(?:\?|$)/.test(request.url()))report.requests.push({method:request.method(),endpoint:new URL(request.url()).pathname,body:request.postDataJSON?.()});});
   await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica fluidità');await page.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await page.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.locator('.timeline-scroll').waitFor();
@@ -88,16 +88,17 @@ try{
     }finally{await page.mouse.move(10,10);await finishDrag();await page.unroute('**/api/preview');await page.locator('#plan-zoom').evaluate(element=>{element.value='1';element.dispatchEvent(new Event('change'));});}
   });
 
-  await check('Conflitto completo visibile prima del rilascio del mouse e senza scritture',async()=>{
+  await check('Rilascio su uno spazio occupato chiede conferma; Annulla non scrive',async()=>{
     const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);
-    const hint=page.locator('.insertion-hint.invalid');await hint.waitFor({state:'visible',timeout:4000});await sleep(500);assert.equal(await hint.isVisible(),true,'Il feedback rosso deve restare stabile durante il mouse hold');const message=await hint.innerText();
-    assert.match(message,/Fluidità [234]/,'Il conflitto deve nominare un’attività operativa coinvolta');assert.match(message,/sovrappone|occupat/);assert.equal((await state()).revision,before.revision);
-    assert.ok(await page.locator('.drag-preview-footprint[data-validity="invalid"]').count(),'Il conflitto conserva l’ingombro rosso');
-    const markerColor=await hint.evaluate(element=>getComputedStyle(element).backgroundColor);assert.equal(markerColor,'rgb(179, 61, 61)');
-    await capture('invalid-pre-drop');
-    await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);
-    await holdDrag(source,cell,9*60+30);await page.locator('.insertion-hint.invalid').waitFor({state:'visible'});await page.mouse.move(10,10);await finishDrag();assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
+    await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();assert.equal(await page.locator('.insertion-hint.invalid').count(),0,'lo spazio occupato non è più un rifiuto');
+    assert.equal(await page.locator('[data-drag-mode]').count(),0,'l’interruttore di modalità non esiste più');
+    await finishDrag();await page.getByRole('heading',{name:'Attività già pianificate in questo spazio'}).waitFor();
+    assert.match(await page.locator('#shift-notice').innerText(),/cambierà le date di \d+ altr[ae] attivit/);assert.ok(await page.locator('.change-list').getByText('Fluidità',{exact:false}).count());
+    assert.equal((await state()).revision,before.revision,'nessuna scrittura prima della scelta');
+    await page.getByRole('button',{name:'Annulla',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
+    assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
   });
+
 
   await check('Errore di salvataggio lascia la bozza intatta e pulisce il gesto',async()=>{
     const before=await state(),commits=report.requests.filter(request=>request.endpoint==='/api/commit').length;
@@ -118,18 +119,17 @@ try{
   });
 
   await check('Inserimento a cascata riusa l’anteprima finale, mostra tutte le impronte e annulla tutte le modifiche',async()=>{
-    await page.getByRole('button',{name:'Inserisci e sposta le successive',exact:true}).click();
     const traffic={preview:[],commit:[]};const onResponse=async response=>{const endpoint=new URL(response.url()).pathname;if(endpoint==='/api/preview'&&response.request().method()==='POST')traffic.preview.push({action:response.request().postDataJSON()?.action,result:await response.json().catch(()=>null)});};const onRequest=request=>{const endpoint=new URL(request.url()).pathname;if(endpoint==='/api/commit')traffic.commit.push(request.postDataJSON());};page.on('response',onResponse);page.on('request',onRequest);
     const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="ready"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=3);await capture('cascade-preview');
-    const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 2',{exact:false}).count());
-    await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
+    const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'Attività già pianificate in questo spazio'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 2',{exact:false}).count());
+    await page.getByRole('button',{name:'Inserisci e sposta le successive',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
     const cascaded=await state(),after=planningSnapshot(cascaded);assert.deepEqual(after[tasks[0].id],baselinePlanning[tasks[0].id]);assert.equal(after[moverId].fixedStart,'2026-10-12T09:30');assert.notEqual(after[tasks[1].id].start,baselinePlanning[tasks[1].id].start);assert.notEqual(after[tasks[2].id].start,baselinePlanning[tasks[2].id].start);
     await page.locator('#planning-undo').click();await page.waitForFunction(revision=>Number(document.querySelector('.shell')?.dataset.revision)>revision,cascaded.revision);assert.deepEqual(planningSnapshot(await state()),baselinePlanning);
     const finalPreviews=traffic.preview.filter(item=>item.action?.fixedStart==='2026-10-12T09:30');assert.equal(finalPreviews.length,1,'Il drop non deve ripetere l’anteprima della posizione finale');assert.equal(traffic.commit.length,1);assert.equal(traffic.commit[0].token,finalPreviews[0].result.token);
   });
 
   await check('Pin visibile, comando di rimozione e annullamento obsoleto disabilitato',async()=>{
-    await page.getByRole('button',{name:'Sposta solo questa',exact:true}).click();const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block[data-task="${tasks[0].id}"] .fixed-start-pin`).waitFor();
+    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block[data-task="${tasks[0].id}"] .fixed-start-pin`).waitFor();
     await page.locator(`.time-block.run[data-task="${tasks[0].id}"]`).click();await page.locator('#selection-unpin').waitFor();let unpinAction;const capture=request=>{if(new URL(request.url()).pathname==='/api/preview')unpinAction=request.postDataJSON()?.action;};page.on('request',capture);await page.locator('#selection-unpin').click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',capture);assert.equal(unpinAction.id,tasks[0].id);assert.ok(!Object.hasOwn(unpinAction,'fixedStart'));await page.getByRole('button',{name:'Annulla',exact:true}).click();
     const current=(await state()).machines.find(item=>item.id===other.id);await action({kind:'machine',id:other.id,values:{...current,description:current.description+' · refresh test'}});await page.reload();await page.locator('.timeline-scroll').waitFor();assert.equal(await page.locator('#planning-undo').isDisabled(),true);
   });
@@ -146,7 +146,7 @@ try{
   });
 
   await check('Touch fra macchine, pointercancel e pressione senza spostamento',async()=>{
-    const touchContext=await browser.newContext({viewport:{width:1024,height:768},hasTouch:true});touchContext.setDefaultTimeout(8000);await touchContext.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');localStorage.setItem('aloven-drag-mode','single');});const touch=await touchContext.newPage();touch.on('pageerror',error=>report.pageErrors.push(error.message));
+    const touchContext=await browser.newContext({viewport:{width:1024,height:768},hasTouch:true});touchContext.setDefaultTimeout(8000);await touchContext.addInitScript(()=>{localStorage.setItem('aloven-plan-view','day');});const touch=await touchContext.newPage();touch.on('pageerror',error=>report.pageErrors.push(error.message));
     await touch.goto(base);await touch.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await touch.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await touch.getByRole('button',{name:'Accedi',exact:true}).click();await touch.locator('.timeline-scroll').waitFor();await touch.locator('#date-start').fill('2026-10-12');await touch.locator('#date-start').dispatchEvent('change');
     const before=await state(touch),id=tasks[1].id,source=touch.locator(`.time-block.run[data-task="${id}"]`),touchCell=touch.locator(`[data-drop-machine="${other.id}"][data-date="2026-10-12"]`);const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),touchCell.boundingBox(),touchCell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox);const start={x:sourceBox.x+4,y:sourceBox.y+18},end={x:cellBox.x+(15*60-meta.lo)*meta.scale,y:cellBox.y+40},cdp=await touchContext.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:7}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert.equal((await state(touch)).revision,before.revision,'Una pressione senza spostamento non salva');assert.equal(await touch.locator('.drag-preview-footprint').count(),0);

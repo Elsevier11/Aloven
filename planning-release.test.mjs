@@ -109,14 +109,13 @@ test('bozza, rilascio, avvio da snapshot e interruzione confermata sono concorre
     let operatorDraft=await request('state');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).position,state.tasks.find(task=>task.id===first.id).position,'anche l’operatore vede la bozza nell’area di pianificazione');
     assert.equal(operatorDraft.tasks.find(task=>task.id===first.id).planningState,'unreleased');
-    await request('planning/release',{revision:operatorDraft.revision,reason:'Tentativo operatore'},403);
     let operatorState=await request('state?view=shopfloor');
     assert.equal(operatorState.tasks.find(task=>task.id===first.id).position,null,'il bordo macchina non vede la bozza prima del rilascio');
     await request('shopfloor/action',{revision:operatorState.revision,taskId:first.id,action:'start_setup'},409);
     cookie=adminCookie;
     const adminShopfloorBeforeRelease=await request('state?view=shopfloor');
     assert.equal(adminShopfloorBeforeRelease.tasks.find(task=>task.id===first.id).position,null,'anche l’amministratore vede solo il rilasciato sul bordo macchina');
-    const releaseResult=await release();assert.equal(releaseResult.version,1);
+    cookie=operatorCookie;const releaseResult=await release();assert.equal(releaseResult.version,1,'chi pianifica può rilasciare anche senza essere amministratore');cookie=adminCookie;
     await request('planning/release',{revision:staleRevision,reason:'obsoleta'},409);
     state=await request('state');assert.equal(state.planning.hasDraftChanges,false);
     const released=state.tasks.find(task=>task.id===first.id);assert.equal(released.planningState,'released');

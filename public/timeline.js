@@ -173,7 +173,7 @@ export function bindInsertionHints(c){
   }
   const before=c.state.tasks.find(t=>t.id===beforeId),compatible=dragTask.compatibleMachineIds?.length?dragTask.compatibleMachineIds:[dragTask.machineId];
   const error=!compatible.includes(cell.dataset.dropMachine)?'Macchina non compatibile':outsideShift?'Orario fuori turno':locked(before)?'Posizione bloccata':'';
-  const action={kind:'plan',id:taskId,machineId:cell.dataset.dropMachine,...(horizontal?{fixedStart,...(c.dragMode?.()==='cascade'?{shiftFollowing:true}:{})}:{beforeId})};
+  const action={kind:'plan',id:taskId,machineId:cell.dataset.dropMachine,...(horizontal?{fixedStart,shiftFollowing:true}:{beforeId})};
   const key=previewKey(action),invalid=Boolean(error);
   if(cell.dataset.insertionPreviewKey===key&&currentDragAction?.key===key){positionHintLabel(currentDragAction.hint);return;}
   for(const other of document.querySelectorAll('[data-drop-machine]'))if(other!==cell){other.querySelector('.insertion-hint')?.remove();other.classList.remove('show-drag-hint-overflow');delete other.dataset.insertionPreviewKey;}

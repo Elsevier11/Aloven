@@ -69,7 +69,6 @@ try{
   await context.addInitScript(()=>{
     localStorage.setItem('aloven-plan-view','day');
     localStorage.setItem('aloven-plan-zoom','1');
-    localStorage.setItem('aloven-drag-mode','single');
   });
   page=await context.newPage();
   page.on('pageerror',error=>report.pageErrors.push({case:caseName,message:error.message}));

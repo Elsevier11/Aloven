@@ -22,10 +22,10 @@ try{
  const groups={machines:'catalogues',types:'catalogues',articles:'catalogues',setupRules:'catalogues',scrapReasons:'catalogues',machineStopReasons:'catalogues',calendar:'settings',users:'settings'};
  const navigate=async view=>{if(groups[view])await page.locator(`[data-nav-group="${groups[view]}"]`).click();await page.locator(`[data-nav="${view}"]`).click();await page.locator(`[data-nav="${view}"].active`).waitFor({state:'visible'});};
  const primary=page.locator('.sidebar nav[aria-label="Menu principale"] > button');
- assert.equal(await primary.count(),6,'Il menu principale deve avere sei voci');
- assert.equal(await page.locator('.sidebar nav[aria-label="Menu principale"] > button[data-nav]').count(),4,'Solo quattro voci principali devono navigare direttamente');
+ assert.equal(await primary.count(),7,'Il menu principale deve avere sette voci');
+ assert.equal(await page.locator('.sidebar nav[aria-label="Menu principale"] > button[data-nav]').count(),5,'Solo cinque voci principali devono navigare direttamente');
  assert.equal(await page.locator('.sidebar nav[aria-label="Menu principale"] > button[data-nav-group]').count(),2,'Devono esserci due gruppi principali');
- assert.deepEqual((await primary.allTextContents()).map(text=>text.trim()),['Pianificazione','Attività','Bordo macchina','Statistiche','Anagrafiche','Configurazione']);
+ assert.deepEqual((await primary.allTextContents()).map(text=>text.trim()),['Pianificazione','In reparto','Attività','Bordo macchina','Statistiche','Anagrafiche','Configurazione']);
  const childForms={machines:'Nuova macchina',types:'Nuova tipologia',articles:'Nuovo articolo',setupRules:'Nuova regola',scrapReasons:'Nuova causale',machineStopReasons:'Nuova causale',calendar:'Imposta periodo',users:'Nuovo utente'};
  for(const [view,action] of Object.entries(childForms)){
   await navigate(view);assert.equal(await page.locator('.section-navigation [data-nav]').count(),groups[view]==='catalogues'?6:4,`${view}: menu secondario`);
@@ -56,5 +56,5 @@ try{
  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Nuovo utente'}).click();await page.locator('#modal').waitFor({state:'visible'});
  assert.ok(await page.locator('#modal').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Form utente mobile');
  await page.screenshot({path:'.artifacts/interface-dialog-mobile.png',fullPage:true});await page.getByRole('button',{name:'Chiudi',exact:true}).click();
- assert.deepEqual(errors,[]);console.log('Navigazione a 6 voci, gruppi, form e layout desktop/mobile verificati.');
+ assert.deepEqual(errors,[]);console.log('Navigazione a 7 voci, gruppi, form e layout desktop/mobile verificati.');
 }finally{await browser?.close();if(child.exitCode===null){const done=once(child,'exit');child.kill();await done;}rmSync(temp,{recursive:true,force:true});}

@@ -234,3 +234,32 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .planning-selection .selection-actions { gap:6px; margin-top:10px; }
 .planning-selection .selection-actions .button { padding:5px 9px; min-height:30px; }
 .planning-selection .selection-destination strong,.planning-selection .selection-destination span { display:inline; margin:0; }
+
+/* Vista «In reparto»: per ogni macchina cosa gira adesso e cosa segue. Sola lettura. */
+.reparto-view { display:flex; flex-direction:column; gap:10px; min-height:0; }
+.reparto-summary { margin:0; font-size:13px; font-weight:650; color:var(--mes-ink); font-variant-numeric:tabular-nums; }
+.reparto-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; align-items:start; }
+.reparto-card { --live-tone:#9aa8b8; display:flex; flex-direction:column; gap:8px; padding:10px 12px; border:1px solid var(--mes-border); border-left:5px solid var(--live-tone); border-radius:8px; background:#fff; min-width:0; }
+.reparto-card[data-tone=setup] { --live-tone:#b8791c; }
+.reparto-card[data-tone=run] { --live-tone:#158563; }
+.reparto-card[data-tone=paused] { --live-tone:#8a5a00; background:#fff8ea; }
+.reparto-card[data-tone=ready] { --live-tone:#2a6fdb; }
+.reparto-card[data-tone=stopped] { --live-tone:#c0392b; background:#fdf0ee; }
+.reparto-card>header { display:flex; align-items:center; gap:8px; min-width:0; }
+.reparto-card h3 { margin:0; font-size:15px; }
+.reparto-card h4 { margin:0 0 3px; font-size:10px; letter-spacing:.4px; text-transform:uppercase; color:var(--mes-muted); }
+.reparto-card section { min-width:0; }
+.reparto-current { display:block; width:100%; padding:0; border:0; background:none; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+.reparto-current:hover .reparto-task { text-decoration:underline; }
+.reparto-task { font-weight:650; overflow-wrap:anywhere; }
+.reparto-lines { margin:3px 0 0; padding:0; list-style:none; font-size:12px; color:var(--mes-muted); font-variant-numeric:tabular-nums; }
+.reparto-alert { color:#a52a1d; font-weight:650; }
+.reparto-none, .reparto-more { margin:0; font-size:12px; color:var(--mes-muted); }
+.reparto-next { margin:0; padding:0; list-style:none; display:grid; gap:2px; }
+.reparto-next button { display:flex; align-items:baseline; gap:8px; width:100%; padding:3px 4px; border:0; border-radius:4px; background:none; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+.reparto-next button:hover, .reparto-current:focus-visible, .reparto-next button:focus-visible { background:#f1f6fd; outline:2px solid transparent; }
+.reparto-next button:focus-visible, .reparto-current:focus-visible { outline-color:var(--mes-blue); }
+.reparto-when { flex:none; min-width:78px; font-size:12px; color:var(--mes-muted); font-variant-numeric:tabular-nums; }
+.reparto-name { flex:1; min-width:0; overflow-wrap:anywhere; }
+.reparto-badge { flex:none; font-size:10px; padding:1px 6px; border-radius:999px; background:#fff3d6; color:#7a5200; white-space:nowrap; }
+@media(max-width:800px) { .reparto-grid { grid-template-columns:1fr; } }

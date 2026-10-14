@@ -39,11 +39,6 @@
 .plan-subbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;padding:6px 0;margin-bottom:2px;font-size:12px;color:var(--planner-muted);flex:none}
 .plan-subbar-tools,.plan-subbar-info{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-width:0}
 .plan-subbar-info{margin-left:auto}
-.plan-drag-modes{display:inline-flex}
-.planning-workspace .plan-drag-modes .button{height:30px;min-height:30px;padding:4px 10px;font-size:12px;border-radius:0}
-.planning-workspace .plan-drag-modes .button+.button{margin-left:-1px}
-.planning-workspace .plan-drag-modes .button:first-child{border-radius:8px 0 0 8px}
-.planning-workspace .plan-drag-modes .button:last-child{border-radius:0 8px 8px 0}
 .planning-workspace .plan-subbar .button{height:30px;min-height:30px;padding:4px 10px;font-size:12px}
 .plan-subbar [role=status]{color:var(--mes-blue);font-weight:600}
 .plan-subbar [hidden]{display:none}
@@ -272,9 +267,8 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
  .planning-workspace .plan-toolbar .date-controls{width:100%}
  .planning-workspace .plan-toolbar #machine-filter{flex:1 1 100%;width:100%}
  .planning-workspace .plan-toolbar #prepare-period{margin-left:0}
- .plan-subbar .button,.plan-drag-modes .button{min-height:44px;white-space:normal}
- .plan-subbar-tools,.plan-drag-modes{width:100%}
- .plan-drag-modes .button{flex:1;min-width:0}
+ .plan-subbar .button{min-height:44px;white-space:normal}
+ .plan-subbar-tools{width:100%}
  .plan-subbar-info{margin-left:0}
  .planning-alert-body{position:fixed;left:16px;right:16px;top:auto;width:auto}
 }
