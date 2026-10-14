@@ -252,16 +252,10 @@ function applyAction(state,action,actorRole='admin',options={}) {
       if(existing?.position!=null)affected.add(clean.machineId);
     }
   } else if(action.kind==='status') {
-    const t=taskById(action.id);const allowed={unplanned:['cancelled'],planned:['in_progress','cancelled'],in_progress:['completed'],cancelled:['unplanned'],completed:[]};
+    const t=taskById(action.id);const allowed={unplanned:['cancelled'],planned:['cancelled'],in_progress:[],cancelled:['unplanned'],completed:[]};
     if(state.executions?.some(execution=>execution.taskId===t.id))fail('Usa le azioni di reparto per aggiornare questa attività.');
+    if(['in_progress','completed'].includes(action.status))fail('Avvio e chiusura si registrano dal bordo macchina, con la dichiarazione di lotti, qualità e quantità.');
     if(!allowed[t.status]?.includes(action.status)) fail('Cambio di stato non consentito.');
-    if(action.status==='in_progress') {
-      if(t.releasedVersion==null)fail('Rilascia il piano prima di avviare l’attività.');
-      if(t.planningState&&t.planningState!=='released')fail('Questa attività ha modifiche in bozza. Avviala dal bordo macchina sul piano rilasciato.');
-      if(state.machineStops?.some(stop=>stop.machineId===t.machineId&&stop.endedAt===null)) fail('La macchina è ferma. Registra la ripresa della macchina prima di avviare l’attività.');
-      if(state.tasks.some(x=>x.machineId===t.machineId&&x.status==='in_progress')) fail('La macchina ha già un’attività in corso.');
-      if(state.tasks.some(x=>x.machineId===t.machineId&&x.position!==null&&x.position<t.position&&x.status!=='completed')) fail('Completa prima le attività precedenti della macchina.');
-    }
     t.status=action.status;
     if(action.status==='cancelled'||action.status==='unplanned') Object.assign(t,{position:null,start:null,end:null,segments:[],effectiveSetupMinutes:null,fixedStart:null,setupOverrideMinutes:null});
     affected.add(t.machineId);preventPastRecalculation=true;

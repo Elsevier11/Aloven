@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {forceTaskStatus,isForcedStatus} from './test-support.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -16,7 +17,7 @@ function harness(prefix){
   api.stop=async()=>{if(child&&child.exitCode===null){const done=once(child,'exit');child.kill();await done;}};
   api.cleanup=async()=>{await api.stop();rmSync(data,{recursive:true,force:true});};
   api.request=async(endpoint,payload,expected=200)=>{const response=await fetch(`${base}/api/${endpoint}`,{method:payload===undefined?'GET':'POST',headers:{...(payload===undefined?{}:{'Content-Type':'application/json','X-Aloven-Request':'1'}),...(cookie?{Cookie:cookie}:{})},body:payload===undefined?undefined:JSON.stringify(payload)});const json=await response.json();assert.equal(response.status,expected,JSON.stringify(json));if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];return json;};
-  api.commit=async(action)=>{const state=await api.request('state');const preview=await api.request('preview',{revision:state.revision,action});const result=await api.request('commit',{token:preview.token,includeState:'planning'});return {preview,result,state:await api.request('state')};};
+  api.commit=async(action)=>{if(isForcedStatus(action)){forceTaskStatus(data,action.id,action.status);return {state:await api.request('state')};}const state=await api.request('state');const preview=await api.request('preview',{revision:state.revision,action});const result=await api.request('commit',{token:preview.token,includeState:'planning'});return {preview,result,state:await api.request('state')};};
   api.reject=async(action,pattern,status=400)=>{const state=await api.request('state');const failure=await api.request('preview',{revision:state.revision,action},status);assert.match(failure.error,pattern);return failure;};
   return api;
 }

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {forceTaskStatus,isForcedStatus} from './test-support.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -12,7 +13,7 @@ test('Database, multiutente, CRUD, riordino confermato e conflitti concorrenti',
   async function start(){child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'0',DATA_DIR:data,ALOVEN_NOW:'2026-10-08T06:00:00Z'},stdio:['ignore','pipe','pipe']});return new Promise((resolve,reject)=>{let output='';const timer=setTimeout(()=>reject(new Error('Server non avviato')),10000);child.stdout.on('data',chunk=>{output+=chunk;const m=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(m){clearTimeout(timer);resolve(m[0]);}});child.on('exit',()=>{clearTimeout(timer);reject(new Error('Server terminato: '+output));});});}
   let base,cookie='';
   async function request(endpoint,data,expected=200,session=cookie){const r=await fetch(base+'/api/'+endpoint,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json','X-Aloven-Request':'1'}:{}),...(session?{Cookie:session}:{})},body:data?JSON.stringify(data):undefined});const json=await r.json();assert.equal(r.status,expected,JSON.stringify(json));if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return json;}
-  async function change(action){const s=await request('state');if(action.kind==='status'&&action.status==='in_progress'&&s.planning?.hasDraftChanges){await request('planning/release',{revision:s.revision});s.revision=(await request('state')).revision;}const p=await request('preview',{revision:s.revision,action});await request('commit',{token:p.token});return request('state');}
+  async function change(action){const s=await request('state');if(action.kind==='status'&&action.status==='in_progress'&&s.planning?.hasDraftChanges){await request('planning/release',{revision:s.revision});s.revision=(await request('state')).revision;}if(isForcedStatus(action)){forceTaskStatus(data,action.id,action.status);return request('state');}const p=await request('preview',{revision:s.revision,action});await request('commit',{token:p.token});return request('state');}
   async function stop(){const done=once(child,'exit');child.kill();await done;}
   try {
     base=await start();assert.equal((await request('session')).needsSetup,true);await request('state',undefined,401);

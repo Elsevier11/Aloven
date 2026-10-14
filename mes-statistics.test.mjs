@@ -51,6 +51,18 @@ test('filtro demo è esplicito, coerente su produzione, eventi e fermi',()=>{
   db.close();
 });
 
+test('il dettaglio conserva i secondi di lavorazione per velocità e riepiloghi',()=>{
+ const db=fixture();db.exec('ALTER TABLE execution ADD COLUMN interruptedAt TEXT');
+ db.prepare("UPDATE execution SET interruptedAt=?,runEndedAt=?,producedQuantity=10,scrapQuantity=0,runActiveSeconds=600 WHERE taskId='open-run'").run('2026-03-30T10:30:00Z','2026-03-30T10:30:00Z');
+ const report=buildStatisticsReport(db,{from:'2026-03-30',to:'2026-03-30',machineId:'M1',excludeDemo:true},new Date('2026-03-30T12:00:00Z'));
+ const row=report.details[0];
+ assert.equal(row.actualRunSeconds,600);assert.equal(row.goodQuantity/(row.actualRunSeconds/60),1);
+ assert.equal(row.actualRunHours,report.speeds[0].activeRunHours,'ore dettaglio e aggregato sullo stesso campione');
+ db.prepare("UPDATE execution SET runActiveSeconds=NULL WHERE taskId='open-run'").run();
+ const missing=buildStatisticsReport(db,{from:'2026-03-30',to:'2026-03-30',machineId:'M1',excludeDemo:true},new Date('2026-03-30T12:00:00Z')).details[0];
+ assert.equal(missing.actualRunSeconds,null);assert.equal(missing.actualRunHours,null,'dato mancante diverso da zero');db.close();
+});
+
 test('interruzione conserva produzione parziale e chiude il tempo attivo alla conferma',()=>{
  const db=fixture();db.exec('ALTER TABLE execution ADD COLUMN interruptedAt TEXT');
  db.prepare("UPDATE execution SET interruptedAt=?,runEndedAt=?,producedQuantity=3,scrapQuantity=0,runActiveSeconds=1800 WHERE taskId='open-run'").run('2026-03-30T10:30:00Z','2026-03-30T10:30:00Z');

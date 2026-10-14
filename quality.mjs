@@ -96,7 +96,7 @@ export function validateFinishDeclaration(payload, execution) {
     if (!item || !COMPONENTS.has(item.component)) fail('Componente del lotto non valido.');
     if (typeof item.lot !== 'string') fail('Lotto non valido (massimo 80 caratteri).');
     const lot = item.lot.trim();
-    if (!lot || lot.length > 80) fail('Lotto non valido (massimo 80 caratteri).');
+    if (!lot || lot.length > 80 || /[\x00-\x1f\x7f]/.test(lot)) fail('Lotto non valido (massimo 80 caratteri, senza caratteri di controllo).');
     const quantity = finiteQuantity(item.quantity, 'Quantità consumata', false);
     const key = `${item.component}\0${lot.toLocaleLowerCase('it')}`;
     if (duplicates.has(key)) fail('Non inserire due volte lo stesso lotto per lo stesso componente.');

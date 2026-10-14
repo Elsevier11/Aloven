@@ -336,7 +336,8 @@ export function traceLots(db, {lot, articleCode = null, direction = null} = {}) 
     const execution = db.prepare(`SELECT taskId,taskTitle,machineId,productCode,productDescription,productUnit,outputLot,
       producedQuantity,scrapQuantity,runEndedAt,qualityStatus,qualityDisposition FROM execution WHERE taskId=?`).get(taskId);
     const inputs = db.prepare('SELECT component,articleCode,lot,quantity,unit,barcode FROM executionLots WHERE taskId=? ORDER BY rowid').all(taskId);
-    records.push({...execution, matchedDirections: [...matched], inputLots: inputs});
+    const reference = db.prepare('SELECT orderReference,erpReference,customer FROM tasks WHERE id=?').get(taskId) ?? {};
+    records.push({...execution, orderReference: reference.orderReference ?? null, erpReference: reference.erpReference ?? null, customer: reference.customer ?? null, matchedDirections: [...matched], inputLots: inputs});
   }
   records.sort((a, b) => String(b.runEndedAt || '').localeCompare(String(a.runEndedAt || '')) || a.taskId.localeCompare(b.taskId));
   return {lot: cleanLot, articleCode: cleanArticle, direction, records};

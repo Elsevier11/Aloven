@@ -189,3 +189,4 @@ body:has(.shell) #modal:has(.statistics-detail-body){width:min(1080px,calc(100vw
 .statistics-point.edge-end .statistics-chart-tooltip{right:-8px;left:auto;transform:none}
 .statistics-bar-chart.single-series .statistics-series{display:none}
 .statistics-bar-chart.single-series .statistics-bar-mark{grid-template-columns:minmax(0,1fr) auto}
+.statistics-generated{margin:10px 0 0;font-size:12px;color:var(--muted)}

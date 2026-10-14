@@ -264,8 +264,8 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
     actualSetupHours:row.actualSetupSeconds === null ? null : hours(row.actualSetupSeconds),
     setupDeltaHours:row.plannedSetupSeconds === null || row.actualSetupSeconds === null ? null : hours(row.actualSetupSeconds-row.plannedSetupSeconds),
     plannedRunHours:row.plannedRunSeconds === null ? null : hours(row.plannedRunSeconds),
-    actualRunHours:hours(row.actualRunSeconds),
-  })).map(({plannedSetupSeconds,actualSetupSeconds,plannedRunSeconds,actualRunSeconds,...row}) => row);
+    actualRunHours:row.actualRunSeconds === null ? null : hours(row.actualRunSeconds),
+  })).map(({plannedSetupSeconds,actualSetupSeconds,...row}) => row);
   const monthly = grouped(executions,row=>`${row.month}\0${row.unit}`,row=>({month:row.month,unit:row.unit}));
   const machines = grouped(executions,row=>`${row.machineId}\0${row.unit}`,row=>({machineId:row.machineId,machineName:row.machineName,unit:row.unit}));
   const products = grouped(executions,row=>`${row.productCode}\0${row.productDescription}\0${row.unit}`,row=>({productCode:row.productCode,productDescription:row.productDescription,unit:row.unit}));
@@ -403,7 +403,7 @@ export function buildStatisticsWorkbook(report) {
   const summaryRows=[
     {label:'Dal',value:report.filters.from},{label:'Al',value:report.filters.to},{label:'Macchina',value:report.filters.machineName||'Tutte'},
     {label:'Dati dimostrativi',value:report.filters.excludeDemo?'Esclusi':'Inclusi'},
-    {label:'Generato il',value:report.generatedAt},{label:'Attività completate',value:report.totals.count},
+    {label:'Generato il',value:report.generatedAt},{label:'Consuntivi chiusi',value:report.totals.count},
     {label:'Ore attrezzaggio previste',value:report.totals.plannedSetupHours},{label:'Ore attrezzaggio effettive',value:report.totals.actualSetupHours},
     {label:'Coppie attrezzaggio disponibili',value:report.totals.setupPairedCount},{label:'Delta attrezzaggio (ore)',value:report.totals.setupDeltaHours},{label:'Delta medio attrezzaggio (minuti)',value:report.totals.averageSetupDeltaMinutes},
     {label:'Ore produzione pianificate',value:report.totals.plannedRunHours},{label:'Ore produzione effettive',value:report.totals.actualRunHours},

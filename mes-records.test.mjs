@@ -189,6 +189,10 @@ test('tracciabilità cerca lotto esatto case-insensitive nelle due direzioni e f
   migrateMesRecords(db);
   finalizeMesExecution(db, 'task-1', {outputLot: 'OUT-1'}, operator, makeId);
   assert.equal(traceLots(db, {lot: 'in-a'}).records[0].outputLot, 'OUT-1');
+  assert.equal(traceLots(db, {lot: 'in-a'}).records[0].orderReference, null, 'riferimento mancante resta null');
+  db.prepare("UPDATE tasks SET orderReference='ORD-7',customer='Cliente Test' WHERE id='task-1'").run();
+  const referenced = traceLots(db, {lot: 'in-a'}).records[0];
+  assert.equal(referenced.orderReference, 'ORD-7');assert.equal(referenced.customer, 'Cliente Test');assert.equal(referenced.erpReference, null);
   assert.deepEqual(traceLots(db, {lot: 'out-1'}).records[0].matchedDirections, ['output']);
   assert.equal(traceLots(db, {lot: 'IN-A', articleCode: 'c1', direction: 'input'}).records.length, 1);
   assert.equal(traceLots(db, {lot: 'IN-A', articleCode: 'wrong', direction: 'input'}).records.length, 0);

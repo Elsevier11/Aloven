@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {forceTaskStatus,isForcedStatus} from './test-support.mjs';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -66,7 +67,7 @@ test('la vista planning omette lo storico completato salvo richiesta esplicita',
   const start=()=>new Promise((resolve,reject)=>{child=spawn(process.execPath,['server.mjs'],{env:{...process.env,ALOVEN_NOW:TEST_NOW,PORT:'0',DATA_DIR:data,BACKUP_DIR:path.join(data,'backups')},stdio:['ignore','pipe','pipe']});let output='',errors='';const timer=setTimeout(()=>reject(new Error(errors||output||'Server non avviato')),15000);child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});child.stderr.on('data',chunk=>errors+=chunk);child.on('exit',()=>{clearTimeout(timer);reject(new Error(output+errors));});});
   const stop=async()=>{const done=once(child,'exit');child.kill();await done;};
   async function request(endpoint,payload,expected=200){const response=await fetch(`${base}/api/${endpoint}`,{method:payload===undefined?'GET':'POST',headers:{...(payload===undefined?{}:{'Content-Type':'application/json','X-Aloven-Request':'1'}),...(cookie?{Cookie:cookie}:{})},body:payload===undefined?undefined:JSON.stringify(payload)});const json=await response.json();assert.equal(response.status,expected,JSON.stringify(json));if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];return json;}
-  async function change(action){const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});return request('state');}
+  async function change(action){if(isForcedStatus(action)){forceTaskStatus(data,action.id,action.status);return request('state');}const state=await request('state');const preview=await request('preview',{revision:state.revision,action});await request('commit',{token:preview.token});return request('state');}
   try{
     base=await start();await request('setup',{name:'Admin',username:'admin',password:'PasswordTest123!'});let state=await request('state');const fullInitialCount=state.tasks.length;
     const [first,second,pendingRemoval]=state.tasks.filter(task=>task.machineId==='CNC-01'&&task.status==='unplanned').slice(0,3);assert.ok(first&&second&&pendingRemoval);

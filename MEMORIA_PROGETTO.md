@@ -566,3 +566,18 @@ Richiesta confermata dall'utente (punti 1-5 dell'analisi «pianifico l'intera se
 **Non fatto (invariato):** criterio d'ordine a scelta (resta la consegna), attività spezzabili tra due settimane (una che non entra intera nel periodo resta fuori), bilanciamento tra macchine compatibili (ogni attività resta sulla propria macchina). **Da validare con i pianificatori:** buchi riempiti con inizio fissato (pin visibile); soglie dei colori di saturazione (80% / 100%).
 
 Verifiche: 156 unitari/HTTP (nuovi test di `fill`, `machineLoad`, riepilogo settimanale e `period-proposal-http.test.mjs`: anteprima con posizionamenti, annulla con ripristino dell'ancoraggio, 409 dopo rilascio); `test:planning-workflow` aggiornato (banner, barre in anteprima, Annulla senza scrittura, Conferma e annulla). Prova visiva su copia del database di prova (1366×768 e 390×844, nessun overflow, nessun errore JS), screenshot in .artifacts/proposal-*.png. Nessuna migrazione.
+
+### Verifica qualità: blocchi 1-3 (parziale) — 14 ottobre 2026
+
+Piano derivato da una verifica esterna, rivalutato sul codice; ordine eseguito 2.1 → 2.2 → 3.3 → 1.2 → 1.1 → 3.2 → 3.1. **Implementato:**
+- **2.1 Tempi/Velocità:** `buildStatisticsReport` non toglie più `actualRunSeconds`/`plannedRunSeconds` dal dettaglio (il frontend li usava per Buona/min e riepiloghi, che risultavano sempre «—»); `actualRunHours` è `null` se il dato manca (prima 0). Test: 10 m in 600 s = 1 m/min, ore dettaglio = aggregato, mancante ≠ zero.
+- **2.2:** il dettaglio fermi ritaglia i fermi aperti su `report.generatedAt` (non più `Date.now()` del client); nell'Excel «Attività completate» → «Consuntivi chiusi»; la pagina Statistiche mostra «Dati generati il …».
+- **3.3:** i lotti ingresso rifiutano i caratteri di controllo come quelli uscita (`quality.mjs`); i codici esistenti non cambiano, nessuna normalizzazione maiuscole/Unicode.
+- **1.2:** console touch e vista gestionale conservano l'ora dell'ultimo caricamento riuscito (non più l'ora corrente) e mostrano un avviso persistente se un aggiornamento fallisce (anche quello silenzioso dopo un salvataggio); si azzera al primo caricamento riuscito. Cambiare lingua/macchina non tocca l'ora. Verificato nel browser simulando la rete assente. Nessuna duplicazione dopo risposta persa: resta la protezione per revisione (409).
+- **1.1:** l'azione generica `status` non avvia né completa più (errore «si registrano dal bordo macchina»); restano annulla e ripristina. Era usata solo dai test: i test che ne avevano bisogno come fixture usano `test-support.mjs` (`forceTaskStatus`, scrive direttamente nel DB); nuovo `status-shortcut.test.mjs`.
+- **3.2:** la tracciabilità restituisce ordine, ERP e cliente della commessa («Non registrato» se mancano) e un link «Apri scheda attività»; chiudendo la scheda i risultati restano.
+- **3.1:** sul tablet (621–1150 px) il nome operatore non era visibile (CSS): ora lo è; la card mostra l'ordine accanto al codice prodotto e l'etichetta «Note presenti»; l'ultimo passo di «Dichiara e completa» dice che la chiusura è definitiva. Nessun passo o conferma in più. Verificato a 768 px.
+
+**Non fatto:** blocco 4 (README, nove fogli Excel; i quattro casi aziendali sono una decisione di processo, non codice). Non verificato nel browser: scheda lotto→commessa (solo test del backend e controllo sintassi), 1024×768.
+
+Verifiche: 159 test passano (`node --test *.test.mjs`); gli script `*-check.mjs` non sono stati eseguiti (Playwright non installato).
