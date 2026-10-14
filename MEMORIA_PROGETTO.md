@@ -578,6 +578,6 @@ Piano derivato da una verifica esterna, rivalutato sul codice; ordine eseguito 2
 - **3.2:** la tracciabilità restituisce ordine, ERP e cliente della commessa («Non registrato» se mancano) e un link «Apri scheda attività»; chiudendo la scheda i risultati restano.
 - **3.1:** sul tablet (621–1150 px) il nome operatore non era visibile (CSS): ora lo è; la card mostra l'ordine accanto al codice prodotto e l'etichetta «Note presenti»; l'ultimo passo di «Dichiara e completa» dice che la chiusura è definitiva. Nessun passo o conferma in più. Verificato a 768 px.
 
-**Non fatto:** blocco 4 (README, nove fogli Excel; i quattro casi aziendali sono una decisione di processo, non codice). Non verificato nel browser: scheda lotto→commessa (solo test del backend e controllo sintassi), 1024×768.
+**Blocco 4.1 fatto:** README allineato (nove fogli Excel, «consuntivi chiusi», navigazione a sette voci, fermi aperti all'istante di generazione; i ruoli erano già corretti). **Non fatto:** 4.2, i quattro casi aziendali, che sono una decisione di processo e non codice. Non verificato nel browser: scheda lotto→commessa (solo test del backend e controllo sintassi), 1024×768.
 
 Verifiche: 159 test passano (`node --test *.test.mjs`); gli script `*-check.mjs` non sono stati eseguiti (Playwright non installato).
