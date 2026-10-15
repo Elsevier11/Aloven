@@ -1,6 +1,6 @@
 # Aloven — contesto del prodotto
 
-MES per un reparto di accoppiatura tessuti, con pianificazione multiutente e console operatore tablet in italiano e inglese. Database SQLite locale; nessuna movimentazione reale di magazzino. Collegamento Arca e lavorazioni con più fasi rimandati dall'utente.
+MES per un reparto di accoppiatura tessuti, con pianificazione multiutente e console operatore tablet in italiano e inglese. Database SQLite locale; finora nessuna movimentazione reale di magazzino. Previsti ma non ancora implementati: collegamento con Arca (ordini, distinta base, documenti di carico e scarico con lotti) e sequenziamento automatico per criteri specifici; lavorazioni con più fasi rimandate dall'utente.
 
 Il pianificatore deve scegliere le attività da produrre, ordinarle per macchina e rilasciare il piano. Le macchine di destinazione già definite evitano un'assegnazione manuale superflua. Compatibilità e preferenza sono distinte; più macchine compatibili non autorizzano un bilanciamento automatico.
 
