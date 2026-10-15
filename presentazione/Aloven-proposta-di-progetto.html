@@ -161,7 +161,7 @@ figcaption .badge{flex:none;margin-top:1px}
 .q .answer::before{content:"Risposta / note";position:absolute;top:0;left:0;font-size:12px;color:#8A97AC;letter-spacing:.04em}
 
 /* percorso */
-.path{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;counter-reset:p}
+.path{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:p}
 .path div{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:22px;counter-increment:p}
 .path div::before{content:counter(p);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;margin-bottom:12px}
 .path h3{font-size:18px}
@@ -178,6 +178,7 @@ dialog#zoom img{max-width:96vw;max-height:90vh;border-radius:10px;display:block;
 dialog#zoom p{color:#DCE6F7;text-align:center;margin:10px 0 0;font-size:14px}
 
 @media(max-width:980px){
+  .path{grid-template-columns:repeat(2,1fr)}
   .split,.split.flip{grid-template-columns:1fr;gap:26px}
   .split.flip .copy{order:0}
   .flow{grid-template-columns:1fr}
@@ -187,7 +188,7 @@ dialog#zoom p{color:#DCE6F7;text-align:center;margin:10px 0 0;font-size:14px}
   .flow .step::after{display:none}
   .questions{grid-template-columns:1fr}
 }
-@media(max-width:560px){body{font-size:16px}section{padding:60px 0}.wrap{width:calc(100% - 32px)}}
+@media(max-width:560px){.path{grid-template-columns:1fr}body{font-size:16px}section{padding:60px 0}.wrap{width:calc(100% - 32px)}}
 
 @media print{
   @page{size:A4 landscape;margin:12mm}
@@ -217,7 +218,7 @@ dialog#zoom p{color:#DCE6F7;text-align:center;margin:10px 0 0;font-size:14px}
     <a href="#vantaggi">Vantaggi</a>
     <a href="#fuori">Evoluzioni e limiti</a>
     <a href="#domande">Domande aperte</a>
-    <a href="#percorso">Percorso</a>
+    <a href="#percorso">Avvio</a>
   </div>
 </nav>
 
@@ -615,12 +616,13 @@ dialog#zoom p{color:#DCE6F7;text-align:center;margin:10px 0 0;font-size:14px}
 
 <section id="percorso">
   <div class="wrap">
-    <p class="eyebrow">E poi?</p>
-    <h2>Un percorso a piccoli passi</h2>
-    <p class="intro">Una proposta di come procedere, per discuterla insieme. Non include date né costi: dipenderanno dalle risposte raccolte.</p>
+    <p class="eyebrow">Dalla decisione all'avvio</p>
+    <h2>Come partiamo dopo la vostra decisione</h2>
+    <p class="intro">Gli step pratici per avviare il progetto: dal primo incontro di verifica fino alla messa in uso su tutte le macchine.</p>
     <div class="path">
       <div><h3>Validare le esigenze</h3><p>Rivediamo insieme questo documento e decidiamo cosa è vero, cosa manca e cosa conta di più.</p></div>
       <div><h3>Rispondere alle domande</h3><p>Raccogliamo le risposte, in parte con chi lavora in reparto, e le trasformiamo in regole chiare.</p></div>
+      <div><h3>Implementare quanto concordato</h3><p>Configuriamo e sviluppiamo ciò che abbiamo appurato insieme: regole del vostro reparto, anagrafiche, calendario, ruoli e la parte di collegamento con Arca necessaria alla prova.</p></div>
       <div><h3>Provare su una macchina</h3><p>Partiamo da una macchina e pochi utenti, per vedere cosa funziona davvero in reparto.</p></div>
       <div><h3>Correggere</h3><p>Raccogliamo il parere di chi usa il sistema e sistemiamo quello che non va.</p></div>
       <div><h3>Estendere e integrare</h3><p>Si allarga alle altre macchine e si completa l'integrazione con Arca: ordini, distinta base, carichi e scarichi. L'ordine delle fasi si definisce insieme.</p></div>
