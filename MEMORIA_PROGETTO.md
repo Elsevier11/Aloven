@@ -631,3 +631,5 @@ Verifiche: 159/159 unitari/HTTP; browser (Playwright 1.57, Edge, ALOVEN_NOW=2026
 **Ancora da valutare:** colore solo per le anomalie (oggi quattro colori di macchina e stati sui blocchi); card del backlog senza lotto/prodotto ridondanti; «Annulla» visibile solo se utilizzabile.
 
 **Riga macchina, descrizione come titolo (16 ottobre 2026, su richiesta dell'utente):** nella colonna macchine del Gantt il titolo è la descrizione (ad es. «Calandra film/web») e il codice sta sotto, piccolo e grigio; senza descrizione resta il solo codice. Chip, blocchi e fascia «Adesso in reparto» mostrano ancora il codice (spazi stretti, riconoscimento rapido). Da confermare con chi pianifica quale dei due nomi usano in reparto. Suite pianificazione e 159 unitari verdi.
+
+**Dialog «Riallinea la sequenza» (16 ottobre 2026):** radio «Ripartenza» in riga con l'etichetta accanto (prima centrati sopra il testo perché `label` è una colonna) e campo data nascosto finché non si sceglie «Da data e ora» (`label[hidden]` era annullato da `display:flex`). Solo CSS in design-system.css; la regola vale per ogni `label` con attributo hidden.

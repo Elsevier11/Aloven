@@ -141,7 +141,9 @@ input::placeholder,textarea::placeholder { color:var(--mes-muted); opacity:1; }
 .sequence-header-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .choice-group { border:1px solid var(--mes-border); border-radius:8px; padding:8px 12px 10px; margin:10px 0; display:grid; gap:6px; }
 .choice-group legend { font-size:12px; font-weight:600; padding:0 4px; }
-.choice-group label { display:flex; align-items:center; gap:8px; font-size:13px; }
+.choice-group label { display:flex; flex-direction:row; align-items:center; gap:8px; font-size:13px; font-weight:500; }
+.choice-group input[type=radio] { width:16px; height:16px; margin:0; padding:0; flex:none; }
+label[hidden] { display:none; }
 
 @media(min-width:801px) {
   .shell.sidebar-collapsed .sidebar { width:var(--mes-sidebar-collapsed); padding:16px 8px 14px; align-items:center; }
