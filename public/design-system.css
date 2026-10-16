@@ -265,3 +265,9 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .reparto-name { flex:1; min-width:0; overflow-wrap:anywhere; }
 .reparto-badge { flex:none; font-size:10px; padding:1px 6px; border-radius:999px; background:#fff3d6; color:#7a5200; white-space:nowrap; }
 @media(max-width:800px) { .reparto-grid { grid-template-columns:1fr; } }
+
+/* Maschere spostabili dall'intestazione. */
+#modal .dialog-heading,#modal .dialog-header{cursor:move;user-select:none}
+#modal .dialog-heading button,#modal .dialog-header button{cursor:pointer}
+#modal.dragging{transition:none}
+@media(max-width:620px),(pointer:coarse){#modal .dialog-heading,#modal .dialog-header{cursor:auto}}
