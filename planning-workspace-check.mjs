@@ -37,7 +37,7 @@ try{
   // L'anteprima si vede sul calendario: banner, barre tratteggiate, saturazione; nulla è salvato
   await page.locator('#proposal-banner').waitFor();const revisionBefore=(await page.locator('.shell').getAttribute('data-revision'));
   assert.ok(await page.locator('.proposal-ghost').count()>=1,'barre fantasma sul calendario');
-  assert.ok(await page.locator('.machine-load[role="meter"]').count()>=1,'barra di saturazione per macchina');assert.equal(await page.locator('.timeline-empty-period').count(),0,'con l’anteprima non compare «Nessuna attività nel periodo»');
+  assert.ok(await page.locator('.machine-load[role="meter"]').count()>=1,'barra di saturazione per macchina durante l’anteprima');assert.equal(await page.locator('.timeline-empty-period').count(),0,'con l’anteprima non compare «Nessuna attività nel periodo»');
   assert.match(await page.locator('#proposal-banner').innerText(),/1 attività inserita/);
   await page.locator('#proposal-details').click();await page.getByRole('heading',{name:'Controlla la proposta'}).waitFor();const proposalCounts=(await page.locator('.proposal-summary strong').allTextContents()).map(Number);assert.equal(proposalCounts.reduce((sum,n)=>sum+n,0),1);await page.getByRole('button',{name:'Chiudi'}).click();
   await page.screenshot({path:'.artifacts/planning-proposal-summary.png',fullPage:false});

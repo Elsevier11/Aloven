@@ -314,3 +314,22 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .release-due{margin:0;padding-left:18px;font-size:12px}
 .release-due li{display:flex;gap:8px;justify-content:space-between}
 @media(max-width:800px){.proposal-banner{flex-direction:column;align-items:stretch}.proposal-actions{flex-wrap:wrap}}
+
+/* Semplificazione della pianificazione: a riposo solo ciò che serve a decidere. */
+.resource-timeline .time-block .bar-dispatch[data-tone="released"]{display:none}
+.planning-workspace .resource-timeline .machine-tools{opacity:0;transition:opacity .12s}
+.planning-workspace .resource-timeline .gantt-row:hover .machine-tools,
+.planning-workspace .resource-timeline .gantt-row:focus-within .machine-tools,
+.planning-workspace .resource-timeline .machine-tools:has(.machine-actions[open]){opacity:1}
+@media(hover:none){.planning-workspace .resource-timeline .machine-tools{opacity:1}}
+
+/* Card del backlog su due righe: riferimento e durata / titolo, quantità e macchine. */
+.planning-workspace .backlog .compact-task .task-select{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:8px;row-gap:2px;align-items:baseline}
+.planning-workspace .backlog .compact-task .compact-task-meta{display:contents}
+.planning-workspace .backlog .compact-task .task-reference{grid-row:1;grid-column:1;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.planning-workspace .backlog .compact-task .task-duration{grid-row:1;grid-column:2/4;justify-self:end;font-size:12px;color:var(--mes-muted)}
+.planning-workspace .backlog .compact-task .compact-task-title{grid-row:2;grid-column:1;min-width:0;font-weight:500;color:var(--mes-muted)}
+.planning-workspace .backlog .compact-task .task-quantity{grid-row:2;grid-column:2;font-size:12px;color:var(--mes-muted)}
+.planning-workspace .backlog .compact-task .task-machines{grid-row:2;grid-column:3;justify-self:end;flex-wrap:nowrap}
+.planning-workspace .backlog .compact-task .dispatch-state{grid-row:3;grid-column:1/4;justify-self:start;margin:0}
+.planning-workspace .resource-timeline .time-block.fixed-start{box-shadow:inset 3px 0 0 rgba(255,255,255,.85)}

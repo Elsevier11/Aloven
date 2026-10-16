@@ -129,7 +129,7 @@ try{
   });
 
   await check('Pin visibile, comando di rimozione e annullamento obsoleto disabilitato',async()=>{
-    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block[data-task="${tasks[0].id}"] .fixed-start-pin`).waitFor();
+    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block.fixed-start[data-task="${tasks[0].id}"]`).waitFor();
     await page.locator(`.time-block.run[data-task="${tasks[0].id}"]`).click();await page.locator('#selection-unpin').waitFor();let unpinAction;const capture=request=>{if(new URL(request.url()).pathname==='/api/preview')unpinAction=request.postDataJSON()?.action;};page.on('request',capture);await page.locator('#selection-unpin').click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',capture);assert.equal(unpinAction.id,tasks[0].id);assert.ok(!Object.hasOwn(unpinAction,'fixedStart'));await page.getByRole('button',{name:'Annulla',exact:true}).click();
     const current=(await state()).machines.find(item=>item.id===other.id);await action({kind:'machine',id:other.id,values:{...current,description:current.description+' · refresh test'}});await page.reload();await page.locator('.timeline-scroll').waitFor();assert.equal(await page.locator('#planning-undo').isDisabled(),true);
   });

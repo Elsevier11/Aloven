@@ -99,7 +99,7 @@ try{
     await page.waitForFunction(value=>document.querySelector('#date-start')?.value===value,day);
   };
   const openSearch=async()=>{
-    await page.locator('#planning-search').click();
+    await page.locator('#planning-options > summary').click();await page.locator('#planning-search').click();
     await page.locator('#planning-search-query').waitFor();
   };
   const searchFor=async term=>{
@@ -165,7 +165,7 @@ try{
     assert.equal(await page.locator('#machine-filter').inputValue(),machine.id);
     assert.equal(await page.locator('#date-start').inputValue(),'2026-10-09');
     assert.match(await page.locator('#planning-selection').textContent(),/CL passato non avviato/);
-    await page.locator('#planning-search').click();
+    await page.locator('#planning-options > summary').click();await page.locator('#planning-search').click();
     await searchFor('LOT-CL-1');
     assert.ok(await page.locator(`#modal [data-find-planning-task="${pastTask.id}"]`).count());
     await closeDialog();
@@ -203,8 +203,7 @@ try{
     await setDay('2026-10-12');
     const counts=page.locator('.temporal-machine').filter({has:page.locator(`[data-outside-sequence="${machine.id}"]`)});
     await counts.waitFor();
-    assert.match((await counts.textContent()).replace(/\s+/g,' '),/nel periodo/i);
-    assert.match((await counts.textContent()).replace(/\s+/g,' '),/\d+ fuori/i);
+    assert.match((await counts.textContent()).replace(/\s+/g,' '),/\d+ fuori periodo/i);
     await page.locator(`[data-outside-sequence="${machine.id}"]`).click();
     await page.getByRole('heading',{name:'Sequenza macchina',exact:true}).waitFor();
     assert.ok(await page.locator(`.production-sequence-row[data-task="${futureTask.id}"]`).count());
@@ -281,7 +280,7 @@ try{
   });
 
   await check('Uso mouse e tastiera mantiene selezione e focus coerenti',async()=>{
-    await page.locator('#planning-search').click();
+    await page.locator('#planning-options > summary').click();await page.locator('#planning-search').click();
     const input=page.locator('#planning-search-query');
     await input.fill('ORD-CL-3');
     await input.press('Enter');
@@ -297,7 +296,7 @@ try{
     for(const [width,height] of [[1366,768],[1920,1080],[1024,768],[390,844]]){
       await page.setViewportSize({width,height});
       await setDay('2026-10-12');
-      const geometry=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,innerWidth,searchVisible:Boolean(document.querySelector('#planning-search')?.getClientRects().length),sequenceVisible:[...document.querySelectorAll('[data-sequence]')].some(element=>element.getClientRects().length)}));
+      const geometry=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,innerWidth,searchVisible:Boolean(document.querySelector('#planning-options > summary')?.getClientRects().length),sequenceVisible:[...document.querySelectorAll('[data-sequence]')].some(element=>element.getClientRects().length)}));
       assert.ok(geometry.scrollWidth<=width+1,`Overflow ${width}x${height}: ${geometry.scrollWidth}px`);
       assert.equal(geometry.searchVisible,true,`Ricerca non visibile a ${width}x${height}`);
       assert.equal(geometry.sequenceVisible,true,`Sequenza non visibile a ${width}x${height}`);

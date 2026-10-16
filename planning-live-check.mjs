@@ -21,6 +21,8 @@ try{
 
  // 1. Nessuna attività in corso: una cella "Libera" per macchina, nessun pulsante, nessuno scroll di pagina
  await page.reload();await page.locator('#live-strip').waitFor();
+ assert.equal(await page.locator('#live-cells').isHidden(),true,'di default la fascia è chiusa, con il riepilogo visibile');assert.match(await page.locator('#live-strip .live-summary').innerText(),/in corso/);
+ await page.locator('#live-toggle').click();assert.equal(await page.locator('#live-cells').isVisible(),true);
  let initial=await state();const cells=page.locator('#live-strip .live-cell');
  assert.equal(await cells.count(),initial.machines.length);assert.equal(await page.locator('#live-strip [data-live-task]').count(),0);
  for(const label of await cells.locator('.live-state').allTextContents())assert.equal(label,'Libera');
