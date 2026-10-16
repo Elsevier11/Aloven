@@ -333,3 +333,6 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .backlog .compact-task .task-machines{grid-row:2;grid-column:3;justify-self:end;flex-wrap:nowrap}
 .planning-workspace .backlog .compact-task .dispatch-state{grid-row:3;grid-column:1/4;justify-self:start;margin:0}
 .planning-workspace .resource-timeline .time-block.fixed-start{box-shadow:inset 3px 0 0 rgba(255,255,255,.85)}
+
+/* Riga macchina: la descrizione è il titolo, il codice resta sotto. */
+.planning-workspace .resource-timeline .temporal-machine .machine-code{display:block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--mes-muted);margin:1px 0 0 16px}

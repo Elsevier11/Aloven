@@ -629,3 +629,5 @@ Verifiche: 159/159 unitari/HTTP; browser (Playwright 1.57, Edge, ALOVEN_NOW=2026
 - Test aggiornati: planning-clarity (apre «Altro» prima di Cerca attività, controlla il sommario), planner-fluidity. Verifiche: 159/159 unitari; browser planner-fluidity 10, planning-density 5, planning-clarity 8, planner 10, planning-workflow 9, planning-unified 10, planning-drag, planning-live 7/7, interface, premium. Nessun commit.
 
 **Ancora da valutare:** colore solo per le anomalie (oggi quattro colori di macchina e stati sui blocchi); card del backlog senza lotto/prodotto ridondanti; «Annulla» visibile solo se utilizzabile.
+
+**Riga macchina, descrizione come titolo (16 ottobre 2026, su richiesta dell'utente):** nella colonna macchine del Gantt il titolo è la descrizione (ad es. «Calandra film/web») e il codice sta sotto, piccolo e grigio; senza descrizione resta il solo codice. Chip, blocchi e fascia «Adesso in reparto» mostrano ancora il codice (spazi stretti, riconoscimento rapido). Da confermare con chi pianifica quale dei due nomi usano in reparto. Suite pianificazione e 159 unitari verdi.
