@@ -346,3 +346,25 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 /* Gli strumenti macchina non occupano altezza a riposo; le celle seguono l'altezza della riga. */
 .planning-workspace .resource-timeline .temporal-machine .machine-tools{position:absolute;right:8px;bottom:6px;margin:0;z-index:3}
 .planning-workspace .resource-timeline:not(.single-day) .gantt-row>.temporal-cell{height:auto;min-height:76px}
+
+/* Vista Settimana: giorni ben riconoscibili, carico per giorno, blocchi essenziali. */
+.planning-workspace .gantt-dates>.day-heading{height:auto;min-height:52px;padding:6px 0 8px;border-right:2px solid #c9d4e2}
+.planning-workspace .day-heading .day-name{display:block;font-size:13px;line-height:1.3}
+.planning-workspace .day-heading .day-name b{text-transform:uppercase;letter-spacing:.04em;font-size:12px;margin-right:2px}
+.planning-workspace .day-heading.day-alt{background:#f1f5fa}
+.planning-workspace .day-heading.weekend{color:var(--mes-muted)}
+.planning-workspace .day-heading.today{background:var(--mes-blue-soft);box-shadow:inset 0 -3px 0 var(--mes-blue);color:var(--mes-blue)}
+.planning-workspace .resource-timeline .gantt-row>.temporal-cell{border-right:2px solid #c9d4e2}
+.planning-workspace .resource-timeline .gantt-row>.temporal-cell.day-alt{background:#ebeff5}
+.planning-workspace .resource-timeline .gantt-row>.temporal-cell.weekend{background:#e6e9ee}
+.planning-workspace .resource-timeline .gantt-row>.temporal-cell.today{box-shadow:inset 0 0 0 9999px rgba(37,99,235,.05)}
+.planning-workspace .day-load{position:relative;display:block;height:14px;margin:6px 10px 0;border-radius:4px;background:#e2e8f0;overflow:hidden;font-size:10px;line-height:14px;color:var(--mes-ink)}
+.planning-workspace .day-load>i{position:absolute;inset:0 auto 0 0;background:#9cc7a8}
+.planning-workspace .day-load[data-level=high]>i{background:#f0c36a}
+.planning-workspace .day-load[data-level=full]>i{background:#e48a7f}
+.planning-workspace .day-load>b{position:relative;font-weight:600}
+.planning-workspace .day-load[data-level=none]{background:transparent;color:var(--mes-muted);font-style:italic}
+.planning-workspace .resource-timeline:not(.single-day) .time-block{padding:6px 4px}
+.planning-workspace .resource-timeline:not(.single-day) .time-block .fixed-start-pin{display:none}
+.planning-workspace .resource-timeline:not(.single-day) .time-block.fixed-start{padding-left:7px;box-shadow:inset 3px 0 0 rgba(255,255,255,.9)}
+.planning-workspace .resource-timeline:not(.single-day) .time-block .plan-warning{width:13px;height:13px;top:2px;right:2px;font-size:9px}
