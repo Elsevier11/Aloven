@@ -348,6 +348,8 @@ function applyAction(state,action,actorRole='admin',options={}) {
   for(const id of affected) {
     const sequence=state.tasks.filter(t=>t.machineId===id&&t.position!==null).sort((a,b)=>a.position-b.position);
     sequence.forEach((t,i)=>t.position=i);
+    // Un inizio fissato già superato non si può più rispettare (le attività precedenti ripartono da adesso): come per il riallineamento, la lavorazione segue la sequenza.
+    if(preventPastRecalculation&&options.now!=null){const clock=romeMinute(options.now),limit=realignFrom!=null&&realignFrom>clock?realignFrom:clock;for(const t of sequence)if(!locked(t)&&t.fixedStart!=null&&t.fixedStart<limit&&t.id!==fixedPlacementTaskId)t.fixedStart=null;}
     const prepared=sequence.map((task,index)=>{let actual=task.setupMinutes;if(locked(task))actual=task.effectiveSetupMinutes??task.setupMinutes;else if(task.setupOverrideMinutes!=null)actual=task.setupOverrideMinutes;else if(index>0){const previous=sequence[index-1];actual=state.setupRules.find(rule=>rule.machineId===id&&rule.fromTypeId===previous.typeId&&rule.toTypeId===task.typeId)?.minutes??task.setupMinutes;}return {...task,setupMinutes:actual};});
     const minimumStarts={...(minimumStartsByMachine.get(id)||{})};
     if(preventPastRecalculation&&options.now!=null){

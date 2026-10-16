@@ -170,3 +170,26 @@ test('riallinea sequenza: compatta, porta avanti dal passato e rispetta fissi e 
 // Planner dates are Rome wall-clock minutes ("YYYY-MM-DDTHH:mm"); shifting them as UTC keeps the arithmetic simple.
 function addMinutes(local,amount){return new Date(Date.parse(local.slice(0,16)+':00Z')+amount*60000).toISOString().slice(0,16);}
 function planningOf(task){return {start:task.start,end:task.end,position:task.position,status:task.status,segments:task.segments,effectiveSetupMinutes:task.effectiveSetupMinutes};}
+
+test('modifica degli orari del calendario con un inizio fissato ormai superato: non è bloccata, il vincolo cade',async()=>{
+  const h=harness('aloven-calendar-pin-');
+  try{
+    await h.start();await h.request('setup',{name:'Admin',username:'admin',password:'PasswordTest123!'});
+    let state=await h.request('state');const ids=state.tasks.filter(task=>task.machineId==='CNC-01').slice(0,3).map(task=>task.id);
+    for(const id of ids)({state}=await h.commit({kind:'plan',id}));
+    const [a,b,c]=ids;
+    const pinned=byId(state,c).start;({state}=await h.commit({kind:'plan',id:c,fixedStart:pinned}));
+    // il tempo avanza oltre l'inizio fissato di c
+    await h.stop();const later=addMinutes(pinned,6*60);await h.start(addMinutes(later,-120)+':00Z');
+    await h.request('login',{username:'admin',password:'PasswordTest123!'});
+    state=await h.request('state');assert.ok(byId(state,c).start<later);
+    const calendar=structuredClone(state.calendar);
+    for(const day of [1,2,3,4,5])calendar.weekly[day]=[['06:00','12:00'],['13:00','17:00']];
+    const step=await h.commit({kind:'calendar',values:calendar});
+    state=step.state;
+    assert.equal(byId(state,c).fixedStart,null,'l’inizio fissato ormai superato viene tolto');
+    for(const id of [a,b,c])assert.ok(byId(state,id).start>=later||byId(state,id).start<=pinned,`${id} non deve restare con un valore incoerente`);
+    const seq=state.tasks.filter(task=>task.machineId==='CNC-01'&&task.position!=null).sort((x,y)=>x.position-y.position);
+    for(let i=1;i<seq.length;i++)assert.ok(seq[i].start>=seq[i-1].end,'nessuna sovrapposizione');
+  }finally{await h.cleanup();}
+});
