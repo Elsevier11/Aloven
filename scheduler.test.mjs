@@ -186,3 +186,13 @@ test('cambiare gli orari non invalida lo storico: le completate non si confronta
   assert.equal(done[1].start, '2026-10-09T07:30');
   assert.throws(() => scheduleMachine([{ ...history, status: 'in_progress' }], '2026-10-08T08:00', summer), /fuori calendario/);
 });
+
+test('l’errore di sovrapposizione con un inizio fissato dice quale attività precede e quando finisce', () => {
+  assert.throws(
+    () => scheduleMachine([
+      { id: 'A', status: 'planned', setupMinutes: 0, runMinutes: 240 },
+      { id: 'B', status: 'planned', setupMinutes: 0, runMinutes: 60, fixedStart: '2026-10-08T10:00' },
+    ], '2026-10-08T08:00', calendar),
+    /“?B”?.*sovrappone.*\(A, che termina alle 2026-10-08T12:00\)\. Togli l’inizio fissato/s,
+  );
+});

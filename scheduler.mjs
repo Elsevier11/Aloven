@@ -256,6 +256,7 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
   const result = [];
   let cursor = anchorMinute;
   let previousEnd;
+  let previousId;
 
   for (const task of tasks) {
     validateTask(task);
@@ -268,6 +269,7 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
       result.push(task);
       cursor = Math.max(cursor, interval.end);
       previousEnd = interval.end;
+      previousId = task.id;
       continue;
     }
 
@@ -276,7 +278,7 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
     if (exactStartValue != null) {
       const fixedStart = parseIso(exactStartValue, `Inizio fissato attività ${task.id ?? ''}`);
       if (previousEnd !== undefined && fixedStart < previousEnd) {
-        fail(`L’attività ${task.id ?? ''} fissata alle ${exactStartValue} si sovrappone all’attività precedente`);
+        fail(`L’attività ${task.id ?? ''} fissata alle ${exactStartValue} si sovrappone all’attività precedente (${previousId ?? ''}, che termina alle ${formatIso(previousEnd)}). Togli l’inizio fissato o scegli un orario che lasci spazio.`);
       }
       scheduled = scheduleValidatedTask(task, fixedStart, validatedCalendar);
       if (scheduled.start !== exactStartValue) {
@@ -289,6 +291,7 @@ export function scheduleMachine(tasks, anchor, calendar, options = {}) {
     }
     result.push(scheduled);
     previousEnd = parseIso(scheduled.end);
+    previousId = task.id;
     cursor = previousEnd;
   }
   return result;
