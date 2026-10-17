@@ -70,7 +70,7 @@ try{
   });
 
   await check('Attività mostra il badge per un inizio previsto superato',async()=>{
-    let snapshot=await state();const task=snapshot.tasks.find(item=>item.machineId===reviewMachine.id);await action({kind:'plan',id:task.id,machineId:reviewMachine.id,fixedStart:'2026-01-02T08:00'});await page.reload();await page.locator('[data-nav="tasks"]').click();await page.locator('#task-search').fill(task.title);const row=page.locator('tbody tr').filter({hasText:task.title}).filter({hasText:reviewMachine.name});await row.waitFor();assert.match(await row.textContent(),/Inizio previsto superato/);
+    let snapshot=await state();const task=snapshot.tasks.find(item=>item.machineId===reviewMachine.id);await action({kind:'plan',id:task.id,machineId:reviewMachine.id,fixedStart:'2026-01-02T08:00'});await page.reload();await page.locator('[data-nav="tasks"]').click();await page.locator('#task-search').fill(task.title);const row=page.locator('tbody tr').filter({hasText:task.title}).filter({hasText:reviewMachine.name});await row.waitFor();assert.match(await row.textContent(),/Inizio previsto superato da \d+ (min|h|gg)/);await page.locator('#late-filter').click();assert.ok(await row.isVisible(),'Il filtro In ritardo nasconde un ritardo');await capture('attivita-ritardo');await page.locator('#clear-task-filters').click();
   });
 
   await check('Layout avvisi e calendario a 390 px senza overflow orizzontale pagina',async()=>{

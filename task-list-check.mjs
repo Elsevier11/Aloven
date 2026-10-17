@@ -44,6 +44,7 @@ try{
   await page.getByLabel('Riferimento ordine').fill('ORD-CLIENTE-INTERNAZIONALE-2026-000184-LAVORAZIONE-URGENTE');
   await page.getByLabel('Lotto prodotto previsto').fill('LOTTO-PRODOTTO-FINITO-TRACCIABILITA-ESTESA-2026-10');
   await page.getByLabel('Consegna prevista').fill('2026-12-31');
+  await page.getByLabel('Cliente',{exact:true}).fill('Cliente Prova Filtri');
   await page.locator('#modal').getByRole('button',{name:'Salva'}).click();
   const confirmation=page.locator('#modal').getByRole('heading',{name:'Conferma la modifica'});
   await Promise.race([
@@ -66,6 +67,37 @@ try{
     await page.screenshot({path:path.join(artifacts,`task-list-${viewport.width}x${viewport.height}.png`),fullPage:true});
   }
 
+  // Filtri aggiuntivi, chip, azzera e selettore colonne
+  const lateButton=page.locator('#late-filter');
+  assert.match(await lateButton.innerText(),/^In ritardo \(\d+\)$/);
+  await lateButton.click();
+  assert.equal(await page.locator('#late-filter').getAttribute('aria-pressed'),'true');
+  await page.locator('.filter-chips .chip',{hasText:'Solo in ritardo'}).waitFor();
+  await page.locator('#clear-task-filters').click();
+  assert.equal(await page.locator('.filter-chips').count(),0);
+  assert.equal(await page.locator('.task-table tbody tr').count(),25);
+  const customers=await page.locator('#customer-filter option').allTextContents();
+  assert.ok(customers.length>1,'Nessun cliente nel filtro');
+  await page.locator('#customer-filter').selectOption({index:1});
+  await page.locator('.filter-chips .chip',{hasText:'Cliente: '}).waitFor();
+  for(const cell of await page.locator('.task-table tbody td.task-customer strong').allTextContents())assert.equal(cell,customers[1]);
+  await page.locator('.filter-chips .chip',{hasText:'Cliente: '}).click();
+  assert.equal(await page.locator('.filter-chips').count(),0);
+  await page.locator('#period-filter').selectOption('today');
+  await page.locator('.filter-chips .chip',{hasText:'Periodo: Oggi'}).waitFor();
+  await page.locator('#clear-task-filters').click();
+  const picker=page.locator('.column-picker');
+  await picker.locator('summary').click();
+  await picker.locator('[data-col="materials"]').uncheck();
+  assert.equal(await page.locator('.task-table th',{hasText:'Componenti consumati'}).isVisible(),false);
+  await page.reload();await page.locator('[data-nav="tasks"]').click();await page.locator('.task-table').waitFor();
+  assert.equal(await page.locator('.task-table th',{hasText:'Componenti consumati'}).isVisible(),false,'Colonna nascosta non ricordata');
+  await page.locator('.column-picker summary').click();
+  await page.locator('.column-picker [data-col="materials"]').check();
+  assert.equal(await page.locator('.task-table th',{hasText:'Componenti consumati'}).isVisible(),true);
+  const tinyText=await page.locator('.task-table tbody tr').first().evaluate(row=>[...row.querySelectorAll('small,.badge,.dispatch-quiet,.task-type')].filter(el=>parseFloat(getComputedStyle(el).fontSize)<12).map(el=>el.className||el.tagName));
+  assert.deepEqual(tinyText,[],'Testi secondari sotto 12px');
+
   const reference=page.locator('.task-references summary').first();
   await reference.focus();await page.keyboard.press('Enter');
   assert.ok(await reference.evaluate(summary=>summary.parentElement.open));
@@ -82,7 +114,7 @@ try{
   await page.locator('#modal').getByRole('heading',{name:target.title}).waitFor();
   const referenceValues=await page.locator('.task-detail-references strong').allTextContents();
   assert.deepEqual(referenceValues,[
-    'ORD-CLIENTE-INTERNAZIONALE-2026-000184-LAVORAZIONE-URGENTE','—','—','2026-12-31','LOTTO-PRODOTTO-FINITO-TRACCIABILITA-ESTESA-2026-10'
+    'ORD-CLIENTE-INTERNAZIONALE-2026-000184-LAVORAZIONE-URGENTE','—','Cliente Prova Filtri','2026-12-31','LOTTO-PRODOTTO-FINITO-TRACCIABILITA-ESTESA-2026-10'
   ]);
   const current=await(await page.request.get(base+'/api/state')).json(),currentTarget=current.tasks.find(task=>task.id===target.id);
   const sequence=current.tasks.filter(task=>task.machineId===currentTarget.machineId&&task.position!==null&&task.id!==target.id).sort((a,b)=>a.position-b.position),boundary=sequence.findLastIndex(task=>['in_progress','completed'].includes(task.status));

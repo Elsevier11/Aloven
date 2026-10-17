@@ -1,7 +1,7 @@
 .console-workspace[data-view="tasks"] .task-table {
   table-layout:fixed;
   width:100%;
-  min-width:1120px;
+  min-width:1080px;
   font-size:13px;
 }
 .console-workspace[data-view="tasks"] .task-table th,
@@ -162,3 +162,28 @@
 .console-workspace[data-view="tasks"] .task-table .row-actions .button{min-height:26px}
 .console-workspace[data-view="tasks"] .task-table .row-actions{column-gap:12px;row-gap:2px}
 .console-workspace[data-view="tasks"] .task-table .row-actions .row-delete{justify-self:end}
+
+/* Selettore colonne: nasconde senza ridisegnare (gli indici delle celle restano gli stessi) */
+.task-table[data-hide~="times"] :is(th,td):nth-child(4),
+.task-table[data-hide~="materials"] :is(th,td):nth-child(5),
+.task-table[data-hide~="dates"] :is(th,td):nth-child(8){display:none}
+.column-picker{position:relative}
+.column-picker>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;height:var(--mes-control,40px)}
+.column-picker>summary::-webkit-details-marker{display:none}
+.column-picker-menu{position:absolute;z-index:20;right:0;top:calc(100% + 4px);min-width:210px;padding:10px 12px;display:grid;gap:8px;background:var(--mes-surface,#fff);border:1px solid var(--mes-border,#d8e2ed);border-radius:8px;box-shadow:0 8px 24px rgba(15,30,50,.14)}
+.column-picker-menu label{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.filter-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 10px}
+.filter-chips .chip{border:1px solid #83a8de;background:#eaf2ff;color:#174d9d;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.filter-chips .chip:hover{background:#dbe9ff}
+/* Testi secondari della tabella: mai sotto 12 px */
+.console-workspace[data-view="tasks"] .task-table :is(small,.badge,.dispatch-state,.dispatch-quiet,.task-type,.task-quantity,.task-primary-meta){font-size:12px}
+/* Rifinitura layout (1366 px): badge di ritardo che va a capo, date intere, barra filtri ordinata */
+.task-table .task-state-stack>.badge.cancelled{white-space:normal;max-width:150px;line-height:1.3}
+.console-workspace[data-view="tasks"] .task-table .task-dates>span{white-space:nowrap}
+.table-toolbar #task-search{flex:1 1 220px;min-width:200px}
+.table-toolbar #customer-filter,.table-toolbar #period-filter{flex:0 1 170px;min-width:140px}
+.table-toolbar{row-gap:8px;align-items:center}
+.table-toolbar .column-picker{border:0;background:none;padding:0;margin:0;box-shadow:none}
+.table-toolbar #late-filter{height:var(--mes-control,40px);margin:0;white-space:nowrap}
+.console-workspace[data-view="tasks"] .task-table .task-machine{white-space:normal;overflow-wrap:anywhere}
+.task-table .task-state-stack>.dispatch-state{white-space:normal;max-width:150px}
