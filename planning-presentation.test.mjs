@@ -7,6 +7,8 @@ import {
   releaseChanges,
   taskBarReference,
   taskReference,
+  sequenceTotals,
+  dropSummary
 } from './public/planning-presentation.js';
 
 test('taskReference usa solo riferimenti operativi e fallback leggibili', () => {
@@ -117,4 +119,27 @@ test('dueDelayDays: giorni oltre la consegna, zero se in tempo, senza data o gi�
   assert.equal(dueDelayDays({ end: '2026-10-22T10:00', status: 'planned' }), 0);
   assert.equal(dueDelayDays({ dueDate: '2026-10-20', status: 'unplanned' }), 0);
   assert.equal(dueDelayDays({ dueDate: '2026-10-20', end: '2026-10-25T10:00', status: 'completed' }), 0);
+});
+
+test('totali della sequenza: durata con attrezzaggio effettivo, esclusi completate e annullate, fine più tarda',()=>{
+  const queue=[
+    {id:'done',status:'completed',runMinutes:600,setupMinutes:60,end:'2026-10-05T17:00'},
+    {id:'a',status:'in_progress',runMinutes:120,setupMinutes:30,effectiveSetupMinutes:45,end:'2026-10-12T10:45'},
+    {id:'b',status:'planned',runMinutes:60,setupMinutes:30,setupOverrideMinutes:0,end:'2026-10-13T09:00'},
+    {id:'c',status:'planned',runMinutes:90,setupMinutes:30,end:'2026-10-12T16:00'},
+    {id:'x',status:'cancelled',runMinutes:999,setupMinutes:0,end:'2026-12-01T08:00'}
+  ];
+  assert.deepEqual(sequenceTotals(queue),{count:3,totalMinutes:(120+45)+(60+0)+(90+30),end:'2026-10-13T09:00'});
+  assert.deepEqual(sequenceTotals([]),{count:0,totalMinutes:0,end:null});
+  assert.deepEqual(sequenceTotals([{status:'planned',runMinutes:30,setupMinutes:0,end:null}]),{count:1,totalMinutes:30,end:null});
+});
+
+test('frase di trascinamento: posizione, partenza e attività che slittano',()=>{
+  const tasks=[{id:'a',title:'Alfa',orderReference:'A1'},{id:'b',title:'Beta',orderReference:'B1'}];
+  const fmt=value=>`<${value}>`,reference=task=>task.title;
+  assert.equal(dropSummary({action:{id:'n',beforeId:'a'},preview:{changes:[{id:'n',start:'S'},{id:'a',start:'x'},{id:'b',start:'y'}]},tasks,fmt,reference}),'Prima di Alfa · parte <S> · 2 attività slittano');
+  assert.equal(dropSummary({action:{id:'n',beforeId:''},preview:{changes:[{id:'n',start:'S'}]},tasks,fmt,reference}),'In coda · parte <S>');
+  assert.equal(dropSummary({action:{id:'n',beforeId:'b'},preview:{changes:[{id:'n',start:'S'},{id:'a',start:'x'}]},tasks,fmt,reference}),'Prima di Beta · parte <S> · 1 attività slitta');
+  assert.equal(dropSummary({action:{id:'n',beforeId:''},preview:{placement:{start:'P'},changes:[]},tasks,fmt,reference}),'In coda · parte <P>','senza modifiche elencate usa la collocazione');
+  assert.equal(dropSummary({action:{id:'n',beforeId:'zzz'},preview:{},tasks,fmt,reference}),'In coda','riferimento sconosciuto: non inventa nomi');
 });

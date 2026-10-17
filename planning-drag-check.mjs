@@ -77,6 +77,12 @@ try{
  await page.locator(`.time-block.run[data-task="${tasks[2].id}"]`).first().click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});
  assert.deepEqual(await page.getByLabel('Inserisci attività').locator('option').evaluateAll(nodes=>nodes.map(n=>n.value)),['end','before','after']);assert.equal(await page.getByLabel('Data e ora di inizio').count(),0);
  await page.reload();await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');
+ // Pannello Sequenza: totale, maniglia visibile e azione «Togli» a parole.
+ await page.locator(`[data-sequence="${other.id}"]`).click({force:true});await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();
+ const totals=await page.locator('#sequence-totals').innerText();assert.match(totals,/^\d+ attività in coda · durata totale .+ · finisce .+$/,totals);
+ assert.equal(await page.locator('.production-sequence-row:not(.locked) .sequence-position').first().evaluate(el=>getComputedStyle(el,'::before').content),'"⋮⋮"','la maniglia di trascinamento è visibile');
+ assert.equal(await page.locator('.production-sequence-row [data-unplan-task]').first().innerText(),'Togli');
+ await page.getByRole('button',{name:'Chiudi',exact:true}).first().click();await page.locator('#modal').waitFor({state:'hidden'});
  await page.getByRole('button',{name:'Settimana',exact:true}).click();
  mkdirSync('.artifacts',{recursive:true});
  for(const [width,height] of [[1366,768],[1920,1080],[390,844]]){

@@ -112,3 +112,21 @@ export function maintenanceReleaseChanges(state = {}) {
     };
   });
 }
+
+/** Totali della sequenza di una macchina: attività da fare, durata (attrezzaggio + lavorazione, senza pause di calendario) e fine prevista. */
+export function sequenceTotals(queue = []) {
+  const open = queue.filter(task => !['completed', 'cancelled'].includes(task.status));
+  const minutes = task => (task.runMinutes || 0) + (task.effectiveSetupMinutes ?? task.setupOverrideMinutes ?? task.setupMinutes ?? 0);
+  const ends = open.map(task => task.end).filter(Boolean).sort();
+  return { count: open.length, totalMinutes: open.reduce((sum, task) => sum + minutes(task), 0), end: ends.at(-1) || null };
+}
+
+/** Frase mostrata durante il trascinamento: dove entra l'attività, quando parte, quante altre slittano. */
+export function dropSummary({ action, preview, tasks = [], fmt = value => value, reference = taskBarReference }) {
+  const before = action.beforeId ? tasks.find(task => task.id === action.beforeId) : null;
+  const position = before ? `Prima di ${reference(before)}` : 'In coda';
+  const changes = preview?.changes || [];
+  const own = changes.find(change => change.id === action.id), start = own?.start || preview?.placement?.start;
+  const others = changes.filter(change => change.id !== action.id).length;
+  return [position, start ? `parte ${fmt(start)}` : '', others ? `${others} ${others === 1 ? 'attività slitta' : 'attività slittano'}` : ''].filter(Boolean).join(' · ');
+}

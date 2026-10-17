@@ -397,3 +397,13 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 @media(min-width:801px){.planning-workspace .backlog.backlog-empty{width:150px}.planning-workspace .backlog.backlog-empty .search{display:none}}
 /* Rilascio non disponibile: il pulsante deve sembrare spento */
 .planning-workspace .release-panel .button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35)}
+
+/* Sequenza macchina: maniglia visibile, azione «Togli» a parole, conferma con elenco completo. */
+.sequence-position{display:flex;flex-direction:column;align-items:center;gap:1px}
+.sequence-row:not(.locked) .sequence-position::before{content:'⋮⋮';font-size:13px;line-height:1;letter-spacing:-3px;color:var(--mes-muted);cursor:grab}
+.planning-workspace .sequence-row-actions .icon-button.sequence-remove{width:auto;min-width:0;padding:4px 9px;font-size:12px;font-weight:600;color:var(--mes-muted)}
+.change-list.full{max-height:none;overflow:visible}
+.change-list .change-moved{background:#edf4ff;border-left:3px solid var(--mes-blue);padding-left:12px}
+.change-badge{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--mes-blue);color:#fff;font-size:11px;font-weight:600;vertical-align:1px}
+#sequence-totals{font-variant-numeric:tabular-nums}
+

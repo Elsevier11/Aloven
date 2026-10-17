@@ -91,9 +91,10 @@ try{
   await check('Rilascio dentro la sequenza chiede conferma; Annulla non scrive',async()=>{
     const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+45);
     await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();assert.equal(await page.locator('.insertion-hint.invalid').count(),0,'inserire nella sequenza non è un rifiuto');
+    assert.match(await page.locator('.insertion-hint').innerText(),/^Prima di .+ · parte .+ · \d+ attività slitt(?:a|ano)$/,'l’etichetta dice dove entra, quando parte e quante attività slittano');
     assert.equal(await page.locator('[data-drag-mode]').count(),0,'l’interruttore di modalità non esiste più');
     await finishDrag();await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();
-    assert.match(await page.locator('#shift-notice').innerText(),/cambiano le date di \d+ altr[ae] attivit/);assert.ok(await page.locator('.change-list').getByText('Fluidità',{exact:false}).count());
+    assert.match(await page.locator('#shift-notice').innerText(),/«Fluidità 4.*» entra prima di «Fluidità 3.*» su .* e cambiano le date di \d+ altr[ae] attivit/);const firstChange=page.locator('.change-list > div').first();assert.ok(await firstChange.evaluate(el=>el.classList.contains('change-moved')),'l’attività spostata è la prima');assert.match(await firstChange.innerText(),/Attività spostata/);assert.ok(await page.locator('.change-list').evaluate(el=>el.scrollHeight<=el.clientHeight+1),'l’elenco non nasconde righe dietro uno scorrimento interno');assert.ok(await page.locator('.change-list').getByText('Fluidità',{exact:false}).count());
     assert.equal((await state()).revision,before.revision,'nessuna scrittura prima della scelta');
     await page.getByRole('button',{name:'Annulla',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
     assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);

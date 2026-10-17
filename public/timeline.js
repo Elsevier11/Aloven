@@ -1,4 +1,4 @@
-import {taskReference,taskBarReference,dispatchLabel,dispatchTone,dueDelayDays} from './planning-presentation.js';
+import {taskReference,taskBarReference,dispatchLabel,dispatchTone,dueDelayDays,dropSummary} from './planning-presentation.js';
 import {taskInPeriod,machineLoad} from './planning-insights.js';
 import {can} from '../roles.mjs';
 
@@ -139,7 +139,7 @@ function setHintState(entry,state,message){
  positionHintLabel(entry.hint);
 }
 function positionHintLabel(hint){const label=hint.querySelector('span'),viewport=hint.closest('.timeline-scroll')?.getBoundingClientRect();if(!label||!viewport)return;label.style.left='7px';label.style.right='auto';label.style.maxWidth=`${Math.max(120,viewport.width-16)}px`;const anchor=hint.getBoundingClientRect(),width=label.offsetWidth,left=Math.max(viewport.left+8,Math.min(anchor.left+7,viewport.right-width-8));label.style.left=`${left-anchor.left}px`;}
-function showResolvedPreview(entry,preview){drawPreviewFootprints(preview,entry.action);const placement=preview?.placement||{},segments=previewSegments(preview,entry.action).flatMap(group=>group.segments),start=placement.start||entry.action.fixedStart,end=placement.end||segments.at(-1)?.end;setHintState(entry,'ready',start&&end?`${previewContext.fmt(start)} → ${previewContext.fmt(end)} · ${segments.length} ${segments.length===1?'fascia':'fasce'}`:'Posizione verificata');}
+function showResolvedPreview(entry,preview){drawPreviewFootprints(preview,entry.action);setHintState(entry,'ready',dropSummary({action:entry.action,preview,tasks:previewContext.state.tasks,fmt:previewContext.fmt}));}
 function startPreview(entry){
  clearTimeout(previewTimer);previewTimer=undefined;
  if(currentPreview?.key===entry.key&&currentPreview.promise){const generation=++paintGeneration;currentPreview.promise.then(preview=>{if(generation===paintGeneration&&currentDragAction?.key===entry.key)showResolvedPreview(entry,preview);}).catch(error=>{if(generation===paintGeneration&&currentDragAction?.key===entry.key)setHintState(entry,'invalid',error?.message||'Posizione non disponibile');});return currentPreview.promise;}
