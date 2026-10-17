@@ -3,6 +3,17 @@
 Data analisi: 17 ottobre 2026. Uso interno.
 Ottica: reparto di accoppiatura tessuti, due utenti da servire (il titolare che decide e controlla, l'operatore che lavora a macchina).
 
+## Stato di attuazione (aggiornato il 17 ottobre 2026, sera)
+
+| Ondata | Stato | Dove |
+|---|---|---|
+| 1 · chiarezza | **Fatta** | stato rilascio (P2), Settimana nello schermo (P1/D6), Attività in ordine (A1), In reparto su una riga (V1), titoli (R2), anteprima (P3/D2), KPI e periodo statistiche (S7/S8) |
+| 2 · il titolare vede il rischio | **Fatta, salvo due punti** | puntualità (S1), scostamento % (S2), tendenze (S3), consegna sul piano (P7), colonne utili e duplica (A2/A4), avanzamento e operatore (V2/V3), monitor TV (V4), prossima attività in macchina (T1), rilascio compatto (R1), stampa (P9). **Non fatti:** consegna obbligatoria (S1, decisione con Aloven: il KPI funziona sulle attività che la hanno) e il modulo «Nuova attività»: selettori ricercabili e tipologia derivata dalla macchina (A3/D4) |
+| 3 · il modello conosce l'accoppiatura | **Solo la parte autonoma** | attrezzaggio suggerito dallo storico (§3.9 punto 2). Restano: attributi articolo, regole per attributo, capacità macchina, criterio d'ordine, scarto di avviamento, prima pezza, qualità misurata, resa materiale: dipendono da risposte di Aloven |
+| 4 · arricchimenti | **Non avviata** | urgente/simulazione, chiamata aiuto, manutenzione preventiva, rilavorazione figlia, badge/PIN, certificato PDF, rotoli: cambiano schema o definiscono processi |
+
+Trovata e corretta durante il lavoro una regressione non indicata sopra: la console touch aveva un margine sinistro di 224 px (D10/T3 confermato) e a 1024×768 i comandi coprivano la scheda corrente.
+
 ## 1. Come ho valutato
 
 - **Esame diretto dell'app in esecuzione** su una copia temporanea del database (nessun dato operativo toccato): storico demo di 10 mesi (2.332 consuntivi), 24 attività di prova, piano settimanale generato con «Prepara periodo», rilasciato, e una attività avviata dalla console touch. Viste a 1440×900 e 1024×768.
