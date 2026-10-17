@@ -1,0 +1,32 @@
+/* Monitor di reparto: caratteri grandi, nessun menu, leggibile a qualche metro. */
+body.tv { margin:0; min-height:100vh; background:#0f1b2d; color:#f2f6fb; font-family:'Segoe UI',Arial,sans-serif; }
+.tv-top { display:flex; align-items:center; gap:24px; padding:14px 28px; background:#14243b; border-bottom:1px solid #243a59; }
+.tv-top img { height:40px; background:#fff; border-radius:6px; padding:3px 8px; }
+.tv-top strong { font-size:clamp(20px,2.2vw,34px); font-variant-numeric:tabular-nums; }
+.tv-top time { margin-left:auto; font-size:clamp(24px,3vw,44px); font-weight:700; font-variant-numeric:tabular-nums; }
+.tv-stale { color:#ffd27a; font-weight:700; font-size:clamp(16px,1.6vw,24px); }
+.tv-grid { display:grid; grid-auto-rows:1fr; min-height:calc(100vh - 84px); box-sizing:border-box; gap:18px; padding:20px 28px; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); }
+.tv-grid[data-count="1"] { grid-template-columns:1fr; }
+.tv-card { --tone:#6b7d93; display:flex; flex-direction:column; gap:10px; padding:18px 22px; border-radius:14px; background:#182b45; border-left:12px solid var(--tone); min-width:0; }
+.tv-card[data-tone=setup] { --tone:#e0a030; }
+.tv-card[data-tone=run] { --tone:#2fbf8f; }
+.tv-card[data-tone=paused] { --tone:#d98b1c; }
+.tv-card[data-tone=ready] { --tone:#4a90f0; }
+.tv-card[data-tone=stopped] { --tone:#e5594a; background:#3a1d22; }
+.tv-card header { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.tv-card h2 { margin:0; font-size:clamp(28px,3.2vw,52px); }
+.tv-state { padding:4px 14px; border-radius:999px; background:var(--tone); color:#0f1b2d; font-weight:800; font-size:clamp(16px,1.7vw,26px); white-space:nowrap; }
+.tv-task { margin:0; font-size:clamp(20px,2.1vw,32px); font-weight:650; overflow-wrap:anywhere; }
+.tv-idle { color:#9fb2c8; font-weight:500; }
+.tv-stop { margin:0; font-size:clamp(18px,1.9vw,28px); font-weight:700; color:#ffb4aa; }
+.tv-progress { position:relative; height:30px; border-radius:15px; background:#2a4264; overflow:hidden; }
+.tv-progress>span { display:block; height:100%; background:var(--tone); }
+.tv-progress[data-over=true]>span { background:#e5594a; }
+.tv-progress>b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; text-shadow:0 1px 2px #0008; font-variant-numeric:tabular-nums; }
+.tv-facts { margin:0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:4px 22px; font-size:clamp(16px,1.6vw,24px); color:#c9d6e6; font-variant-numeric:tabular-nums; }
+.tv-card h3 { margin:6px 0 0; font-size:clamp(14px,1.3vw,20px); text-transform:uppercase; letter-spacing:.06em; color:#9fb2c8; }
+.tv-next { margin:0; padding:0; list-style:none; display:grid; gap:4px; font-size:clamp(16px,1.6vw,24px); }
+.tv-next li { display:flex; gap:14px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.tv-next li>span { flex:none; min-width:5.5em; color:#9fb2c8; font-variant-numeric:tabular-nums; }
+.tv-message { margin:20vh auto; max-width:760px; padding:24px; text-align:center; font-size:28px; }
+.tv-message a { color:#8ec1ff; }

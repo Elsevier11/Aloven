@@ -47,6 +47,11 @@ try{
  assert.match(await page.locator('.reparto-summary').innerText(),/^1 in corso/);
  assert.equal(await card.locator('.reparto-badge').count(),0,'piano rilasciato: nessun badge');
 
+ // avanzamento e operatore (il test ha avviato l'attrezzaggio con l'utente admin)
+ assert.equal(await card.locator('.reparto-progress').count(),1,'barra di avanzamento sulla macchina in corso');
+ assert.match(await card.locator('.reparto-progress').innerText(),/^[0-9]+ %$/);
+ assert.match(await card.locator('.reparto-lines').innerText(),/Operatore Reparto test/,'operatore che ha avviato l attività');
+ assert.equal(await page.locator('.reparto-tv-link').getAttribute('href'),'/reparto-tv');
  await page.screenshot({path:path.join('.artifacts','reparto-desktop.png')});
  ok('in corso con tempi e prossime attività in ordine');
 
@@ -62,6 +67,22 @@ try{
  await page.locator('#planning-selection:not([hidden]) h3').first().waitFor();
  assert.equal(await page.locator('#live-strip').count(),1,'siamo tornati nella Pianificazione');
  ok('clic su una prossima attività apre la Pianificazione');
+
+ // 4b. Monitor a schermo intero: stesse macchine, caratteri grandi, nessun menu
+ const tv=await browser.newPage({viewport:{width:1920,height:1080}});const tvErrors=[];tv.on('pageerror',e=>tvErrors.push(e.message));
+ await tv.context().addCookies(await page.context().cookies());
+ await tv.goto(base+'/reparto-tv');await tv.locator('.tv-card').first().waitFor();
+ assert.equal(await tv.locator('.tv-card').count(),initial.machines.length);
+ assert.equal(await tv.locator('[data-nav]').count(),0,'nessun menu nel monitor');
+ const tvCard=tv.locator('.tv-card').first();assert.match(await tvCard.innerText(),/CNC-01|ACC-01/);
+ assert.match(await tv.locator('.tv-top strong').innerText(),/1 in corso/);
+ assert.equal(await tv.locator('.tv-progress').count(),1);
+ assert.equal(await tv.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await tv.screenshot({path:path.join('.artifacts','reparto-tv.png')});
+ // senza sessione: invito ad accedere, nessun dato
+ const anon=await browser.newContext();const anonPage=await anon.newPage();await anonPage.goto(base+'/reparto-tv');await anonPage.locator('.tv-message a').waitFor();
+ assert.match(await anonPage.locator('.tv-message').innerText(),/Accedi/);await anon.close();assert.deepEqual(tvErrors,[]);await tv.close();
+ ok('monitor a schermo intero: schede, avanzamento, sessione scaduta');
 
  // 5. Mobile
  await page.setViewportSize({width:375,height:812});await page.reload();await openReparto();

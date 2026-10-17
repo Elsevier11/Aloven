@@ -9,6 +9,11 @@ export function machineLiveStatus(db, {machines, tasks, now = new Date().toISOSt
   if (!db || typeof db.prepare !== 'function') throw new TypeError('Database SQLite non valido.');
   const executions = new Map(db.prepare("SELECT * FROM execution WHERE phase<>'completed' AND interruptedAt IS NULL").all().map(row => [row.taskId, row]));
   const stops = new Map(db.prepare('SELECT machineId,startedAt,reason FROM machineStops WHERE endedAt IS NULL ORDER BY startedAt,rowid').all().map(row => [row.machineId, {reason: row.reason, startedAt: row.startedAt}]));
+  // Ultimo operatore che ha registrato un evento sull'attività (nome conservato nell'evento).
+  const operators = new Map();
+  if (db.prepare('PRAGMA table_info(executionEvents)').all().some(column => column.name === 'userName')) {
+    for (const row of db.prepare('SELECT taskId,userName FROM executionEvents ORDER BY at,rowid').all()) if (row.userName) operators.set(row.taskId, row.userName);
+  }
   return machines.map(machine => {
     const task = tasks.find(item => item.machineId === machine.id && item.status === 'in_progress') || null;
     const execution = task ? executions.get(task.id) || null : null;
@@ -34,6 +39,7 @@ export function machineLiveStatus(db, {machines, tasks, now = new Date().toISOSt
       plannedSetupMinutes: task ? (execution?.plannedSetupMinutes ?? task.effectiveSetupMinutes ?? task.setupMinutes) : null,
       plannedRunMinutes: task ? (execution?.plannedRunMinutes ?? task.runMinutes) : null,
       plannedEnd: task?.end ?? null,
+      operatorName: task ? operators.get(task.id) ?? null : null,
       stop,
     };
   });

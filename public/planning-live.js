@@ -65,10 +65,14 @@ export function liveCellModel(item, task, nowMs, mins) {
     }
     if (item.plannedEnd) lines.push(`fine ${endLabel(item.plannedEnd, nowMs)}`);
   }
+  const plannedTotal = (item.plannedSetupMinutes ?? 0) + (item.plannedRunMinutes ?? 0);
+  const serverStart = Date.parse(item.serverAt || ''), liveMinutes = item.taskId && ['setup', 'run'].includes(item.state) && Number.isFinite(serverStart) ? Math.max(0, Math.floor((nowMs - serverStart) / 60000)) : 0;
+  const doneMinutes = item.taskId ? Math.floor((item.setupActualSeconds || 0) / 60) + Math.floor((item.runActualSeconds || 0) / 60) + liveMinutes : 0;
+  const progress = item.taskId && plannedTotal > 0 ? Math.round(doneMinutes / plannedTotal * 100) : null;
   const stop = item.stop ? `Fermo dalle ${hhmm(item.stop.startedAt)} · ${item.stop.reason}` : '';
   return {
     machineId: item.machineId, taskId: item.taskId, state: item.state, label: meta.label, tone: meta.tone, running,
-    title: task ? liveTitle(task) : '', lines, stop,
+    title: task ? liveTitle(task) : '', lines, stop, progress, operator: item.operatorName || '',
     delay, alert: item.state === 'stopped' || delay > 0,
     since: item.taskId && item.phaseSince && ['setup', 'setup_done', 'run'].includes(item.state) ? hhmm(item.phaseSince) : '',
     meta: item.stop ? `fermo dalle ${hhmm(item.stop.startedAt)}` : delay > 0 ? `+${mins(delay)}` : item.taskId && item.plannedEnd ? `fine ${endLabel(item.plannedEnd, nowMs)}` : '',

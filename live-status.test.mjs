@@ -61,3 +61,26 @@ test('stato vivo via HTTP: la vista pianificazione espone fasi, fermo e orologio
     await request('machine-stop',{action:'resume',machineId:'CNC-01',revision:(await request('state')).revision});assert.equal((await live('CNC-01')).stop,null);
   }finally{if(child&&child.exitCode===null){const done=once(child,'exit');child.kill();await done;}rmSync(data,{recursive:true,force:true});}
 });
+
+test('stato vivo: ultimo operatore che ha registrato un evento sull\'attività',()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE execution(taskId TEXT PRIMARY KEY,phase TEXT,setupStartedAt TEXT,setupEndedAt TEXT,runStartedAt TEXT,runEndedAt TEXT,runActiveSeconds REAL DEFAULT 0,lastRunStartedAt TEXT,producedQuantity REAL,setupPausedAt TEXT,setupPausedSeconds REAL DEFAULT 0,interruptedAt TEXT,plannedSetupMinutes REAL,plannedRunMinutes REAL);
+    CREATE TABLE machineStops(id TEXT PRIMARY KEY,machineId TEXT,startedAt TEXT,endedAt TEXT,reason TEXT);
+    CREATE TABLE executionEvents(id TEXT PRIMARY KEY,taskId TEXT,action TEXT,at TEXT,userName TEXT);`);
+  db.prepare("INSERT INTO execution(taskId,phase,runActiveSeconds) VALUES ('ta','run_running',0)").run();
+  db.prepare("INSERT INTO executionEvents VALUES ('e1','ta','start_setup','2026-10-07T08:00:00Z','Anna Bianchi'),('e2','ta','start_run','2026-10-07T09:00:00Z','Mario Rossi')").run();
+  const tasks=[{id:'ta',machineId:'A',status:'in_progress',setupMinutes:30,runMinutes:60},{id:'tb',machineId:'B',status:'planned',setupMinutes:30,runMinutes:60}];
+  const live=Object.fromEntries(machineLiveStatus(db,{machines:[{id:'A'},{id:'B'}],tasks,now:'2026-10-07T10:00:00.000Z'}).map(item=>[item.machineId,item]));
+  assert.equal(live.A.operatorName,'Mario Rossi');
+  assert.equal(live.B.operatorName,null);
+});
+
+test('stato vivo: senza la colonna userName negli eventi l\'operatore è assente, non un errore',()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE execution(taskId TEXT PRIMARY KEY,phase TEXT,setupStartedAt TEXT,setupEndedAt TEXT,runActiveSeconds REAL DEFAULT 0,lastRunStartedAt TEXT,setupPausedAt TEXT,setupPausedSeconds REAL DEFAULT 0,interruptedAt TEXT,plannedSetupMinutes REAL,plannedRunMinutes REAL);
+    CREATE TABLE machineStops(id TEXT PRIMARY KEY,machineId TEXT,startedAt TEXT,endedAt TEXT,reason TEXT);
+    CREATE TABLE executionEvents(id TEXT PRIMARY KEY,taskId TEXT,action TEXT,at TEXT);`);
+  db.prepare("INSERT INTO execution(taskId,phase) VALUES ('ta','run_running')").run();
+  const live=machineLiveStatus(db,{machines:[{id:'A'}],tasks:[{id:'ta',machineId:'A',status:'in_progress',setupMinutes:0,runMinutes:60}],now:'2026-10-07T10:00:00.000Z'});
+  assert.equal(live[0].operatorName,null);
+});

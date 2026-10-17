@@ -64,9 +64,10 @@ try {
     }
     await page.setViewportSize({width:1024,height:768});
     assert.equal(await page.locator('#live-timer').count(),0,'Timer mostrato prima dell’avvio');
-    const work=await page.locator('.current').boundingBox(),dock=await page.locator('.action-dock').boundingBox();assert.ok(work.y+work.height<=dock.y,'Scheda corrente coperta dai comandi tablet');
+    const work=await page.locator('.current').boundingBox(),dock=await page.locator('.action-dock').boundingBox();assert.ok(work.y+work.height<=dock.y,`Scheda corrente coperta dai comandi tablet: fondo ${Math.round(work.y+work.height)} px, comandi da ${Math.round(dock.y)} px`);
     await page.locator('.work-details summary').click();await page.locator('#refresh').click();await page.locator('.work-details[open]').waitFor();await page.locator('.work-details summary').click();
     await page.locator('.queue summary').click();assert.ok(await page.locator('.queue details[open]').isVisible());await page.locator('.queue summary').click();
+    if(await page.locator('.next-preview').isVisible().catch(()=>false)){const prep=await page.locator('.next-preview .next-prepare').innerText();assert.match(prep,/Componenti da preparare/);assert.match(prep,/Attrezzaggio previsto[sS]*(min|h)/,'componenti e attrezzaggio della prossima attività');}
   });
 
   // I selettori di flusso sono intenzionalmente semantici: verificano la UI usata dall'operatore.

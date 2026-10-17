@@ -44,7 +44,8 @@ export function repartoView(c) {
     const tip = [m.title, ...m.lines, m.stop, m.delay > 0 ? `In ritardo di ${c.mins(m.delay)}` : ''].filter(Boolean).join(' · ');
     const current = m.taskId
       ? `<button type="button" class="reparto-current" data-reparto-task="${c.esc(m.taskId)}" title="${c.esc(tip)}"><span class="reparto-task">${c.esc(m.title)}</span></button>`
-        + `<ul class="reparto-lines">${m.lines.map(l => `<li>${c.esc(l)}</li>`).join('')}${m.stop ? `<li class="reparto-alert">${c.esc(m.stop)}</li>` : ''}${m.delay > 0 ? `<li class="reparto-alert">In ritardo di ${c.esc(c.mins(m.delay))}</li>` : ''}</ul>`
+        + (m.progress == null ? '' : `<div class="reparto-progress" role="progressbar" aria-label="Avanzamento sul tempo previsto" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, m.progress)}" data-over="${m.progress > 100}"><span style="width:${Math.min(100, m.progress)}%"></span><b>${m.progress} %</b></div>`)
+        + `<ul class="reparto-lines">${m.operator ? `<li>Operatore ${c.esc(m.operator)}</li>` : ''}${m.lines.map(l => `<li>${c.esc(l)}</li>`).join('')}${m.stop ? `<li class="reparto-alert">${c.esc(m.stop)}</li>` : ''}${m.delay > 0 ? `<li class="reparto-alert">In ritardo di ${c.esc(c.mins(m.delay))}</li>` : ''}</ul>`
       : `<p class="reparto-none">Nessuna attività in corso</p>${m.stop ? `<p class="reparto-alert">${c.esc(m.stop)}</p>` : ''}`;
     const upcoming = next.length
       ? `<ol class="reparto-next">${next.map(n => `<li><button type="button" data-reparto-task="${c.esc(n.id)}"><span class="reparto-when">${c.esc(n.start || '—')}</span><span class="reparto-name">${c.esc(n.title)}</span>${n.badge ? `<span class="reparto-badge" data-tone="${n.tone}">${c.esc(n.badge)}</span>` : ''}</button></li>`).join('')}</ol>${more ? `<p class="reparto-more">e altre ${more} in sequenza</p>` : ''}`
@@ -54,5 +55,5 @@ export function repartoView(c) {
       + `<section aria-label="In corso"><h4>In corso</h4>${current}</section>`
       + `<section aria-label="Prossime attività"><h4>Prossime</h4>${upcoming}</section></article>`;
   }).join('');
-  return `<section class="reparto-view" id="reparto-view" aria-label="Stato del reparto"><p class="reparto-summary" role="status">${c.esc(summary)}</p><div class="reparto-grid">${cards}</div></section>`;
+  return `<section class="reparto-view" id="reparto-view" aria-label="Stato del reparto"><p class="reparto-summary" role="status">${c.esc(summary)} <a class="reparto-tv-link" href="/reparto-tv" target="_blank" rel="noopener">Apri il monitor a schermo intero</a></p><div class="reparto-grid">${cards}</div></section>`;
 }

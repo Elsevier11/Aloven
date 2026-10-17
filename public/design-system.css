@@ -255,6 +255,11 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .reparto-current:hover .reparto-task { text-decoration:underline; }
 .reparto-task { font-weight:650; overflow-wrap:anywhere; }
 .reparto-lines { margin:3px 0 0; padding:0; list-style:none; font-size:12px; color:var(--mes-muted); font-variant-numeric:tabular-nums; }
+.reparto-tv-link { margin-left:12px; font-size:12px; font-weight:500; }
+.reparto-progress { position:relative; height:16px; margin:6px 0 2px; border-radius:8px; background:#e6ebf1; overflow:hidden; }
+.reparto-progress>span { display:block; height:100%; background:var(--live-tone); opacity:.55; }
+.reparto-progress[data-over=true]>span { background:#c0392b; opacity:.6; }
+.reparto-progress>b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-variant-numeric:tabular-nums; color:var(--mes-ink); }
 .reparto-alert { color:#a52a1d; font-weight:650; }
 .reparto-none, .reparto-more { margin:0; font-size:12px; color:var(--mes-muted); }
 .reparto-next { margin:0; padding:0; list-style:none; display:grid; gap:2px; }
@@ -271,3 +276,4 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 #modal .dialog-heading button,#modal .dialog-header button{cursor:pointer}
 #modal.dragging{transition:none}
 @media(max-width:620px),(pointer:coarse){#modal .dialog-heading,#modal .dialog-header{cursor:auto}}
+.setup-suggestion{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:4px;font-size:12px;font-weight:400;color:var(--mes-muted)}

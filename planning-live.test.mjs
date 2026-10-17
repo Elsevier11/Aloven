@@ -53,3 +53,17 @@ test('titolo della cella: il riferimento non si ripete se è già nel titolo',()
   assert.equal(liveTitle({title:'Laminato outdoor',outputLot:'HM-104',orderReference:'OC-7'}),'Ord. OC-7 · Lotto HM-104 · Laminato outdoor');
   assert.equal(liveTitle({title:'Solo titolo'}),'Solo titolo');
 });
+
+test('cella viva: avanzamento sul tempo previsto totale e operatore',()=>{
+  const task={id:'t1',title:'Laminato outdoor'};
+  const base={machineId:'m',taskId:'t1',plannedEnd:'2026-10-07T12:00',plannedSetupMinutes:30,plannedRunMinutes:90,serverAt:'2026-10-07T08:00:00Z',setupActualSeconds:1800,runActualSeconds:1800,stop:null,operatorName:'Mario Rossi'};
+  // 30 min attrezzaggio + 30 min lavorazione già registrati, più 30 min dalla lettura = 90 su 120 → 75 %
+  const run=liveCellModel({...base,state:'run',phaseSince:'2026-10-07T07:40:00Z'},task,at('2026-10-07T08:30:00Z'),mins);
+  assert.equal(run.progress,75);assert.equal(run.operator,'Mario Rossi');
+  // oltre il previsto l'avanzamento supera 100 (la barra si ferma, il numero no)
+  const over=liveCellModel({...base,state:'run',runActualSeconds:9000},task,at('2026-10-07T08:00:00Z'),mins);
+  assert.equal(over.progress,Math.round((30+150)/120*100));
+  // macchina libera o senza tempi previsti: nessun avanzamento
+  assert.equal(liveCellModel({machineId:'m',taskId:null,state:'idle'},null,at('2026-10-07T08:00:00Z'),mins).progress,null);
+  assert.equal(liveCellModel({...base,plannedSetupMinutes:0,plannedRunMinutes:0,state:'run'},task,at('2026-10-07T08:00:00Z'),mins).progress,null);
+});
