@@ -33,7 +33,8 @@
     "test:planning-live": "node planning-live-check.mjs",
     "test:planning-week": "node planning-week-check.mjs",
     "test:reparto": "node reparto-check.mjs",
-    "test:insights": "node insights-check.mjs"
+    "test:insights": "node insights-check.mjs",
+    "test:calendar": "node calendar-check.mjs"
   },
   "engines": {
     "node": ">=22.13"

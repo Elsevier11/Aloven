@@ -218,21 +218,23 @@ body:has(.shell) #modal .notice{padding:0;margin-top:8px;font-size:12px}
 .console-workspace .calendar-layout{gap:14px;grid-template-columns:minmax(320px,.8fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr);align-items:stretch;min-height:0;flex:1}
 .console-workspace .calendar-layout>.panel{padding:16px;overflow:auto;min-height:0;height:100%;max-height:100%}
 .console-workspace .panel-heading{margin-bottom:12px}
-.console-workspace .weekly-labels{font-size:11px;margin:10px 0}
-.console-workspace .weekly-row{padding:6px 0;gap:10px}
-.console-workspace .weekly-row .shift-inputs{flex-direction:column}
+.console-workspace .weekly-labels{font-size:12px;margin:10px 0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;color:var(--muted)}
+.weekly-label-shifts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.console-workspace .weekly-row{padding:4px 0;gap:10px;display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center}
+.console-workspace .weekly-row .shift-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.console-workspace .weekly-row .shift-inputs>div{display:flex;align-items:center;gap:4px;min-width:0}
 .console-workspace .weekly-row>.check-label{width:auto;font-size:12px;min-height:32px}
-.console-workspace .shift-inputs input{min-height:32px;padding:5px;width:82px;font-size:12px}
+.console-workspace .shift-inputs input{min-height:34px;padding:5px;width:100%;min-width:0;font-size:13px}
 .console-workspace .weekly-actions{margin-top:14px;position:sticky;bottom:-16px;background:white;padding:10px 0;z-index:2}
 .console-workspace .weekly .notice{padding:0;margin:8px 0 0;font-size:12px}
 .console-workspace .month-toolbar{margin-bottom:12px;gap:6px}
 .console-workspace .month-toolbar h2{font-size:16px}
 .console-workspace .month-toolbar select{max-width:210px}
-.console-workspace .weekday{font-size:11px;padding:6px}
+.console-workspace .weekday{font-size:12px;padding:6px}
 .console-workspace .calendar-day{min-height:60px;padding:6px}
 .console-workspace .calendar-day>span{font-size:13px}
-.console-workspace .calendar-day small{font-size:10px;margin-top:3px;line-height:1.35}
-.console-workspace .calendar-legend{margin-top:10px;font-size:11px;gap:12px}
+.console-workspace .calendar-day small{font-size:12px;margin-top:3px;line-height:1.3}
+.console-workspace .calendar-legend{margin-top:10px;font-size:12px;gap:12px}
 .console-workspace .exceptions-panel{margin:0;padding:0;flex:none;max-height:210px;overflow:auto}
 .console-workspace .exceptions-panel>summary{padding:12px 16px;min-height:44px;font-size:13px;font-weight:650;color:var(--ink)}
 .console-workspace .exceptions-panel>.notice{padding:0 16px;margin:0 0 10px;font-size:12px}
@@ -277,3 +279,21 @@ body:has(.shell) #modal .notice{padding:0;margin-top:8px;font-size:12px}
 }
 @media(min-width:801px){.planning-workspace:has(.timeline-scroll){overflow-y:auto}.planning-workspace:has(.timeline-scroll) .planner-area{flex:1 0 280px;min-height:280px}}
 .sync-status{margin-left:12px;font-size:12px;color:var(--muted)}.sync-status.stale{color:#744400;background:var(--amber-soft);border:1px solid #e3b66f;border-radius:6px;padding:3px 8px;font-weight:700}
+
+/* Calendario: pulsanti raggruppati, selettore con etichetta, giorni non lavorativi senza testo, orari spenti nei giorni a riposo */
+.heading-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:auto}
+.scope-picker{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:var(--muted)}
+.scope-picker select{margin:0}
+.console-workspace .calendar-day.off:not(.exception):not(.today-cell)>span{color:var(--muted);font-weight:500}
+.weekly-row:has(input[type=checkbox]:not(:checked)) .shift-inputs{opacity:.5}
+.console-workspace .calendar-day.exception em,.console-workspace .calendar-day.off small{font-size:12px}
+/* Calendario: orari leggibili (senza icona dell'orologio) e righe più basse perché i sette giorni entrino */
+.weekly-row input[type=time]::-webkit-calendar-picker-indicator{display:none}
+.console-workspace .weekly-row .shift-inputs input{min-height:30px;padding:3px 6px;text-align:center}
+.console-workspace .weekly-row{padding:2px 0}
+.console-workspace .weekly-row>.check-label{min-height:30px}
+.scope-picker{display:flex!important;flex-direction:row!important;align-items:center}
+.console-workspace .weekly-row .shift-inputs input{height:30px;margin:0}
+.console-workspace .weekly-row>.check-label{margin:0}
+.shell .console-workspace .weekly-row .shift-inputs input[type=time]{height:30px;min-height:30px;padding:3px 6px}
+.console-workspace .weekly-days{flex:0 1 auto}

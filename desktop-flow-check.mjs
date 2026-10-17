@@ -162,9 +162,10 @@ try{
     await planner.locator('[data-nav-group="settings"]').click();
     assert.equal(await planner.locator('[data-nav="users"]').count(),0);
     assert.equal(await planner.locator('[data-nav="backups"]').count(),0);
-    await planner.locator('[data-nav="calendar"]').click();
+    await planner.locator('#weekly-form').waitFor();// con una sola voce il menu secondario non c'è: la pagina si apre dal gruppo
     assert.equal(await planner.getByRole('button',{name:'Imposta periodo'}).count(),1,'il pianificatore gestisce il calendario');
     assert.equal(await planner.locator('#weekly-form fieldset').evaluate(fieldset=>fieldset.disabled),false);
+    assert.equal(await planner.locator('.section-navigation').count(),0,'menu secondario con una sola voce nascosto');
     await planner.locator('[data-nav-group="catalogues"]').click();
     await planner.locator('[data-nav="machines"]').click();
     assert.equal(await planner.locator('[data-edit^="machine:"],[data-delete^="machine:"]').count(),0,'le anagrafiche restano all’amministratore');
