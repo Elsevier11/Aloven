@@ -64,6 +64,28 @@ function secondsSum(rows, field) {
   return value === null ? null : hours(value);
 }
 
+const rate = value => Math.round(value*10000)/10000;
+
+// Scostamento % = (effettivo - previsto) / previsto, solo sulle coppie con entrambi i valori.
+// La puntualità conta soltanto i consuntivi con una data di consegna indicata.
+function deviationMetrics(rows, setupPairs, setupDeltaSeconds) {
+  const runPairs = rows.filter(row => row.plannedRunSeconds != null && row.actualRunSeconds != null);
+  const runPlanned = runPairs.reduce((sum,row) => sum + row.plannedRunSeconds,0);
+  const runActual = runPairs.reduce((sum,row) => sum + row.actualRunSeconds,0);
+  const setupPlanned = setupPairs.reduce((sum,row) => sum + row.plannedSetupSeconds,0);
+  const dueRows = rows.filter(row => row.dueDate);
+  const late = dueRows.filter(row => row.lateDays > 0);
+  return {
+    runPairedCount: runPairs.length,
+    runDeviationRate: runPlanned > 0 ? rate((runActual-runPlanned)/runPlanned) : null,
+    setupDeviationRate: setupPlanned > 0 ? rate(setupDeltaSeconds/setupPlanned) : null,
+    dueCount: dueRows.length,
+    lateCount: late.length,
+    punctualityRate: dueRows.length ? rate((dueRows.length-late.length)/dueRows.length) : null,
+    averageLateDays: late.length ? Math.round(late.reduce((sum,row) => sum + row.lateDays,0)/late.length*10)/10 : null,
+  };
+}
+
 function commonMetrics(rows) {
   const goodQuantity = quantitySum(rows,'goodQuantity');
   const scrapQuantity = quantitySum(rows,'scrapQuantity');
@@ -83,6 +105,7 @@ function commonMetrics(rows) {
     averageSetupDeltaMinutes:setupPairs.length ? Math.round(setupDeltaSeconds / setupPairs.length / 6) / 10 : null,
     plannedRunHours: secondsSum(rows,'plannedRunSeconds'),
     actualRunHours: hours(rows.reduce((sum,row) => sum + row.actualRunSeconds,0)),
+    ...deviationMetrics(rows,setupPairs,setupDeltaSeconds),
     nonconformingCount: rows.filter(row => row.qualityStatus === 'nonconforming').length,
     plausibilityFlaggedCount: rows.filter(row => row.plausibilityFlagged).length,
   };
@@ -109,6 +132,11 @@ function setupSeconds(row) {
   if (end === null || end < start) return null;
   const paused = row.setupPausedSeconds == null ? 0 : Number(row.setupPausedSeconds);
   return Number.isFinite(paused) && paused >= 0 ? Math.max(0,(end-start)/1000-paused) : null;
+}
+
+function taskDueDates(db) {
+  if (!tableExists(db,'tasks') || !db.prepare("PRAGMA table_info(tasks)").all().some(column => column.name === 'dueDate')) return new Map();
+  return new Map(db.prepare("SELECT id,dueDate FROM tasks WHERE dueDate IS NOT NULL AND dueDate<>''").all().map(row => [row.id,String(row.dueDate).slice(0,10)]));
 }
 
 function tableExists(db, table) {
@@ -220,11 +248,30 @@ function buildDailyActivity(db, normalized, rangeStart, rangeEnd, now, machineNa
   return {rows,coverage:{status,relevantExecutionCount:relevant.size,executionWithEventsCount,missingEventExecutionCount,incompleteSequenceCount,message}};
 }
 
-export function buildStatisticsReport(db, filters = {}, now = new Date()) {
+// Stesso numero di giorni, subito prima del periodo scelto: serve a mostrare la tendenza di ogni indicatore.
+function previousPeriod(db, normalized, now) {
+  const days = Math.round((Date.parse(normalized.to+'T00:00Z')-Date.parse(normalized.from+'T00:00Z'))/864e5)+1;
+  const shift = (date,delta) => new Date(Date.parse(date+'T00:00Z')+delta*864e5).toISOString().slice(0,10);
+  const to = shift(normalized.from,-1), from = shift(to,-(days-1));
+  let report;
+  try { report = buildStatisticsReport(db,{from,to,machineId:normalized.machineId,excludeDemo:normalized.excludeDemo},now,{withPrevious:false}); } catch { return null; }
+  if (!report.totals.count) return null;
+  const conformingCount = report.details.filter(row => row.qualityStatus === 'conforming').length;
+  const classifiedCount = conformingCount+report.details.filter(row => row.qualityStatus === 'nonconforming').length;
+  const t = report.totals;
+  return {
+    from,to,count:t.count,quantities:t.quantities,stoppedHours:t.stoppedHours,
+    conformingCount,classifiedCount,runDeviationRate:t.runDeviationRate,setupDeviationRate:t.setupDeviationRate,
+    punctualityRate:t.punctualityRate,dueCount:t.dueCount,
+  };
+}
+
+export function buildStatisticsReport(db, filters = {}, now = new Date(), { withPrevious = true } = {}) {
   const normalized = normalizeStatisticsFilters(db,filters,now);
   const rangeStart = romeMidnight(normalized.from);
   const rangeEnd = romeMidnight(nextDate(normalized.to));
   const machineNames = new Map(db.prepare('SELECT id,name FROM machines').all().map(row => [row.id,row.name]));
+  const dueDates = taskDueDates(db);
   const query = `SELECT * FROM execution WHERE ${declarationPredicate(db)} AND runEndedAt IS NOT NULL${normalized.machineId ? ' AND machineId=?' : ''} ORDER BY runEndedAt,taskId`;
   const executions = (normalized.machineId ? db.prepare(query).all(normalized.machineId) : db.prepare(query).all())
     .filter(row => {
@@ -236,9 +283,11 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
       const total = goodQuantity === null || scrapQuantity === null ? null : goodQuantity + scrapQuantity;
       const completedAt = row.runEndedAt;
       const completedDate = romeDate(new Date(completedAt));
+      const dueDate = dueDates.get(row.taskId) ?? null;
       return {
         taskId:row.taskId, taskTitle:row.taskTitle, closureStatus:row.interruptedAt?'Interrotta':'Completata',
         completedAt, completedDate, month:completedDate.slice(0,7),
+        dueDate, lateDays:dueDate ? Math.round((Date.parse(completedDate+'T00:00Z')-Date.parse(dueDate+'T00:00Z'))/864e5) : null,
         machineId:row.machineId, machineName:machineNames.get(row.machineId) ?? row.machineId,
         productCode:row.productCode, productDescription:row.productDescription,
         unit:row.productUnit, plannedQuantity:row.plannedQuantity ?? null,
@@ -321,6 +370,8 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
     nonconformingCount:all.nonconformingCount,
     plausibilityFlaggedCount:all.plausibilityFlaggedCount,
     setupPairedCount:all.setupPairedCount,setupDeltaHours:all.setupDeltaHours,averageSetupDeltaMinutes:all.averageSetupDeltaMinutes,
+    runPairedCount:all.runPairedCount,runDeviationRate:all.runDeviationRate,setupDeviationRate:all.setupDeviationRate,
+    dueCount:all.dueCount,lateCount:all.lateCount,punctualityRate:all.punctualityRate,averageLateDays:all.averageLateDays,withoutDueDateCount:all.count-all.dueCount,
     stoppedHours:hours(stops.reduce((sum,row)=>sum+row.durationSeconds,0)),
     stopCount:stops.length, closedStopCount:stops.filter(row=>row.endedAt !== null).length,
     openStopCount:stops.filter(row=>row.endedAt === null).length, quantities,
@@ -333,6 +384,7 @@ export function buildStatisticsReport(db, filters = {}, now = new Date()) {
     scrapReasons:scrapReasons.sort((a,b)=>b.scrapQuantity-a.scrapQuantity||a.label.localeCompare(b.label,'it')),
     stopReasons:stopReasons.sort((a,b)=>b.stoppedHours-a.stoppedHours||a.label.localeCompare(b.label,'it')),
     speeds,dailyActivity:daily.rows,coverage:daily.coverage,details,
+    previous:withPrevious ? previousPeriod(db,normalized,now) : null,
   };
 }
 
@@ -406,6 +458,8 @@ export function buildStatisticsWorkbook(report) {
     {label:'Generato il',value:report.generatedAt},{label:'Consuntivi chiusi',value:report.totals.count},
     {label:'Ore attrezzaggio previste',value:report.totals.plannedSetupHours},{label:'Ore attrezzaggio effettive',value:report.totals.actualSetupHours},
     {label:'Coppie attrezzaggio disponibili',value:report.totals.setupPairedCount},{label:'Delta attrezzaggio (ore)',value:report.totals.setupDeltaHours},{label:'Delta medio attrezzaggio (minuti)',value:report.totals.averageSetupDeltaMinutes},
+    {label:'Consuntivi con consegna indicata',value:report.totals.dueCount},{label:'Consuntivi in ritardo',value:report.totals.lateCount},{label:'Puntualità (%)',value:report.totals.punctualityRate===null?null:Math.round(report.totals.punctualityRate*1000)/10},
+    {label:'Scostamento lavorazione (%)',value:report.totals.runDeviationRate===null?null:Math.round(report.totals.runDeviationRate*1000)/10},{label:'Scostamento attrezzaggio (%)',value:report.totals.setupDeviationRate===null?null:Math.round(report.totals.setupDeviationRate*1000)/10},
     {label:'Ore produzione pianificate',value:report.totals.plannedRunHours},{label:'Ore produzione effettive',value:report.totals.actualRunHours},
     {label:'Controlli non conformi',value:report.totals.nonconformingCount},{label:'Consuntivi fuori soglia',value:report.totals.plausibilityFlaggedCount},{label:'Ore fermo',value:report.totals.stoppedHours},{label:'Fermi',value:report.totals.stopCount},
     {label:'Fermi chiusi',value:report.totals.closedStopCount},{label:'Fermi aperti',value:report.totals.openStopCount},

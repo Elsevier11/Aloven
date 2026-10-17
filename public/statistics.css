@@ -54,6 +54,10 @@
 .statistics-dashboard-tabs button{border:0;border-bottom:2px solid transparent;background:none;color:var(--mes-muted);padding:10px 14px;font-size:13px;font-weight:600;white-space:nowrap}
 .statistics-dashboard-tabs button[aria-pressed=true]{color:var(--mes-blue);border-bottom-color:var(--mes-blue)}
 .statistics-dashboard-summary{margin-bottom:16px}
+.statistics-trend{display:block;margin-top:2px;font-style:normal;font-size:12px;font-weight:650;color:var(--mes-muted);font-variant-numeric:tabular-nums}
+.statistics-trend.statistics-green,.statistics-dev.statistics-green{color:var(--mes-green-text)}
+.statistics-trend.statistics-amber,.statistics-dev.statistics-amber{color:var(--mes-amber-text)}
+.statistics-dev{font-weight:650;font-variant-numeric:tabular-nums}
 .statistics-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .statistics-kpi{position:relative;border:1px solid var(--mes-border);background:white;border-radius:8px;padding:14px 16px;text-align:left;min-height:108px;color:var(--mes-ink);box-shadow:0 2px 5px #142b4603}
 .statistics-kpi>span:first-child{display:block;font-size:12px;color:var(--mes-muted);line-height:1.4}
@@ -63,6 +67,7 @@
 .statistics-kpi.green .statistics-kpi-open{color:var(--mes-green-text);background:var(--mes-green-soft)}
 .statistics-kpi.red .statistics-kpi-open{color:var(--mes-red);background:var(--mes-red-soft)}
 .statistics-kpi.amber .statistics-kpi-open{color:var(--mes-amber-text);background:var(--mes-amber-soft)}
+.statistics-kpi.cyan .statistics-kpi-open{color:#0a6f83;background:#dff3f6}
 .statistics-kpi.purple .statistics-kpi-open{color:var(--mes-purple-text);background:#eee9fa}
 .statistics-kpi:hover{border-color:#aac4ee;box-shadow:0 3px 10px #172d4809}
 .statistics-dashboard-units{display:flex;gap:6px;align-items:center;margin-bottom:8px;font-size:11px;color:var(--mes-muted)}
