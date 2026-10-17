@@ -108,7 +108,7 @@ try{
   await test('attività: torna da assegnare, annulla e ripristina',async()=>{
     await openTask(b.id);await page.getByRole('button',{name:'Togli dal piano'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
     await openTask(b.id);await page.getByRole('button',{name:'Annulla attività'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'cancelled');
-    await nav('tasks');await page.getByLabel('Cerca attività',{exact:true}).fill('Prodotto operativo Beta');await page.getByRole('row').filter({hasText:'Prodotto operativo Beta'}).getByRole('button',{name:'Apri'}).click();await page.getByRole('button',{name:'Ripristina attività'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
+    await nav('tasks');await page.locator('#status-filter').selectOption('');await page.getByLabel('Cerca attività',{exact:true}).fill('Prodotto operativo Beta');await page.getByRole('row').filter({hasText:'Prodotto operativo Beta'}).getByRole('button',{name:'Apri'}).click();await page.getByRole('button',{name:'Ripristina attività'}).click();await settleMutation();assert.equal((await state()).tasks.find(t=>t.id===b.id).status,'unplanned');
   });
 
   await test('attività: cambio macchina valido e reset pianificazione',async()=>{

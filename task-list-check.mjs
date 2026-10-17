@@ -68,6 +68,12 @@ try{
   }
 
   // Filtri aggiuntivi, chip, azzera e selettore colonne
+  assert.equal(await page.locator('#status-filter').inputValue(),'active','Il filtro predefinito deve essere Attive');
+  assert.equal(await page.locator('.filter-chips').count(),0,'Nessun chip con i filtri predefiniti');
+  await page.locator('#status-filter').selectOption('');
+  await page.locator('.filter-chips .chip',{hasText:'Stato: Tutti'}).waitFor();
+  await page.locator('#clear-task-filters').click();
+  assert.equal(await page.locator('#status-filter').inputValue(),'active','Azzera deve tornare ad Attive');
   const lateButton=page.locator('#late-filter');
   assert.match(await lateButton.innerText(),/^In ritardo \(\d+\)$/);
   await lateButton.click();
