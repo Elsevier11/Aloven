@@ -56,7 +56,7 @@ try{
 
   for(const viewport of [{width:1366,height:768},{width:1920,height:1080}]){
     await page.setViewportSize(viewport);
-    const geometry=await page.locator('.task-table tbody tr').evaluateAll(rows=>rows.map(row=>{const cells=row.cells,product=cells[5]?.getBoundingClientRect(),actions=cells[7]?.getBoundingClientRect();return {height:row.getBoundingClientRect().height,productRight:product?.right,actionsLeft:actions?.left};}));
+    const geometry=await page.locator('.task-table tbody tr').evaluateAll(rows=>rows.map(row=>{const cells=row.cells,product=cells[5]?.getBoundingClientRect(),actions=cells[8]?.getBoundingClientRect();return {height:row.getBoundingClientRect().height,productRight:product?.right,actionsLeft:actions?.left};}));
     const heights=geometry.map(row=>row.height).sort((a,b)=>a-b),median=heights[Math.floor(heights.length/2)];
     assert.ok(median>=50&&median<=70,`Altezza mediana ${median}px a ${viewport.width}px`);
     assert.ok(geometry.every(row=>row.productRight<=row.actionsLeft+1),`Articolo prodotto coperto dalle azioni a ${viewport.width}px`);

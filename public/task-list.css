@@ -1,7 +1,7 @@
 .console-workspace[data-view="tasks"] .task-table {
   table-layout:fixed;
   width:100%;
-  min-width:1180px;
+  min-width:1120px;
   font-size:13px;
 }
 .console-workspace[data-view="tasks"] .task-table th,
@@ -11,14 +11,14 @@
 }
 .console-workspace[data-view="tasks"] .task-table th { padding-block:8px; }
 .console-workspace[data-view="tasks"] .task-table tbody tr { height:52px; }
-.console-workspace[data-view="tasks"] .task-table th:nth-child(1) { width:17%; }
-.console-workspace[data-view="tasks"] .task-table th:nth-child(2) { width:12%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(1) { width:16%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(2) { width:11%; }
 .console-workspace[data-view="tasks"] .task-table th:nth-child(3) { width:6%; }
 .console-workspace[data-view="tasks"] .task-table th:nth-child(4) { width:8%; }
-.console-workspace[data-view="tasks"] .task-table th:nth-child(5) { width:11%; }
-.console-workspace[data-view="tasks"] .task-table th:nth-child(6) { width:10%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(5) { width:10%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(6) { width:9%; }
 .console-workspace[data-view="tasks"] .task-table th:nth-child(7) { width:13%; }
-.console-workspace[data-view="tasks"] .task-table th:nth-child(9) { width:12%; }
+.console-workspace[data-view="tasks"] .task-table th:nth-child(9) { width:17%; }
 .task-customer small,.product-column .task-quantity{display:block;font-size:11px;color:var(--mes-muted)}
 .console-workspace[data-view="tasks"] .task-table th:nth-child(8) { width:10%; }
 .console-workspace[data-view="tasks"] .task-table td:first-child {
@@ -149,3 +149,8 @@
 .task-table .task-state-stack{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .task-table .task-state-stack>*{white-space:normal;max-width:100%}
 .task-table .task-state-stack>*{white-space:nowrap}
+/* Quattro azioni per riga: vanno a capo invece di allargare la tabella oltre lo schermo */
+.console-workspace[data-view="tasks"] .task-table .row-actions{display:grid;grid-template-columns:repeat(2,max-content);gap:2px 8px;justify-content:start}
+.console-workspace[data-view="tasks"] .task-table .row-actions .button{padding:2px 6px;font-size:12px;min-height:26px}
+.console-workspace[data-view="tasks"] .task-table th{white-space:normal;line-height:1.2}
+.console-workspace[data-view="tasks"] .task-table td:last-child,.console-workspace[data-view="tasks"] .task-table th:last-child{padding-inline:6px}
