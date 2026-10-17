@@ -1,14 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {temporalPlan,timelineInsertionBefore,timelineDropStart} from './public/timeline.js';
-
-test('rilascio temporale usa giorno e coordinate del punto scelto anche dopo scorrimento',()=>{
- const cell={dataset:{date:'2026-11-12',lo:'480',scale:'2'},getBoundingClientRect:()=>({left:-100})};
- assert.equal(timelineDropStart(cell,110),'2026-11-12T09:45');
- assert.equal(timelineDropStart(cell,-100),'2026-11-12T08:00');
- assert.equal(timelineDropStart(cell,320,30),'2026-11-12T11:00');
- assert.equal(timelineDropStart(cell,20,1440),'2026-11-11T09:00');
-});
+import {temporalPlan,timelineInsertionBefore} from './public/timeline.js';
 
 test('inserimento usa preparazione e lavorazione insieme e la sequenza oltre il giorno visibile',()=>{
  const tasks=[

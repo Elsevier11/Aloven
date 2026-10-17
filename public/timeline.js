@@ -1,8 +1,6 @@
 import {taskReference,taskBarReference,dispatchLabel,dispatchTone,dueDelayDays} from './planning-presentation.js';
 import {taskInPeriod,machineLoad} from './planning-insights.js';
-import {scheduleTask} from '../scheduler.mjs';
 import {can} from '../roles.mjs';
-import {effectiveMachineCalendar} from './calendar.js';
 
 const minute=v=>Number(v.slice(0,2))*60+Number(v.slice(3,5));
 const clock=v=>`${String(Math.floor(v/60)).padStart(2,'0')}:${String(v%60).padStart(2,'0')}`;
@@ -149,11 +147,6 @@ export function resolveDragPreview(action){
 export function clearDragPreview(){clearTimeout(previewTimer);previewTimer=undefined;paintGeneration++;currentPreview=undefined;currentDragAction=undefined;removePreviewFootprints();}
 export function clearInsertionHints(){paintGeneration++;currentDragAction=undefined;removePreviewFootprints();for(const cell of document.querySelectorAll('[data-drop-machine]')){delete cell.dataset.insertionBefore;delete cell.dataset.insertionInvalid;delete cell.dataset.insertionError;delete cell.dataset.insertionPreviewKey;cell.classList.remove('show-drag-hint-overflow');cell.querySelector('.insertion-hint')?.remove();}}
 
-export function timelineDropStart(cell,clientX,grabOffsetMinutes=0){
- const raw=Number(cell.dataset.lo)+(clientX-cell.getBoundingClientRect().left)/Number(cell.dataset.scale)-Number(grabOffsetMinutes||0);
- const midnight=Date.parse(`${cell.dataset.date}T00:00:00Z`),snapped=Math.round(raw/15)*15;
- return new Date(midnight+snapped*60000).toISOString().slice(0,16);
-}
 
 // Resolve against the whole queue, including tasks on days outside the viewport.
 export function timelineInsertionBefore(tasks,machineId,dragId,date,atMinute){
@@ -170,51 +163,43 @@ export function timelineInsertionBefore(tasks,machineId,dragId,date,atMinute){
 
 export function bindInsertionHints(c){
  insertionController?.abort();insertionController=new AbortController();const {signal}=insertionController;clearInsertionHints();clearDragPreview();previewContext=c;
- const calendars=new Map();let lastPointer,geometryFrame;
- const localPreview=(task,action)=>{
-  if(!action.fixedStart)return;
-  try{
-   if(!calendars.has(action.machineId))calendars.set(action.machineId,effectiveMachineCalendar(c.state.calendar,action.machineId));
-   return {placement:scheduleTask({...task,machineId:action.machineId,setupMinutes:task.effectiveSetupMinutes??task.setupMinutes},action.fixedStart,calendars.get(action.machineId))};
-  }catch{
-   // Keep a visible estimate even when an indivisible setup cannot fit.
-   const start=Date.parse(action.fixedStart+'Z'),duration=(task.effectiveSetupMinutes??task.setupMinutes??0)+(task.runMinutes||0);
-   return {placement:{id:task.id,machineId:action.machineId,segments:[{kind:'run',start:action.fixedStart,end:new Date(start+duration*60000).toISOString().slice(0,16)}]}};
-  }
- };
+ let lastPointer,geometryFrame;
  const dragId=event=>c.dragTaskId?.()||event.dataTransfer?.getData('text/plain')||'';
  const paint=(cell,event,explicitTaskId)=>{
   const taskId=explicitTaskId||dragId(event),dragTask=c.state.tasks.find(t=>t.id===taskId);if(!taskId||!dragTask)return;
   lastPointer={clientX:event.clientX,clientY:event.clientY,taskId};
   const horizontal=cell.closest('.gantt-temporal')!==null,axis=horizontal?event.clientX:event.clientY;
   const blocks=[...cell.querySelectorAll('[data-task]')].filter(b=>b.dataset.task!==taskId);
-  let beforeId='',position=0,fixedStart='',outsideShift=false;
+  let beforeId='',position=0,hintCell=cell;
   if(horizontal){
-   fixedStart=timelineDropStart(cell,event.clientX,c.dragGrabOffsetMinutes?.()||0);const atMinute=minute(fixedStart.slice(11)),fixedDate=fixedStart.slice(0,10);
-   position=(Date.parse(fixedStart+'Z')-Date.parse(cell.dataset.date+'T00:00Z'))/60000*Number(cell.dataset.scale)-Number(cell.dataset.lo)*Number(cell.dataset.scale);
-   const shifts=c.effectiveShifts(fixedDate,cell.dataset.dropMachine);
-   outsideShift=!shifts.some(([a,b])=>atMinute>=minute(a)&&atMinute<minute(b));
+   // Il rilascio sceglie la posizione nella sequenza, non l'orario: gli orari escono dalla compattazione.
+   const row=cell.closest('.gantt-row'),queue=c.state.tasks.filter(t=>t.machineId===cell.dataset.dropMachine&&t.position!==null&&t.id!==taskId).sort((a,b)=>a.position-b.position);
+   const visible=queue.map((t,index)=>{const rects=[...row.querySelectorAll(`.time-block[data-task="${CSS.escape(t.id)}"]`)].map(b=>b.getBoundingClientRect());return rects.length?{id:t.id,index,left:Math.min(...rects.map(r=>r.left)),right:Math.max(...rects.map(r=>r.right))}:null;}).filter(Boolean);
+   const hit=visible.find(item=>event.clientX<(item.left+item.right)/2);let boundaryX=event.clientX;
+   if(hit){beforeId=hit.id;boundaryX=hit.left;}
+   else if(visible.length){const last=visible.at(-1);beforeId=queue[last.index+1]?.id||'';boundaryX=last.right;}
+   hintCell=[...row.querySelectorAll('[data-drop-machine]')].find(item=>{const r=item.getBoundingClientRect();return boundaryX>=r.left&&boundaryX<=r.right;})||cell;
+   position=boundaryX-hintCell.getBoundingClientRect().left;
   }else{
    const candidate=blocks.find(b=>{const r=b.getBoundingClientRect();return axis<r.top+r.height/2;});
    beforeId=candidate?.dataset.task||'';position=candidate?.offsetTop??cell.scrollHeight;
    if(!candidate&&blocks.length){const queue=c.state.tasks.filter(t=>t.machineId===cell.dataset.dropMachine&&t.position!==null&&t.id!==taskId).sort((a,b)=>a.position-b.position),last=blocks.at(-1).dataset.task;beforeId=queue[queue.findIndex(t=>t.id===last)+1]?.id||'';}
   }
   const before=c.state.tasks.find(t=>t.id===beforeId),compatible=dragTask.compatibleMachineIds?.length?dragTask.compatibleMachineIds:[dragTask.machineId];
-  const error=!compatible.includes(cell.dataset.dropMachine)?'Macchina non compatibile':outsideShift?'Orario fuori turno':locked(before)?'Posizione bloccata':'';
-  const action={kind:'plan',id:taskId,machineId:cell.dataset.dropMachine,...(horizontal?{fixedStart,shiftFollowing:true}:{beforeId})};
+  const error=!compatible.includes(cell.dataset.dropMachine)?'Macchina non compatibile':locked(before)?'Posizione bloccata':'';
+  const action={kind:'plan',id:taskId,machineId:cell.dataset.dropMachine,beforeId};
   const key=previewKey(action),invalid=Boolean(error);
   if(cell.dataset.insertionPreviewKey===key&&currentDragAction?.key===key){positionHintLabel(currentDragAction.hint);return;}
-  for(const other of document.querySelectorAll('[data-drop-machine]'))if(other!==cell){other.querySelector('.insertion-hint')?.remove();other.classList.remove('show-drag-hint-overflow');delete other.dataset.insertionPreviewKey;}
+  for(const other of document.querySelectorAll('[data-drop-machine]')){if(other!==hintCell){other.querySelector('.insertion-hint')?.remove();other.classList.remove('show-drag-hint-overflow');}if(other!==cell)delete other.dataset.insertionPreviewKey;}
   cell.dataset.insertionBefore=beforeId;cell.dataset.insertionInvalid=invalid?'true':'false';cell.dataset.insertionError=error;
-  let hint=cell.querySelector('.insertion-hint');if(!hint){hint=document.createElement('div');hint.className='insertion-hint';hint.innerHTML='<span></span>';cell.append(hint);}cell.classList.add('show-drag-hint-overflow');
+  let hint=hintCell.querySelector('.insertion-hint');if(!hint){hint=document.createElement('div');hint.className='insertion-hint';hint.innerHTML='<span></span>';hintCell.append(hint);}hintCell.classList.add('show-drag-hint-overflow');
   hint.classList.toggle('invalid',invalid);hint.classList.toggle('gantt-hint',horizontal);hint.classList.toggle('tail-hint',!before);
   hint.style[horizontal?'left':'top']=`${Math.max(0,position)}px`;
   cell.dataset.insertionPreviewKey=key;
   clearTimeout(previewTimer);paintGeneration++;currentDragAction={key,action,cell,hint,error};
-  const estimate=horizontal?localPreview(dragTask,action):null;
-  if(estimate)drawPreviewFootprints(estimate,action);else removePreviewFootprints();
+  if(!horizontal)removePreviewFootprints();
   if(invalid){setHintState(currentDragAction,'invalid',error);return;}
-  setHintState(currentDragAction,'checking',fixedStart?`${c.fmt(fixedStart)} · Anteprima stimata, in verifica…`:'Verifica posizione…');
+  setHintState(currentDragAction,'checking','Verifica posizione…');
   previewTimer=setTimeout(()=>{if(currentDragAction?.key===key)startPreview(currentDragAction);},180);
  };
  for(const cell of document.querySelectorAll('[data-drop-machine]')){cell.addEventListener('dragover',event=>paint(cell,event),{signal});cell.addEventListener('dragleave',event=>{if(!cell.contains(event.relatedTarget))clearInsertionHints();},{signal});cell.addEventListener('drop',()=>queueMicrotask(clearInsertionHints),{signal});}

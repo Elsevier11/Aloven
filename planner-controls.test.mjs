@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {placementAction,placementChoices,theoreticalSetup,setupOverrideAction} from './public/planner-controls.js';
 const task=(id,position,status='planned',machineId='m1')=>({id,position,status,machineId});
-test('posizionamento manuale trasmette la data esatta e consente di tornare alla sequenza automatica',()=>{
+test('il posizionamento è solo per sequenza: le modalità a data non esistono più e «In coda» toglie un vecchio inizio fissato',()=>{
  const tasks=[{...task('a',0),fixedStart:'2026-11-12T10:15'}];
- assert.deepEqual(placementAction(tasks,'a','date','','2026-12-14T14:07'),{kind:'plan',id:'a',machineId:'m1',fixedStart:'2026-12-14T14:07'});
- assert.throws(()=>placementAction(tasks,'a','date','',''),/Scegli data/);
+ assert.throws(()=>placementAction(tasks,'a','date','','2026-12-14T14:07'),/posizione valida/);
+ assert.throws(()=>placementAction(tasks,'a','cascade',''),/posizione valida/);
  assert.deepEqual(placementAction(tasks,'a','end',''),{kind:'plan',id:'a',beforeId:''});
 });
 test('comandi prima/dopo rispettano la sequenza della stessa macchina',()=>{

@@ -231,7 +231,7 @@ try{
     await placement.waitFor();
     const mode=placement.locator('select[name="mode"], select').filter({has:page.locator('option[value="end"]')}).first();
     const values=await mode.locator('option').evaluateAll(options=>options.map(option=>option.value));
-    for(const value of ['end','date','before','after','cascade'])assert.ok(values.includes(value),`Modalità mancante: ${value}`);
+    assert.deepEqual(values,['end','before','after'],'il posizionamento è solo per sequenza: nessuna data precisa');
     const destination=placement.locator('select[name="machineId"]');
     assert.equal(await destination.isVisible(),true);
     assert.deepEqual((await destination.locator('option').evaluateAll(options=>options.map(option=>option.value))).sort(),[machine.id,other.id].sort());

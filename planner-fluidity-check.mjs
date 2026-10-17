@@ -65,22 +65,22 @@ try{
   const baseline=await state();assert.deepEqual(tasks.slice(0,3).map(item=>baseline.tasks.find(task=>task.id===item.id).start),['2026-10-12T08:00','2026-10-12T09:00','2026-10-12T10:00']);
   const baselinePlanning=planningSnapshot(baseline),cell=cellFor(machine.id),moverId=tasks[3].id;
 
-  await check('Anteprima immediata continua, scroll e resize senza commit durante il gesto',async()=>{
+  await check('Anteprima continua, scroll e resize senza commit durante il gesto',async()=>{
     await page.locator('#plan-zoom').evaluate(element=>{element.value='1.5';element.dispatchEvent(new Event('change'));});
     await page.route('**/api/preview',async route=>{await sleep(700);await route.continue();});
     const before=await state(),commits=report.requests.filter(request=>request.endpoint==='/api/commit').length;
     try{
       const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);const point=await holdDrag(source,cell,13*60);
-      const estimate=page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="checking"]`);
-      await estimate.waitFor();assert.match(await page.locator('.insertion-hint').innerText(),/stimata/);
+      await page.locator('.insertion-hint').waitFor();assert.match(await page.locator('.insertion-hint').innerText(),/Verifica posizione/);
+      const estimate=page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"]`);
+      await estimate.first().waitFor();
       await capture('immediate-estimate');
       await page.evaluate(()=>{window.testFootprint=document.querySelector('.drag-preview-footprint');});
       const meta=await cell.evaluate(element=>({scale:Number(element.dataset.scale)}));
       await page.mouse.move(point.to.x+30*meta.scale,point.to.y);
       assert.equal(await page.evaluate(()=>window.testFootprint===document.querySelector('.drag-preview-footprint')),true,'Riutilizza il nodo durante il movimento');
-      const previous=await page.locator('.drag-preview-footprint').first().evaluate(element=>element.style.left);
       await page.locator('.timeline-scroll').evaluate(element=>{element.scrollLeft+=30;});
-      await page.waitForFunction(left=>document.querySelector('.drag-preview-footprint')?.style.left!==left,previous);
+      assert.ok(await page.locator('.drag-preview-footprint').count()>0,'L’anteprima resta dopo lo scroll');
       await page.evaluate(()=>window.dispatchEvent(new Event('resize')));await page.locator('.insertion-hint').waitFor();
       await page.mouse.move(10,10);await finishDrag();await sleep(900);
       assert.equal(await page.locator('.drag-preview-footprint').count(),0,'Risposte tardive non ripristinano l’anteprima');
@@ -88,12 +88,12 @@ try{
     }finally{await page.mouse.move(10,10);await finishDrag();await page.unroute('**/api/preview');await page.locator('#plan-zoom').evaluate(element=>{element.value='1';element.dispatchEvent(new Event('change'));});}
   });
 
-  await check('Rilascio su uno spazio occupato chiede conferma; Annulla non scrive',async()=>{
-    const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);
-    await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();assert.equal(await page.locator('.insertion-hint.invalid').count(),0,'lo spazio occupato non è più un rifiuto');
+  await check('Rilascio dentro la sequenza chiede conferma; Annulla non scrive',async()=>{
+    const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+45);
+    await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();assert.equal(await page.locator('.insertion-hint.invalid').count(),0,'inserire nella sequenza non è un rifiuto');
     assert.equal(await page.locator('[data-drag-mode]').count(),0,'l’interruttore di modalità non esiste più');
-    await finishDrag();await page.getByRole('heading',{name:'Attività già pianificate in questo spazio'}).waitFor();
-    assert.match(await page.locator('#shift-notice').innerText(),/cambierà le date di \d+ altr[ae] attivit/);assert.ok(await page.locator('.change-list').getByText('Fluidità',{exact:false}).count());
+    await finishDrag();await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();
+    assert.match(await page.locator('#shift-notice').innerText(),/cambiano le date di \d+ altr[ae] attivit/);assert.ok(await page.locator('.change-list').getByText('Fluidità',{exact:false}).count());
     assert.equal((await state()).revision,before.revision,'nessuna scrittura prima della scelta');
     await page.getByRole('button',{name:'Annulla',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
     assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
@@ -108,28 +108,29 @@ try{
     assert.equal((await state()).revision,before.revision);assert.equal(await page.locator('.drag-preview-footprint').count(),0);assert.equal(await page.locator('#planning-save-status').isVisible(),false);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commits+1);
   });
 
-  await check('Spostamento singolo preciso, stato di salvataggio e annullamento esatto',async()=>{
+  await check('Inserimento in coda: stato di salvataggio e annullamento esatto',async()=>{
     const commitBodies=[];const onRequest=request=>{if(new URL(request.url()).pathname==='/api/commit')commitBodies.push(request.postDataJSON());};page.on('request',onRequest);
     await page.route('**/api/commit',async route=>{await sleep(550);await route.continue();},{times:1});
-    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator('.drag-preview-footprint[data-preview-task="'+tasks[0].id+'"]').waitFor();await finishDrag();
+    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,13*60);await page.locator('.drag-preview-footprint[data-preview-task="'+moverId+'"]').first().waitFor();await finishDrag();
     await page.locator('#planning-save-status').waitFor({state:'visible'});assert.equal(await page.locator('.timeline-scroll').getAttribute('aria-busy'),'true');
-    await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"][data-start="2026-10-12T13:00"]`),tasks[0].id,{timeout:7000});page.off('request',onRequest);
-    const moved=await state();assert.equal(moved.tasks.find(task=>task.id===tasks[0].id).fixedStart,'2026-10-12T13:00');assert.ok(commitBodies.length===1);
+    await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"][data-start="2026-10-12T11:00"]`),moverId,{timeout:7000});page.off('request',onRequest);
+    const moved=await state();assert.equal(moved.tasks.find(task=>task.id===moverId).fixedStart,null,'nessun orario fisso: la posizione decide la data');assert.ok(commitBodies.length===1);
     await page.locator('#planning-undo').click();await page.waitForFunction(revision=>Number(document.querySelector('.shell')?.dataset.revision)>revision,moved.revision);assert.deepEqual(planningSnapshot(await state()),baselinePlanning);
   });
 
-  await check('Inserimento a cascata riusa l’anteprima finale, mostra tutte le impronte e annulla tutte le modifiche',async()=>{
+  await check('Inserimento nella sequenza riusa l’anteprima finale, mostra le impronte e annulla tutte le modifiche',async()=>{
     const traffic={preview:[],commit:[]};const onResponse=async response=>{const endpoint=new URL(response.url()).pathname;if(endpoint==='/api/preview'&&response.request().method()==='POST')traffic.preview.push({action:response.request().postDataJSON()?.action,result:await response.json().catch(()=>null)});};const onRequest=request=>{const endpoint=new URL(request.url()).pathname;if(endpoint==='/api/commit')traffic.commit.push(request.postDataJSON());};page.on('response',onResponse);page.on('request',onRequest);
-    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+30);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="ready"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=3);await capture('cascade-preview');
-    const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'Attività già pianificate in questo spazio'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 2',{exact:false}).count());
-    await page.getByRole('button',{name:'Inserisci e sposta le successive',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
-    const cascaded=await state(),after=planningSnapshot(cascaded);assert.deepEqual(after[tasks[0].id],baselinePlanning[tasks[0].id]);assert.equal(after[moverId].fixedStart,'2026-10-12T09:30');assert.notEqual(after[tasks[1].id].start,baselinePlanning[tasks[1].id].start);assert.notEqual(after[tasks[2].id].start,baselinePlanning[tasks[2].id].start);
+    const source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+45);await page.locator(`.drag-preview-footprint[data-preview-task="${moverId}"][data-validity="ready"]`).waitFor();assert.ok(await page.locator('.drag-preview-footprint').count()>=2);await capture('cascade-preview');
+    const beforeDrop=await state();await finishDrag();await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();assert.equal((await state()).revision,beforeDrop.revision);assert.ok(await page.locator('.change-list').getByText('Fluidità 3',{exact:false}).count());
+    await page.getByRole('button',{name:'Inserisci e ricompatta',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});page.off('response',onResponse);page.off('request',onRequest);
+    const cascaded=await state(),after=planningSnapshot(cascaded);assert.deepEqual(after[tasks[0].id],baselinePlanning[tasks[0].id]);assert.equal(after[moverId].fixedStart,null);assert.equal(after[moverId].start,'2026-10-12T10:00');assert.deepEqual(after[tasks[1].id],baselinePlanning[tasks[1].id]);assert.notEqual(after[tasks[2].id].start,baselinePlanning[tasks[2].id].start);
     await page.locator('#planning-undo').click();await page.waitForFunction(revision=>Number(document.querySelector('.shell')?.dataset.revision)>revision,cascaded.revision);assert.deepEqual(planningSnapshot(await state()),baselinePlanning);
-    const finalPreviews=traffic.preview.filter(item=>item.action?.fixedStart==='2026-10-12T09:30');assert.equal(finalPreviews.length,1,'Il drop non deve ripetere l’anteprima della posizione finale');assert.equal(traffic.commit.length,1);assert.equal(traffic.commit[0].token,finalPreviews[0].result.token);
+    const finalPreviews=traffic.preview.filter(item=>item.action?.id===moverId&&item.action?.beforeId===tasks[2].id);assert.equal(finalPreviews.length,1,'Il drop non deve ripetere l’anteprima della posizione finale');assert.equal(traffic.commit.length,1);assert.equal(traffic.commit[0].token,finalPreviews[0].result.token);
   });
 
-  await check('Pin visibile, comando di rimozione e annullamento obsoleto disabilitato',async()=>{
-    const source=page.locator(`.time-block.run[data-task="${tasks[0].id}"]`);await holdDrag(source,cell,13*60);await page.locator(`.drag-preview-footprint[data-preview-task="${tasks[0].id}"]`).waitFor();await finishDrag();await page.locator(`.time-block.fixed-start[data-task="${tasks[0].id}"]`).waitFor();
+  await check('Vecchio inizio fissato: visibile, rimovibile, annullamento obsoleto disabilitato',async()=>{
+    await action({kind:'plan',id:tasks[0].id,machineId:machine.id,fixedStart:'2026-10-12T13:00',shiftFollowing:true});
+    await page.reload();await page.locator('.timeline-scroll').waitFor();await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');await page.locator(`.time-block.fixed-start[data-task="${tasks[0].id}"]`).first().waitFor();
     await page.locator(`.time-block.run[data-task="${tasks[0].id}"]`).click();await page.locator('#selection-unpin').waitFor();let unpinAction;const capture=request=>{if(new URL(request.url()).pathname==='/api/preview')unpinAction=request.postDataJSON()?.action;};page.on('request',capture);await page.locator('#selection-unpin').click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();page.off('request',capture);assert.equal(unpinAction.id,tasks[0].id);assert.ok(!Object.hasOwn(unpinAction,'fixedStart'));await page.getByRole('button',{name:'Annulla',exact:true}).click();
     const current=(await state()).machines.find(item=>item.id===other.id);await action({kind:'machine',id:other.id,values:{...current,description:current.description+' · refresh test'}});await page.reload();await page.locator('.timeline-scroll').waitFor();assert.equal(await page.locator('#planning-undo').isDisabled(),true);
   });
@@ -151,7 +152,7 @@ try{
     const before=await state(touch),id=tasks[1].id,source=touch.locator(`.time-block.run[data-task="${id}"]`),touchCell=touch.locator(`[data-drop-machine="${other.id}"][data-date="2026-10-12"]`);const [sourceBox,cellBox,meta]=await Promise.all([source.boundingBox(),touchCell.boundingBox(),touchCell.evaluate(element=>({lo:Number(element.dataset.lo),scale:Number(element.dataset.scale)}))]);assert.ok(sourceBox&&cellBox);const start={x:sourceBox.x+4,y:sourceBox.y+18},end={x:cellBox.x+(15*60-meta.lo)*meta.scale,y:cellBox.y+40},cdp=await touchContext.newCDPSession(touch);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:7}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert.equal((await state(touch)).revision,before.revision,'Una pressione senza spostamento non salva');assert.equal(await touch.locator('.drag-preview-footprint').count(),0);
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:8}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:8}]});await touch.locator('.drag-preview-footprint').first().waitFor();await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});assert.equal(await touch.locator('.drag-preview-footprint').count(),0);assert.equal(await touch.locator('.drop-hover').count(),0);assert.equal((await state(touch)).revision,before.revision);
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:9,radiusX:2,radiusY:2,force:1}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:9,radiusX:2,radiusY:2,force:1}]});await touch.locator('.drag-preview-footprint').first().waitFor();assert.equal(await touch.locator('.touch-drag-ghost').isVisible(),false);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.waitForFunction(({id,revision})=>Number(document.querySelector('.shell')?.dataset.revision)>revision&&document.querySelector(`.time-block[data-task="${id}"]`),{id,revision:before.revision},{timeout:7000});const moved=(await state(touch)).tasks.find(task=>task.id===id);assert.equal(moved.fixedStart,'2026-10-12T15:00');assert.equal(moved.machineId,other.id);await touchContext.close();
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x,y:start.y,id:9,radiusX:2,radiusY:2,force:1}]});await sleep(320);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x,y:end.y,id:9,radiusX:2,radiusY:2,force:1}]});await touch.locator('.drag-preview-footprint').first().waitFor();assert.equal(await touch.locator('.touch-drag-ghost').isVisible(),false);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await touch.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();await touch.getByRole('button',{name:'Inserisci e ricompatta',exact:true}).click();await touch.waitForFunction(({id,revision})=>Number(document.querySelector('.shell')?.dataset.revision)>revision&&document.querySelector(`.time-block[data-task="${id}"]`),{id,revision:before.revision},{timeout:7000});const moved=(await state(touch)).tasks.find(task=>task.id===id);assert.equal(moved.fixedStart,null);assert.equal(moved.start,'2026-10-12T08:00','su una macchina vuota la sequenza parte dal primo spazio libero');assert.equal(moved.machineId,other.id);await touchContext.close();
   });
 
   await check('Layout desktop e mobile senza overflow ed errori pagina',async()=>{

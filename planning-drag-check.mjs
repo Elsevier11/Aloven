@@ -50,23 +50,33 @@ try{
  await card.waitFor({state:'detached'});const dropTiming=await page.evaluate(()=>window.dropTiming);assert.ok(Number.isFinite(dropTiming.elapsed));console.log('Drop → barra (ms):',Math.round(dropTiming.elapsed));assert.equal(await page.locator('#modal').isVisible(),false);
  let current=await state(),queue=current.tasks.filter(t=>t.machineId===m.id&&t.position!==null).sort((a,b)=>a.position-b.position);
  assert.deepEqual(queue.map(t=>t.id),[tasks[0].id,tasks[2].id,tasks[1].id]);assert.equal(current.planning.hasDraftChanges,true);assert.equal(current.planning.version,s.planning.version);
- assert.equal(queue[1].start,'2026-10-12T09:00');assert.equal(queue[2].start,'2026-10-12T11:00');assert.equal(queue[1].fixedStart,queue[1].start);
- // Moving to an alternative compatible resource must also pass the insertion hint.
+ assert.equal(queue[1].start,'2026-10-12T09:00');assert.equal(queue[2].start,'2026-10-12T11:00');assert.equal(queue[1].fixedStart,null,'il rilascio sceglie la posizione, non fissa un orario');
+  // Il rilascio sceglie la posizione nella sequenza: nessun orario fisso, le date escono dalla compattazione.
  if(copySource)await page.locator('#machine-filter').selectOption('');
  const empty=page.locator(`[data-drop-machine="${other.id}"]`).first(),moving=page.locator(`.time-block.run[data-task="${tasks[2].id}"]`).first();
  await empty.scrollIntoViewIfNeeded();await moving.scrollIntoViewIfNeeded();
  const movingBox=await moving.boundingBox(),emptyBox=await empty.boundingBox(),dropPoint=await point(empty,10*60+15);
  await page.mouse.move(movingBox.x+5,movingBox.y+5);await page.mouse.down();await page.mouse.move(movingBox.x+15,movingBox.y+15,{steps:3});await page.mouse.move(emptyBox.x+dropPoint.x,emptyBox.y+dropPoint.y,{steps:12});await page.mouse.up();
- await page.waitForFunction(({id,machineId})=>document.querySelector(`.time-block[data-task="${id}"][data-machine="${machineId}"]`),{id:tasks[2].id,machineId:other.id},{timeout:8000}).catch(async error=>{await page.screenshot({path:'.artifacts/planning-copy-drag-failure.png',fullPage:false});console.log(JSON.stringify({toast:await page.locator('#toast').textContent(),task:((t)=>({id:t.id,machineId:t.machineId,start:t.start,fixedStart:t.fixedStart}))((await state()).tasks.find(t=>t.id===tasks[2].id)),planResponses:planResponses.slice(-3)}));throw error;});
- assert.equal((await state()).tasks.find(t=>t.id===tasks[2].id).machineId,other.id);assert.equal(await page.locator('#modal').isVisible(),false);
- assert.equal((await state()).tasks.find(t=>t.id===tasks[2].id).start,'2026-10-12T10:15');
- await page.locator(`.time-block.run[data-task="${tasks[2].id}"]`).first().click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-11-12T10:15');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();
- await page.waitForFunction(()=>document.querySelector('#date-start')?.value==='2026-11-12');assert.equal((await state()).tasks.find(t=>t.id===tasks[2].id).start,'2026-11-12T10:15');assert.equal(await page.locator(`.time-block[data-task="${tasks[2].id}"]`).count(),1);assert.equal(await page.locator('#modal').isVisible(),false);
- const beforeReject=await state(),candidate=page.locator(`.backlog .task-card[data-task="${tasks[3].id}"]`),busy=page.locator(`[data-drop-machine="${other.id}"]`).first();
- await candidate.dragTo(busy,{targetPosition:await point(busy,10*60+15)});assert.equal((await state()).revision,beforeReject.revision);assert.equal(await candidate.count(),1);
- await candidate.dragTo(busy,{targetPosition:await point(busy,9*60+45)});await page.waitForFunction(()=>document.querySelector('#toast')?.classList.contains('error'));assert.equal((await state()).revision,beforeReject.revision);
- await page.locator(`.backlog [data-select-task="${tasks[3].id}"]`).click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-11-12T14:07');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"]`),tasks[3].id);assert.equal((await state()).tasks.find(t=>t.id===tasks[3].id).start,'2026-11-12T14:07');
- await page.reload();await page.locator('#date-start').fill('2026-11-12');await page.locator('#date-start').dispatchEvent('change');assert.equal((await state()).tasks.find(t=>t.id===tasks[3].id).fixedStart,'2026-11-12T14:07');
+ for(let attempt=0;attempt<40&&(await state()).tasks.find(t=>t.id===tasks[2].id).machineId!==other.id;attempt++)await page.waitForTimeout(200);
+ await page.screenshot({path:'.artifacts/planning-drag-after-move.png',fullPage:false}).catch(()=>{});
+ let moved=(await state()).tasks.find(t=>t.id===tasks[2].id);
+ await page.locator('#date-start').fill(moved.start.slice(0,10));await page.locator('#date-start').dispatchEvent('change');await page.locator(`.time-block.run[data-task="${tasks[2].id}"][data-machine="${other.id}"]`).first().waitFor();
+ assert.equal(moved.machineId,other.id);assert.equal(await page.locator('#modal').isVisible(),false);
+ assert.equal(moved.fixedStart,null,'su una macchina vuota l’attività entra in sequenza, non a un orario scelto');assert.ok(moved.start,'la sequenza assegna comunque le date');
+ // Rilascio sulla metà sinistra di un'attività: entra prima, la sequenza si ricompatta e compare l'anteprima.
+ const candidate=page.locator(`.backlog .task-card[data-task="${tasks[3].id}"]`),busy=page.locator(`.temporal-cell[data-drop-machine="${other.id}"]:has(.time-block[data-task="${tasks[2].id}"])`).first();
+ await busy.scrollIntoViewIfNeeded();
+ const cellBox=await busy.boundingBox(),blockBox=await busy.locator(`.time-block[data-task="${tasks[2].id}"]`).first().boundingBox();
+ await candidate.dragTo(busy,{targetPosition:{x:blockBox.x-cellBox.x+4,y:40}});
+ await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();
+ assert.equal((await state()).tasks.find(t=>t.id===tasks[3].id).position,null,'prima della conferma la bozza non cambia');
+ await page.getByRole('button',{name:'Inserisci e ricompatta',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
+ current=await state();queue=current.tasks.filter(t=>t.machineId===other.id&&t.position!==null).sort((a,b)=>a.position-b.position);
+ assert.deepEqual(queue.map(t=>t.id),[tasks[3].id,tasks[2].id]);assert.equal(queue[0].fixedStart,null);assert.ok(queue[1].start>=queue[0].end&&queue[1].start<=queue[0].end.slice(0,10)+'T23:59','la seconda attività segue la prima senza buchi inutili');
+ // Il pannello offre solo posizioni in sequenza: nessuna data precisa.
+ await page.locator(`.time-block.run[data-task="${tasks[2].id}"]`).first().click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});
+ assert.deepEqual(await page.getByLabel('Inserisci attività').locator('option').evaluateAll(nodes=>nodes.map(n=>n.value)),['end','before','after']);assert.equal(await page.getByLabel('Data e ora di inizio').count(),0);
+ await page.reload();await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');
  await page.getByRole('button',{name:'Settimana',exact:true}).click();
  mkdirSync('.artifacts',{recursive:true});
  for(const [width,height] of [[1366,768],[1920,1080],[390,844]]){
@@ -81,18 +91,6 @@ try{
   await page.screenshot({path:`.artifacts/planning-${copySource?'copy-':''}drag-${width}.png`,fullPage:false});
  }
  await page.setViewportSize({width:1366,height:768});
- const extra=(await state()).tasks.find(t=>t.status==='unplanned'&&t.machineId===m.id);
- const scrolled=page.locator('.timeline-scroll');await scrolled.evaluate(el=>el.scrollLeft=el.scrollWidth);
- await page.locator(`.backlog [data-select-task="${extra.id}"]`).click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-12-14T08:00');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();
- await page.waitForFunction(()=>document.querySelector('#date-start')?.value==='2026-12-14');
- await page.screenshot({path:copySource?'.artifacts/planning-deep-copy-future-scroll.png':'.artifacts/planning-deep-future-scroll.png',fullPage:false});
- const visibility=await page.locator(`.time-block[data-task="${extra.id}"]`).first().evaluate(el=>{const b=el.getBoundingClientRect(),scroll=el.closest('.timeline-scroll').getBoundingClientRect(),header=el.closest('.gantt-row').querySelector('.temporal-machine').getBoundingClientRect();return {left:b.left,right:b.right,visibleFrom:header.right,visibleTo:scroll.right,top:b.top,bottom:b.bottom,viewportHeight:innerHeight,visibleTop:scroll.top+(el.closest('.timeline-scroll').querySelector('.gantt-dates')?.offsetHeight||0),visibleBottom:scroll.bottom,scrollLeft:el.closest('.timeline-scroll').scrollLeft};});
- assert.ok(visibility.right>visibility.visibleFrom&&visibility.left<visibility.visibleTo&&visibility.top<Math.min(visibility.viewportHeight,visibility.visibleBottom)&&visibility.bottom>visibility.visibleTop,`Attività salvata ma nascosta dopo cambio data: ${JSON.stringify(visibility)}`);
- await page.locator(`.time-block.run[data-task="${extra.id}"]`).first().click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});await page.getByLabel('Inserisci attività').selectOption('date');await page.getByLabel('Data e ora di inizio',{exact:true}).fill('2026-12-16T10:00');await page.getByRole('button',{name:'Salva nella bozza',exact:true}).click();
- await page.waitForFunction(id=>document.querySelector(`.time-block[data-task="${id}"][data-start="2026-12-16T10:00"]`),extra.id);
- await page.screenshot({path:`.artifacts/planning-deep-${copySource?'copy':'fixture'}-in-period.png`,fullPage:false});
- const exposed=await page.locator(`.time-block[data-task="${extra.id}"]`).first().evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.left+Math.min(r.width/2,10),r.top+r.height/2);return hit?.closest('.time-block')?.dataset.task===el.dataset.task;});
- assert.ok(exposed,'La barra appena salvata è coperta da un altro pannello');
- report.finishedAt=new Date().toISOString();report.cases=['inserimento in spazio libero senza spostare le altre attività','trascinamento con mouse su macchina vuota e ancoraggio storico','compatibilità alternativa','data futura al minuto e persistenza','inizio occupato rifiutato','durata che invade attività successiva rifiutata','bozza salvata senza conferma','scroll orizzontale e layout desktop/mobile','barra realmente visibile dopo data futura con timeline prima scorsa a destra','barra non coperta dal riepilogo dopo spostamento entro il periodo già visibile'];report.javascriptErrors=errors;report.lastVisibility=visibility;report.dropToVisibleMs=Math.round(dropTiming.elapsed);writeFileSync(`.artifacts/planning-deep-${copySource?'copy':'fixture'}-report.json`,JSON.stringify(report,null,2));
- assert.deepEqual(errors,[]);console.log('PASS: inserimento libero fra attività senza spostarle, macchina vuota con ancoraggio storico, data futura al minuto e persistenza, conflitti rifiutati, bozza senza conferma, compatibilità e layout desktop/mobile');
+ report.finishedAt=new Date().toISOString();report.cases=['inserimento in spazio libero senza spostare le altre attività','trascinamento con mouse su macchina vuota: entra in sequenza, senza orario fisso','rilascio prima di un’attività: anteprima, conferma e compattazione','pannello di posizionamento senza data precisa','scroll orizzontale e layout desktop/mobile'];report.javascriptErrors=errors;report.dropToVisibleMs=Math.round(dropTiming.elapsed);writeFileSync(`.artifacts/planning-deep-${copySource?'copy':'fixture'}-report.json`,JSON.stringify(report,null,2));
+ assert.deepEqual(errors,[]);console.log('PASS: inserimento libero senza spostare le altre attività, rilascio per posizione in sequenza con anteprima e compattazione, nessuna data precisa, layout desktop/mobile');
 }finally{await browser?.close();child.kill();if(child.exitCode===null)await once(child,'exit');assert.ok(path.resolve(temp).startsWith(path.resolve(tmpdir())+path.sep+'aloven-planning-drag-'));rmSync(temp,{recursive:true,force:true});}

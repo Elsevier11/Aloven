@@ -232,7 +232,6 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .selection-placement-box label { display:grid; gap:3px; font-size:12px; }
 .selection-placement-box .selection-help { margin:0; }
 .selection-placement-box .button.primary { justify-self:stretch; }
-@media(min-width:340px) { .selection-placement-box .placement-row:has(#selection-start-label:not([hidden])) { grid-template-columns:minmax(0,1fr) minmax(0,1.3fr); } }
 .planning-selection .selection-actions { gap:6px; margin-top:10px; }
 .planning-selection .selection-actions .button { padding:5px 9px; min-height:30px; }
 .planning-selection .selection-destination strong,.planning-selection .selection-destination span { display:inline; margin:0; }
