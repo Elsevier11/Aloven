@@ -40,8 +40,7 @@ try {
   const sequenceButton=page.locator(`[data-sequence="${secondMachine}"]`),sequenceMenu=page.locator('.machine-actions').filter({has:sequenceButton});
   if(await sequenceMenu.count()&&!await sequenceMenu.evaluate(el=>el.open))await sequenceMenu.locator('summary').click();
   await sequenceButton.click();await page.locator('#planning-selection .sequence-dock').waitFor();
-  await page.locator('#sequence-add').click();await page.locator('#modal select[name="id"]').selectOption(secondId);await page.locator('#modal').getByRole('button',{name:'Pianifica',exact:true}).click();
-  await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
+  await page.locator('#sequence-add').click();await page.locator('#modal select[name="id"]').selectOption(secondId);await page.locator('#modal').getByRole('button',{name:'Pianifica',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
   await page.locator('#sequence-close').click();
   await page.locator(`.backlog .task-card[data-task="${secondId}"]`).waitFor({state:'detached'});assert.equal(await page.locator('#modal').isVisible(),false);
   const plannedDay=await page.evaluate(async id=>{const state=await (await fetch('/api/state')).json();return state.tasks.find(t=>t.id===id).start.slice(0,10);},firstId);await page.locator('#date-start').fill(plannedDay);await page.locator('#date-start').dispatchEvent('change');

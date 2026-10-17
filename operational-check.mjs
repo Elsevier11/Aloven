@@ -56,18 +56,21 @@ async function createTask(productLabel,{machine='CNC-01',setup=20,run=90,automat
 async function openTask(id,p=page){const task=(await state(p)).tasks.find(t=>t.id===id);assert.ok(task,`Attività ${id} non trovata`);await nav('tasks',p);await p.getByLabel('Cerca attività',{exact:true}).fill(task.title);await p.getByRole('row').filter({hasText:task.title}).getByRole('button',{name:'Apri'}).click();}
 // Assegnare e ordinare si fa nel pannello Sequenza della macchina (colonna destra del piano).
 async function openDock(machineId,p=page){await nav('planning',p);const dock=p.locator(`#planning-selection .sequence-dock[data-machine="${machineId}"]`);if(await dock.count())return;const b=p.locator(`[data-sequence="${machineId}"]`);const menu=p.locator('.machine-actions').filter({has:b});if(await menu.count()&&!await menu.evaluate(el=>el.open))await menu.locator('summary').click();await b.click();await dock.waitFor();}
+async function untilRevision(before){await page.waitForFunction(async revision=>{const state=await (await fetch('/api/state')).json();return state.revision>revision;},before,{timeout:15000});}
+// Le azioni del pannello si applicano subito alla bozza (con «Annulla» nell'avviso); la conferma compare solo con avvisi o se si perde una data fissata.
 async function planTask(id,beforeId=''){
-  const task=(await state()).tasks.find(t=>t.id===id);assert.ok(task,`Attività ${id} non trovata`);await openDock(task.machineId);
+  const task=(await state()).tasks.find(t=>t.id===id);assert.ok(task,`Attività ${id} non trovata`);await openDock(task.machineId);const before=(await state()).revision;
   if(!beforeId){await page.locator('#sequence-add').click();await page.locator('#modal select[name="id"]').selectOption(id);await page.locator('#modal').getByRole('button',{name:'Pianifica',exact:true}).click();}
   else{const card=page.locator(`.backlog .task-card[data-task="${id}"]`);await card.scrollIntoViewIfNeeded();await card.dragTo(page.locator(`.sequence-dock .production-sequence-row[data-task="${beforeId}"]`),{targetPosition:{x:30,y:3}});}
-  await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await settleMutation();
+  await untilRevision(before);
 }
-async function moveTask(id,beforeId,confirm=true){
-  const task=(await state()).tasks.find(t=>t.id===id);assert.ok(task,`Attività ${id} non trovata`);await openDock(task.machineId);
+async function moveTask(id,beforeId,{undo=false}={}){
+  const task=(await state()).tasks.find(t=>t.id===id);assert.ok(task,`Attività ${id} non trovata`);await openDock(task.machineId);const before=(await state()).revision;
   const source=page.locator(`.sequence-dock .production-sequence-row[data-task="${id}"]`),target=beforeId?page.locator(`.sequence-dock .production-sequence-row[data-task="${beforeId}"]`):page.locator('.sequence-dock .sequence-tail');
-  await source.dragTo(target,beforeId?{targetPosition:{x:30,y:3}}:{});await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await settleMutation(page,{confirm});
+  await source.dragTo(target,beforeId?{targetPosition:{x:30,y:3}}:{});await untilRevision(before);
+  if(undo){const moved=(await state()).revision;await page.locator('#toast .toast-action').click();await untilRevision(moved);}
 }
-async function unplanTask(id){const task=(await state()).tasks.find(t=>t.id===id);await openDock(task.machineId);await page.locator(`.sequence-dock [data-unplan-task="${id}"]`).click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await settleMutation();}
+async function unplanTask(id){const task=(await state()).tasks.find(t=>t.id===id);await openDock(task.machineId);const before=(await state()).revision;await page.locator(`.sequence-dock [data-unplan-task="${id}"]`).click();await untilRevision(before);}
 
 const report={startedAt:stamp(),dataDir:temp,headless:process.env.HEADFUL!=='1',browser:'Microsoft Edge',results};
 try{
@@ -105,14 +108,15 @@ try{
 
   await test('pianificazione: assegnazione dal pannello Sequenza',async()=>{await planTask(b.id);await planTask(c.id);const seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,b.id,c.id]);});
 
-  await test('sequenza: annullamento anteprima non modifica i dati',async()=>{
-    const before=await state();await moveTask(c.id,a.id,false);const after=await state();assert.equal(after.revision,before.revision);assert.deepEqual(after.tasks.find(t=>t.id===c.id),before.tasks.find(t=>t.id===c.id));
+  await test('sequenza: Annulla dall’avviso ripristina l’ordine',async()=>{
+    const order=async()=>(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position).map(t=>t.id);
+    const before=await order();await moveTask(c.id,a.id,{undo:true});assert.deepEqual(await order(),before);
   });
 
   await test('sequenza: spostamenti primo, centrale e ultimo',async()=>{
-    await moveTask(c.id,a.id,true);let seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[c.id,a.id,b.id]);
-    await moveTask(c.id,b.id,true);seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,c.id,b.id]);
-    await moveTask(c.id,'',true);seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,b.id,c.id]);await screenshot('sequence');
+    await moveTask(c.id,a.id);let seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[c.id,a.id,b.id]);
+    await moveTask(c.id,b.id);seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,c.id,b.id]);
+    await moveTask(c.id,'');seq=(await state()).tasks.filter(t=>t.machineId==='CNC-01'&&t.position!==null).sort((x,y)=>x.position-y.position);assert.deepEqual(seq.slice(-3).map(t=>t.id),[a.id,b.id,c.id]);await screenshot('sequence');
   });
 
   await test('attività: torna da assegnare, annulla e ripristina',async()=>{

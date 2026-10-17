@@ -50,8 +50,6 @@ async function openAddDialog(task,target=page){
 async function planTask(task,target=page){
   await openAddDialog(task,target);
   await target.getByRole('button',{name:'Pianifica',exact:true}).click();
-  await target.getByRole('heading',{name:'Conferma la modifica'}).waitFor();
-  await target.getByRole('button',{name:'Conferma e salva'}).click();
   await target.locator('#modal').waitFor({state:'hidden'});
 }
 
@@ -145,11 +143,6 @@ try{
     await Promise.all([
       page.getByRole('button',{name:'Pianifica',exact:true}).click(),
       secondPage.getByRole('button',{name:'Pianifica',exact:true}).click()
-    ]);
-    await Promise.all([page.getByRole('heading',{name:'Conferma la modifica'}).waitFor(),secondPage.getByRole('heading',{name:'Conferma la modifica'}).waitFor()]);
-    await Promise.all([
-      page.getByRole('button',{name:'Conferma e salva'}).click(),
-      secondPage.getByRole('button',{name:'Conferma e salva'}).click()
     ]);
     await page.waitForFunction(()=>!document.querySelector('#modal')?.open||Boolean(document.querySelector('#modal .dialog-error:not([hidden])')));
     await secondPage.waitForFunction(()=>!document.querySelector('#modal')?.open||Boolean(document.querySelector('#modal .dialog-error:not([hidden])')));

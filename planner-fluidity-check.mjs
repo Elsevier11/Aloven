@@ -43,6 +43,7 @@ try{
   page.on('request',request=>{if(/\/api\/(preview|commit|planning\/undo)(?:\?|$)/.test(request.url()))report.requests.push({method:request.method(),endpoint:new URL(request.url()).pathname,body:request.postDataJSON?.()});});
   await page.goto(base);await page.getByLabel('Nome e cognome').fill('Verifica fluidità');await page.getByLabel('Nome utente',{exact:true}).fill('fluidity-admin');await page.getByLabel('Password',{exact:true}).fill('FluidityCheck123!');await page.getByRole('button',{name:'Crea amministratore'}).click();await page.locator('.timeline-scroll').waitFor();
 
+  const untilRevision=async before=>{await page.waitForFunction(async revision=>{const s=await(await fetch('/api/state')).json();return s.revision>revision;},before,{timeout:15000});};
   const state=async(p=page)=>await (await p.request.get(base+'/api/state')).json();
   const post=async(p,endpoint,data,expected=200)=>{const response=await p.request.post(base+'/api/'+endpoint,{data,headers:{'X-Aloven-Request':'1'}});assert.equal(response.status(),expected,await response.text());return response.json();};
   const action=async(value,p=page)=>{const current=await state(p),preview=await post(p,'preview',{revision:current.revision,action:value});await post(p,'commit',{token:preview.token});return state(p);};
@@ -141,8 +142,8 @@ try{
 
   await check('Riordino reale e freccia mantengono aperta la sequenza',async()=>{
     const row=page.locator(`.gantt-row[data-resource="${machine.id}"]`);await row.locator('.machine-actions').evaluate(element=>element.open=true);await page.locator(`[data-sequence="${machine.id}"]`).click();await page.locator('#planning-selection .sequence-dock').waitFor();
-    const source=page.locator(`.production-sequence-row[data-task="${tasks[2].id}"]`),target=page.locator(`.production-sequence-row[data-task="${tasks[1].id}"]`);await source.dragTo(target);await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#planning-selection .sequence-dock').waitFor();await page.locator('#modal').waitFor({state:'hidden'});await capture('sequence-after-reorder');
-    const arrow=page.locator(`[data-move-task="${tasks[2].id}"][data-direction="down"]`);assert.equal(await arrow.isEnabled(),true);await arrow.click();await page.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await page.getByRole('button',{name:'Conferma e salva',exact:true}).click();await page.locator('#planning-selection .sequence-dock').waitFor();await page.locator('#modal').waitFor({state:'hidden'});
+    const source=page.locator(`.production-sequence-row[data-task="${tasks[2].id}"]`),target=page.locator(`.production-sequence-row[data-task="${tasks[1].id}"]`);const revisionBefore=(await state()).revision;await source.dragTo(target);await untilRevision(revisionBefore);assert.equal(await page.locator('#modal').isVisible(),false,'Il riordino non chiede conferma');await page.locator('#planning-selection .sequence-dock').waitFor();await capture('sequence-after-reorder');
+    const arrow=page.locator(`[data-move-task="${tasks[2].id}"][data-direction="down"]`);assert.equal(await arrow.isEnabled(),true);const arrowBefore=(await state()).revision;await arrow.click();await untilRevision(arrowBefore);await page.locator('#planning-selection .sequence-dock').waitFor();assert.equal(await page.locator('#modal').isVisible(),false);
   });
 
   await check('Touch fra macchine, pointercancel e pressione senza spostamento',async()=>{
