@@ -154,3 +154,11 @@
 .console-workspace[data-view="tasks"] .task-table .row-actions .button{padding:2px 6px;font-size:12px;min-height:26px}
 .console-workspace[data-view="tasks"] .task-table th{white-space:normal;line-height:1.2}
 .console-workspace[data-view="tasks"] .task-table td:last-child,.console-workspace[data-view="tasks"] .task-table th:last-child{padding-inline:6px}
+/* Stato: un solo badge in evidenza; «inviata al reparto» è la condizione normale, quindi solo testo discreto */
+.task-table .dispatch-quiet{font-size:11px;color:var(--mes-muted,#5b6b7c);font-weight:500}
+/* Riga cliccabile: apre l'attività; Elimina resta in basso a destra, lontano da Modifica */
+.task-table tbody tr.task-row{cursor:pointer}
+.task-table tbody tr.task-row:hover td{background:var(--mes-surface-hover,#f4f8fc)}
+.console-workspace[data-view="tasks"] .task-table .row-actions .button{min-height:26px}
+.console-workspace[data-view="tasks"] .task-table .row-actions{column-gap:12px;row-gap:2px}
+.console-workspace[data-view="tasks"] .task-table .row-actions .row-delete{justify-self:end}
