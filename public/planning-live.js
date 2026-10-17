@@ -43,8 +43,9 @@ export function serverClock(serverNow, receivedAt, clientNow = Date.now()) {
 
 /** Reference and title, without repeating the reference when the title already carries it. */
 export function liveTitle(task) {
-  const reference = taskReference(task), bare = reference.toLowerCase().replace(/^(ord\.|lotto)\s+/, '');
-  return reference && !task.title.toLowerCase().includes(bare) ? `${reference} · ${task.title}` : task.title;
+  const title = task.title.toLowerCase();
+  const parts = taskReference(task).split(' · ').filter(part => part && !title.includes(part.toLowerCase().replace(/^(ord\.|lotto)\s+/, '')));
+  return parts.length ? `${parts.join(' · ')} · ${task.title}` : task.title;
 }
 
 /** Everything one cell shows, as plain data (no HTML), so it can be tested without a DOM. */

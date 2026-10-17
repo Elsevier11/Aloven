@@ -27,8 +27,8 @@ export function temporalPlan(c,ms,dates,showCompleted){
  const limits=[];for(const block of maintenance.filter(b=>ms.some(m=>m.id===b.machineId))){if(dates.includes(block.start.slice(0,10)))limits.push(minute(block.start.slice(11)));if(dates.includes(block.end.slice(0,10)))limits.push(minute(block.end.slice(11)));}
  for(const m of ms)for(const d of dates){for(const s of (c.baseShifts||c.effectiveShifts)(d,m.id))limits.push(...s.map(minute));for(const t of tasks.filter(t=>t.machineId===m.id))for(const s of t.segments.filter(s=>s.start.slice(0,10)===d))limits.push(minute(s.start.slice(11)),minute(s.end.slice(11)));}
  const lo=limits.length?Math.floor(Math.min(...limits)/60)*60:480,hi=limits.length?Math.max(lo+60,Math.ceil(Math.max(...limits)/60)*60):1080,span=hi-lo,zoom=Number(c.zoom)>0?Number(c.zoom):1;
- const viewport=typeof window==='undefined'?1366:window.innerWidth,available=Math.max(360,viewport-(viewport>800?224+32+280+16:20));
- const scale=Math.max(dates.length===1?360:240,(available-190)/dates.length)/span*zoom;
+ const viewport=typeof window==='undefined'?1366:window.innerWidth,backlogEmpty=!state.tasks.some(x=>x.status==='unplanned'),available=Math.max(360,viewport-(viewport>800?224+32+(backlogEmpty?170:300)+16:20));
+ const scale=Math.max(dates.length===1?360:dates.length>=5?130:240,(available-190)/dates.length)/span*zoom;
  const tickStep=scale<.8?120:60,ticks=Array.from({length:Math.floor(span/tickStep)+1},(_,i)=>lo+i*tickStep);
  const marker=d=>`<div class="now-marker" data-now-marker data-date="${d}" data-lo="${lo}" data-span="${span}" data-scale="${scale}" data-orientation="left" hidden><span>Adesso</span></div>`;
  const ghosts=c.proposalPlacements||[];

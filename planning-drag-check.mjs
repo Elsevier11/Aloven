@@ -73,9 +73,9 @@ try{
   await page.setViewportSize({width,height});
   const scroll=page.locator('.timeline-scroll');
   const bounds=await scroll.evaluate(el=>({top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom,width:el.clientWidth,full:el.scrollWidth,overflow:getComputedStyle(el).overflowX}));
-  assert.ok(['auto','scroll'].includes(bounds.overflow));assert.ok(bounds.full>bounds.width);
-  await scroll.focus();await page.keyboard.press('End');await scroll.evaluate(el=>el.scrollLeft=el.scrollWidth);
-  assert.ok(await scroll.evaluate(el=>el.scrollLeft)>0);
+  assert.ok(['auto','scroll'].includes(bounds.overflow));assert.ok(width>=1700||bounds.full>bounds.width);
+  if(bounds.full>bounds.width){await scroll.focus();await page.keyboard.press('End');await scroll.evaluate(el=>el.scrollLeft=el.scrollWidth);
+  assert.ok(await scroll.evaluate(el=>el.scrollLeft)>0);}
   if(width===1366){assert.ok(bounds.top<230,JSON.stringify(bounds));assert.ok(bounds.bottom<=height,JSON.stringify(bounds));}
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.screenshot({path:`.artifacts/planning-${copySource?'copy-':''}drag-${width}.png`,fullPage:false});

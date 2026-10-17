@@ -240,7 +240,7 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 /* Vista «In reparto»: per ogni macchina cosa gira adesso e cosa segue. Sola lettura. */
 .reparto-view { display:flex; flex-direction:column; gap:10px; min-height:0; }
 .reparto-summary { margin:0; font-size:13px; font-weight:650; color:var(--mes-ink); font-variant-numeric:tabular-nums; }
-.reparto-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; align-items:start; }
+.reparto-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; align-items:start; }
 .reparto-card { --live-tone:#9aa8b8; display:flex; flex-direction:column; gap:8px; padding:10px 12px; border:1px solid var(--mes-border); border-left:5px solid var(--live-tone); border-radius:8px; background:#fff; min-width:0; }
 .reparto-card[data-tone=setup] { --live-tone:#b8791c; }
 .reparto-card[data-tone=run] { --live-tone:#158563; }
