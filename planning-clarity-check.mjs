@@ -229,9 +229,9 @@ try{
     const placement=page.locator('#selection-placement');
     await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});
     await placement.waitFor();
-    const mode=placement.locator('select[name="mode"], select').filter({has:page.locator('option[value="end"]')}).first();
+    const mode=placement.locator('select[name="mode"], select').filter({has:page.locator('option[value="date"]')}).first();
     const values=await mode.locator('option').evaluateAll(options=>options.map(option=>option.value));
-    for(const value of ['end','date','before','after','cascade'])assert.ok(values.includes(value),`Modalità mancante: ${value}`);
+    for(const value of ['date','cascade'])assert.ok(values.includes(value),`Modalità mancante: ${value}`);for(const value of ['end','before','after'])assert.ok(!values.includes(value),`La sequenza si gestisce nel pannello Sequenza: ${value}`);
     const destination=placement.locator('select[name="machineId"]');
     assert.equal(await destination.isVisible(),true);
     assert.deepEqual((await destination.locator('option').evaluateAll(options=>options.map(option=>option.value))).sort(),[machine.id,other.id].sort());
@@ -242,7 +242,7 @@ try{
     assert.equal(await singleDestination.locator('select[name="machineId"]').count(),0);
     assert.equal(await singleDestination.locator('input[type="hidden"][name="machineId"]').inputValue(),machine.id);
     assert.match(await singleDestination.textContent(),new RegExp(machine.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
-    assert.match(await singleSelection.textContent(),/Anteprima pianificazione/i);
+    assert.match(await singleSelection.textContent(),/Salva nella bozza/i);
     await openSearch();await searchFor('CL nuova bozza');
     await page.locator(`#modal [data-find-planning-task="${draftTask.id}"]`).click();
     assert.ok(await page.locator('#planning-selection').getByText('Togli dal piano',{exact:true}).count());

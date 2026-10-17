@@ -141,12 +141,9 @@ try{
   assert.deepEqual(referenceValues,[
     'ORD-CLIENTE-INTERNAZIONALE-2026-000184-LAVORAZIONE-URGENTE','—','Cliente Prova Filtri','2026-12-31','LOTTO-PRODOTTO-FINITO-TRACCIABILITA-ESTESA-2026-10'
   ]);
-  const current=await(await page.request.get(base+'/api/state')).json(),currentTarget=current.tasks.find(task=>task.id===target.id);
-  const sequence=current.tasks.filter(task=>task.machineId===currentTarget.machineId&&task.position!==null&&task.id!==target.id).sort((a,b)=>a.position-b.position),boundary=sequence.findLastIndex(task=>['in_progress','completed'].includes(task.status));
-  const optionValues=await page.locator('#plan-task select[name="beforeId"] option').evaluateAll(options=>options.slice(1).map(option=>option.value));
-  assert.deepEqual(optionValues,sequence.slice(boundary+1).map(task=>task.id));
-  if(boundary>=0)assert.match(await page.locator('#plan-task .notice').textContent(),new RegExp(`^${boundary+1} posizion`));
-  await page.locator('#modal').getByRole('button',{name:'Chiudi'}).click();
+  // La posizione nella sequenza non si imposta più dalla scheda dei dettagli: c'è solo il pannello Sequenza.
+  assert.equal(await page.locator('#plan-task').count(),0);assert.equal(await page.getByLabel('Posizione nella sequenza').count(),0);
+  await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
   assert.equal(await search.inputValue(),target.title);
   assert.ok(await row.isVisible());
   assert.deepEqual(errors,[]);

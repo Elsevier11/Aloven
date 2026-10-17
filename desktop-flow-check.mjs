@@ -54,7 +54,7 @@ try{
       await summary.click();
       await panel.locator('[data-detail]').first().click();
       assert.ok(await page.locator('#modal').evaluate(dialog=>dialog.open));
-      await page.locator('#modal').getByRole('button',{name:'Chiudi'}).click();
+      await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
     }
   });
 
@@ -116,7 +116,7 @@ try{
     dialogAction='accept';
     await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
     await page.locator('#modal').getByRole('heading',{name:task.title}).waitFor();
-    await page.locator('#modal').getByRole('button',{name:'Chiudi'}).click();
+    await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
     assert.equal(await search.inputValue(),task.title);
     const tableScroll=await page.locator('.table-wrap').evaluate(table=>{const max=Math.max(0,table.scrollWidth-table.clientWidth),left=max>=20?Math.min(40,max):0;table.scrollLeft=left;return left;});
     await page.locator('#refresh').click();
@@ -134,12 +134,12 @@ try{
     const title=await page.locator('#modal h2').textContent();
     dialogAction='dismiss';
     const before=dialogs.length;
-    await page.locator('#modal').getByRole('button',{name:'Chiudi'}).click();
+    await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
     assert.equal(dialogs.length,before+1);
     assert.equal(await page.locator('#modal h2').textContent(),title);
     assert.ok(await page.locator('#modal').evaluate(dialog=>dialog.open));
     dialogAction='accept';
-    await page.locator('#modal').getByRole('button',{name:'Chiudi'}).click();
+    await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
     await page.locator('#modal').waitFor({state:'hidden'});
   });
 

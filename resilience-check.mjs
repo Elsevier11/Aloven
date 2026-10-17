@@ -40,11 +40,18 @@ async function editTask(task,target=page){
 async function waitMutation(target=page){
   await target.waitForFunction(()=>!document.querySelector('#modal')?.open||document.querySelector('#modal h2')?.textContent==='Conferma la modifica'||Boolean(document.querySelector('#modal .dialog-error:not([hidden])')));
 }
+// Assegnare un'attività si fa dal pannello Sequenza della macchina: «Aggiungi…», scelta dell'attività, anteprima e conferma.
+async function openAddDialog(task,target=page){
+  await nav('planning',target);
+  const dock=target.locator(`#planning-selection .sequence-dock[data-machine="${task.machineId}"]`);
+  if(!await dock.count()){const b=target.locator(`[data-sequence="${task.machineId}"]`),menu=target.locator('.machine-actions').filter({has:b});if(await menu.count()&&!await menu.evaluate(el=>el.open))await menu.locator('summary').click();await b.click();await dock.waitFor();}
+  await target.locator('#sequence-add').click();await target.locator('#modal select[name="id"]').selectOption(task.id);
+}
 async function planTask(task,target=page){
-  await openTask(task,target);
+  await openAddDialog(task,target);
   await target.getByRole('button',{name:'Pianifica',exact:true}).click();
-  await waitMutation(target);
-  if(await target.getByRole('heading',{name:'Conferma la modifica'}).isVisible().catch(()=>false))await target.getByRole('button',{name:'Conferma e salva'}).click();
+  await target.getByRole('heading',{name:'Conferma la modifica'}).waitFor();
+  await target.getByRole('button',{name:'Conferma e salva'}).click();
   await target.locator('#modal').waitFor({state:'hidden'});
 }
 
@@ -132,12 +139,17 @@ try{
     const candidates=before.tasks.filter(task=>task.machineId==='CNC-01'&&task.status==='unplanned').slice(0,2);
     assert.equal(candidates.length,2);
     secondPage=await context.newPage();await secondPage.goto(base);await secondPage.getByRole('heading',{name:'Piano di produzione'}).waitFor();
-    await openTask(candidates[0],page);await openTask(candidates[1],secondPage);
+    await Promise.all([openAddDialog(candidates[0],page),openAddDialog(candidates[1],secondPage)]);
     let release;const gate=new Promise(resolve=>release=resolve);let commitHits=0;
     await context.route('**/api/commit',async route=>{commitHits++;if(commitHits===2)release();await gate;await route.continue();});
     await Promise.all([
       page.getByRole('button',{name:'Pianifica',exact:true}).click(),
       secondPage.getByRole('button',{name:'Pianifica',exact:true}).click()
+    ]);
+    await Promise.all([page.getByRole('heading',{name:'Conferma la modifica'}).waitFor(),secondPage.getByRole('heading',{name:'Conferma la modifica'}).waitFor()]);
+    await Promise.all([
+      page.getByRole('button',{name:'Conferma e salva'}).click(),
+      secondPage.getByRole('button',{name:'Conferma e salva'}).click()
     ]);
     await page.waitForFunction(()=>!document.querySelector('#modal')?.open||Boolean(document.querySelector('#modal .dialog-error:not([hidden])')));
     await secondPage.waitForFunction(()=>!document.querySelector('#modal')?.open||Boolean(document.querySelector('#modal .dialog-error:not([hidden])')));
