@@ -61,6 +61,22 @@ try{
   const monday=page.locator('.weekly-row').first();
   await monday.locator('input[type=checkbox]').uncheck();
   assert.ok(Number(await monday.locator('.shift-inputs').evaluate(el=>getComputedStyle(el).opacity))<1);
+  // Cambiare la settimana tipo con uno storico completo alle spalle non deve essere bloccato
+  const seed=spawn(process.execPath,['seed-history.mjs'],{env:{...process.env,DATA_DIR:temp},stdio:['ignore','ignore','pipe']});
+  assert.equal((await once(seed,'exit'))[0],0);
+  await page.reload();await page.getByRole('heading',{name:'Piano di produzione'}).waitFor();
+  await page.locator('[data-nav-group="settings"]').click();await page.locator('[data-nav="calendar"]').click();await page.locator('#weekly-form').waitFor();
+  await page.getByRole('button',{name:'Applica orari a più giorni'}).click();
+  const dialog=page.locator('#modal');
+  await dialog.getByLabel('Inizio fascia 1').fill('07:30');await dialog.getByLabel('Fine fascia 1').fill('12:00');
+  await dialog.getByLabel('Inizio fascia 2').fill('12:30');await dialog.getByLabel('Fine fascia 2').fill('16:00');
+  await dialog.getByRole('button',{name:'Applica',exact:true}).click();
+  const confirm=dialog.getByRole('button',{name:/Conferma/});
+  await Promise.race([confirm.waitFor({state:'visible',timeout:8000}),dialog.waitFor({state:'hidden',timeout:8000})]).catch(async()=>{throw new Error('Dialogo ancora aperto senza conferma: '+(await dialog.innerText()).replace(/s+/g,' ').slice(0,500));});
+  if(await confirm.isVisible().catch(()=>false))await confirm.click();
+  await dialog.waitFor({state:'hidden'});
+  const calendar=(await(await page.request.get(base+'/api/state')).json()).calendar;
+  assert.deepEqual(calendar.weekly[1],[['07:30','12:00'],['12:30','16:00']],'La settimana standard non è stata cambiata');
   assert.deepEqual(errors,[]);
   console.log('PASS calendario: sette giorni senza scorrimento, fasce affiancate, mese intero, testi ≥12px, pulsanti raggruppati.');
 }finally{

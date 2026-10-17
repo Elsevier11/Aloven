@@ -189,7 +189,11 @@ export function scheduleTask(task, earliest, calendar) {
   return scheduleValidatedTask(task, start, validatedCalendar);
 }
 
+// Un'attività completata è un fatto storico: cambiare oggi la settimana standard non deve invalidarla,
+// quindi per le completate non si confrontano i segmenti con il calendario corrente. Quelle in corso restano
+// vincolate al calendario (una chiusura che le attraversa viene rifiutata).
 function validateLockedTask(task, calendar) {
+  const checkCalendar = task.status !== 'completed';
   const start = parseIso(task.start, `Inizio attività bloccata ${task.id ?? ''}`);
   const end = parseIso(task.end, `Fine attività bloccata ${task.id ?? ''}`);
   if (end <= start) fail(`Attività bloccata ${task.id ?? ''}: intervallo non valido`);
@@ -215,13 +219,13 @@ function validateLockedTask(task, calendar) {
     }
     let covered = 0;
     let day = Math.floor(segmentStart / DAY) * DAY;
-    while (day <= Math.floor((segmentEnd - 1) / DAY) * DAY) {
+    while (checkCalendar && day <= Math.floor((segmentEnd - 1) / DAY) * DAY) {
       for (const [shiftStart, shiftEnd] of shiftsForDay(day, calendar)) {
         covered += Math.max(0, Math.min(segmentEnd, shiftEnd) - Math.max(segmentStart, shiftStart));
       }
       day += DAY;
     }
-    if (covered !== segmentEnd - segmentStart) fail(`Attività bloccata ${task.id ?? ''}: segmento fuori calendario`);
+    if (checkCalendar && covered !== segmentEnd - segmentStart) fail(`Attività bloccata ${task.id ?? ''}: segmento fuori calendario`);
     if (segment.kind === 'setup') {
       if (runSeen) fail(`Attività bloccata ${task.id ?? ''}: il setup deve precedere la lavorazione`);
       setupCount += 1;
@@ -229,7 +233,7 @@ function validateLockedTask(task, calendar) {
       const segmentDay = Math.floor(segmentStart / DAY) * DAY;
       const containedInOneShift = shiftsForDay(segmentDay, calendar)
         .some(([shiftStart, shiftEnd]) => segmentStart >= shiftStart && segmentEnd <= shiftEnd);
-      if (!containedInOneShift) fail(`Attività bloccata ${task.id ?? ''}: il setup deve restare in un solo turno`);
+      if (checkCalendar && !containedInOneShift) fail(`Attività bloccata ${task.id ?? ''}: il setup deve restare in un solo turno`);
     } else {
       runSeen = true;
       runTotal += segmentEnd - segmentStart;

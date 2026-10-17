@@ -172,3 +172,17 @@ test('preserva il prefisso e non anticipa il primo elemento da ricalcolare',()=>
   assert.equal(result[1].start,'2026-10-08T14:00');
   assert.equal(result[2].start,'2026-10-08T15:00');
 });
+
+test('cambiare gli orari non invalida lo storico: le completate non si confrontano con il calendario, le in corso sì', () => {
+  const summer = { weekly: { 1: [['07:30', '12:00'], ['12:30', '16:00']], 2: [['07:30', '12:00'], ['12:30', '16:00']], 3: [['07:30', '12:00'], ['12:30', '16:00']], 4: [['07:30', '12:00'], ['12:30', '16:00']], 5: [['07:30', '12:00'], ['12:30', '16:00']] }, exceptions: {} };
+  // 16:00–17:00 era lavorativo con la vecchia settimana ed è fuori dai nuovi orari
+  const segments = [
+    { start: '2026-10-08T15:00', end: '2026-10-08T16:00', kind: 'setup' },
+    { start: '2026-10-08T16:00', end: '2026-10-08T17:00', kind: 'run' },
+  ];
+  const history = { id: 'H', setupMinutes: 60, runMinutes: 60, start: '2026-10-08T15:00', end: '2026-10-08T17:00', segments };
+  const done = scheduleMachine([{ ...history, status: 'completed' }, { id: 'N', status: 'planned', setupMinutes: 0, runMinutes: 60 }], '2026-10-08T08:00', summer);
+  assert.equal(done[0].id, 'H');
+  assert.equal(done[1].start, '2026-10-09T07:30');
+  assert.throws(() => scheduleMachine([{ ...history, status: 'in_progress' }], '2026-10-08T08:00', summer), /fuori calendario/);
+});
