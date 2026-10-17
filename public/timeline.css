@@ -31,3 +31,8 @@
 .drag-preview-footprint[data-validity="invalid"]{border-color:var(--mes-red);background:color-mix(in srgb,var(--mes-red) 24%,transparent)}
 .touch-drag-ghost{padding:8px 12px;border-radius:6px;background:var(--mes-navy);color:white;font-size:12px;overflow-wrap:anywhere}
 .touch-drag-ghost[hidden]{display:none}
+
+/* Suggerimento più discreto: più piccolo, meno ombra, un po' di trasparenza */
+.time-tooltip{padding:7px 10px;max-width:min(250px,calc(100vw - 16px));border-radius:6px;box-shadow:0 4px 14px #172b4233;opacity:.96}
+.time-tooltip strong{font-size:12px;line-height:1.35}
+.time-tooltip p{margin:3px 0 0;line-height:1.35}
