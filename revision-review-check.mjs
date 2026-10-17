@@ -46,20 +46,29 @@ try{
   await check('Quantità e consegna mancanti: avviso, annulla senza scrittura, conferma singola',async()=>{
     let before=await state(),modal=await openTaskForm();
     await modal.locator('input[name="runMinutes"]').fill('45');
+    const chosen={machine:await modal.locator('select[name="machineId"]').inputValue(),c1:await modal.getByLabel('Componente 1').inputValue(),c2:await modal.getByLabel('Componente 2').inputValue(),product:await modal.getByLabel('Prodotto da realizzare').inputValue()};
     await modal.getByRole('button',{name:'Salva',exact:true}).click();
     await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();
     const warning=(await modal.getByRole('alert').textContent()).replace(/\s+/g,' ');
     assert.match(warning,/quantità/i);assert.match(warning,/consegna/i);
     await capture('warning-desktop-1366');
-    await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.waitFor({state:'hidden'});
+        await modal.getByRole('button',{name:'Annulla',exact:true}).click();
+    // Annulla nell'avviso riporta alla scheda con i dati già inseriti
+    await modal.getByRole('heading',{name:'Nuova attività'}).waitFor();
+    assert.equal(await modal.locator('input[name="runMinutes"]').inputValue(),'45');
+    assert.deepEqual({machine:await modal.locator('select[name="machineId"]').inputValue(),c1:await modal.getByLabel('Componente 1').inputValue(),c2:await modal.getByLabel('Componente 2').inputValue(),product:await modal.getByLabel('Prodotto da realizzare').inputValue()},chosen,'I dati inseriti non sono stati conservati');
     assert.equal((await state()).revision,before.revision,'Annullare l’avviso non deve scrivere');
 
-    modal=await openTaskForm();await modal.locator('input[name="runMinutes"]').fill('45');await modal.getByRole('button',{name:'Salva',exact:true}).click();await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await modal.getByRole('button',{name:'Conferma e salva'}).click();await modal.waitFor({state:'hidden'});
+    await modal.getByRole('button',{name:'Salva',exact:true}).click();await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();await modal.getByRole('button',{name:'Conferma e salva'}).click();await modal.waitFor({state:'hidden'});
     const after=await state();assert.equal(after.revision,before.revision+1);assert.equal(after.tasks.filter(task=>task.machineId===reviewMachine.id).length,1,'La conferma deve creare una sola attività');
   });
 
   await check('Componenti uguali e consegna passata mostrano entrambi gli avvisi',async()=>{
     const modal=await openTaskForm();const first=await modal.getByLabel('Componente 1').inputValue();await modal.getByLabel('Componente 2').selectOption(first);await modal.locator('input[name="quantity"]').fill('120');await modal.locator('input[name="dueDate"]').fill('2026-01-01');await modal.getByRole('button',{name:'Salva',exact:true}).click();await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();const warning=(await modal.getByRole('alert').textContent()).replace(/\s+/g,' ');assert.match(warning,/componenti.*uguali|stesso componente/i);assert.match(warning,/consegna.*passat|data.*passat/i);await modal.getByRole('button',{name:'Annulla',exact:true}).click();
+    // Annulla riporta alla scheda con i componenti e la consegna già inseriti, per verificarli o correggerli
+    await modal.getByRole('heading',{name:'Nuova attività'}).waitFor();
+    assert.equal(await modal.getByLabel('Componente 2').inputValue(),first);assert.equal(await modal.locator('input[name="quantity"]').inputValue(),'120');assert.equal(await modal.locator('input[name="dueDate"]').inputValue(),'2026-01-01');
+    page.once('dialog',dialog=>dialog.accept());await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.waitFor({state:'hidden'});
   });
 
   await check('Festività italiane: annulla invariato, applica anno e conserva eccezione preesistente',async()=>{
@@ -74,7 +83,7 @@ try{
   });
 
   await check('Layout avvisi e calendario a 390 px senza overflow orizzontale pagina',async()=>{
-    await page.setViewportSize({width:390,height:844});await page.locator('[data-nav="tasks"]').click();const modal=await openTaskForm();await modal.locator('input[name="runMinutes"]').fill('45');await modal.getByRole('button',{name:'Salva',exact:true}).click();await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();const warningBox=modal.getByRole('alert');const geometry=await warningBox.evaluate(element=>({left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right,viewport:innerWidth,documentWidth:document.documentElement.scrollWidth}));assert.ok(geometry.left>=0&&geometry.right<=390,JSON.stringify(geometry));assert.ok(geometry.documentWidth<=391,JSON.stringify(geometry));await capture('warning-mobile-390');await modal.getByRole('button',{name:'Annulla',exact:true}).click();
+    await page.setViewportSize({width:390,height:844});await page.locator('[data-nav="tasks"]').click();const modal=await openTaskForm();await modal.locator('input[name="runMinutes"]').fill('45');await modal.getByRole('button',{name:'Salva',exact:true}).click();await modal.getByRole('heading',{name:'Conferma la modifica'}).waitFor();const warningBox=modal.getByRole('alert');const geometry=await warningBox.evaluate(element=>({left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right,viewport:innerWidth,documentWidth:document.documentElement.scrollWidth}));assert.ok(geometry.left>=0&&geometry.right<=390,JSON.stringify(geometry));assert.ok(geometry.documentWidth<=391,JSON.stringify(geometry));await capture('warning-mobile-390');await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.getByRole('heading',{name:'Nuova attività'}).waitFor();page.once('dialog',dialog=>dialog.accept());await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.waitFor({state:'hidden'});
     await page.locator('[data-nav-group="settings"]').click();await page.locator('[data-nav="calendar"]').click();await page.getByRole('heading',{name:'Calendario di produzione'}).waitFor();await capture('calendar-mobile-390');const calendarGeometry=await page.evaluate(()=>({documentWidth:document.documentElement.scrollWidth,viewport:innerWidth}));assert.ok(calendarGeometry.documentWidth<=391,JSON.stringify(calendarGeometry));
   });
 

@@ -104,6 +104,25 @@ try{
   const tinyText=await page.locator('.task-table tbody tr').first().evaluate(row=>[...row.querySelectorAll('small,.badge,.dispatch-quiet,.task-type')].filter(el=>parseFloat(getComputedStyle(el).fontSize)<12).map(el=>el.className||el.tagName));
   assert.deepEqual(tinyText,[],'Testi secondari sotto 12px');
 
+  // «Annulla» nella conferma riporta alla scheda con i dati già inseriti, senza doverli reinserire
+  await page.locator('#status-filter').selectOption('');
+  const second=page.locator('.task-table tbody tr').filter({has:page.getByRole('button',{name:'Modifica'})}).nth(1);
+  await second.getByRole('button',{name:'Modifica'}).click();
+  await page.locator('#modal .order-references[open]').waitFor();
+  await page.getByLabel('Note',{exact:true}).fill('Nota da conservare dopo Annulla');
+  await page.getByLabel('Consegna prevista').fill('');
+  await page.getByLabel('Riferimento ordine').fill('ORD-CONSERVA-1');
+  await page.locator('#modal').getByRole('button',{name:'Salva'}).click();
+  await page.locator('#modal').getByText('Verifica i dati della lavorazione').waitFor();
+  await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
+  await page.getByLabel('Note',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('Note',{exact:true}).inputValue(),'Nota da conservare dopo Annulla','Le note inserite sono andate perse');
+  assert.equal(await page.getByLabel('Riferimento ordine').inputValue(),'ORD-CONSERVA-1','Il riferimento inserito è andato perso');
+  page.once('dialog',dialog=>{assert.match(dialog.message(),/modifiche non salvate/);dialog.accept();});// i dati ripristinati contano come non salvati
+  await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  await page.locator('#clear-task-filters').click();
+
   const reference=page.locator('.task-references summary').first();
   await reference.focus();await page.keyboard.press('Enter');
   assert.ok(await reference.evaluate(summary=>summary.parentElement.open));
