@@ -397,3 +397,29 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 @media(min-width:801px){.planning-workspace .backlog.backlog-empty{width:150px}.planning-workspace .backlog.backlog-empty .search{display:none}}
 /* Rilascio non disponibile: il pulsante deve sembrare spento */
 .planning-workspace .release-panel .button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35)}
+
+/* Pannello Sequenza della macchina (colonna destra del piano) */
+.planning-selection .side-tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line);background:#f6f8fb}
+.planning-selection .side-tabs button{border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;background:transparent;padding:7px 12px;font-size:13px;font-weight:600;color:var(--mes-muted);cursor:pointer}
+.planning-selection .side-tabs button.active{background:white;color:var(--mes-ink);border-color:var(--line);box-shadow:inset 0 -2px var(--blue)}
+.sequence-dock{display:flex;flex-direction:column;min-height:0;height:100%;padding:12px}
+.sequence-dock-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sequence-dock-head h2{margin:0;font-size:15px;line-height:1.3}
+.sequence-dock-head p{margin:2px 0 0;font-size:12px;color:var(--mes-muted)}
+.sequence-dock .sequence-header-actions{margin:10px 0 6px}
+.sequence-dock .sequence-header-actions .button{min-height:32px;padding:4px 10px;font-size:12px}
+.sequence-dock .sequence-hint{margin:0 0 8px;font-size:12px;line-height:1.4;color:var(--mes-muted)}
+.sequence-dock .production-sequence{flex:1;min-height:120px;overflow:auto;border:1px solid var(--line);border-radius:6px;transition:box-shadow .12s}
+.sequence-dock .production-sequence.drop-active{box-shadow:inset 0 0 0 2px #4d79af}
+.planning-workspace .sequence-dock .production-sequence-row{min-width:0;min-height:0;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) auto;grid-template-areas:"pos copy copy act" "pos start end act";gap:2px 6px;padding:8px 8px}
+.sequence-dock .production-sequence-row .sequence-position{grid-area:pos;align-self:start;padding-top:3px;font-size:12px}
+.sequence-dock .production-sequence-row .sequence-copy{grid-area:copy;min-width:0}
+.sequence-dock .production-sequence-row .sequence-quantity,.sequence-dock .production-sequence-row .sequence-duration{display:none}
+.sequence-dock .production-sequence-row .sequence-start{grid-area:start;font-size:12px;color:var(--mes-muted)}
+.sequence-dock .production-sequence-row .sequence-end{grid-area:end;font-size:12px;color:var(--mes-muted)}
+.sequence-dock .production-sequence-row .sequence-end::before{content:"→ "}
+.sequence-dock .production-sequence-row .sequence-row-actions{grid-area:act;display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end;align-content:flex-start;max-width:128px}
+.sequence-dock .production-sequence-row .sequence-row-actions .icon-button{min-width:28px;min-height:28px}
+.sequence-dock .sequence-state,.sequence-dock .sequence-task-title{font-size:12px}
+.sequence-dock .sequence-tail{font-size:12px}
+@media(min-width:1500px){.planning-workspace .planner-area.has-dock .planner{margin-right:372px}}

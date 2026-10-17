@@ -205,9 +205,9 @@ try{
     await counts.waitFor();
     assert.match((await counts.textContent()).replace(/\s+/g,' '),/\d+ fuori periodo/i);
     await page.locator(`[data-outside-sequence="${machine.id}"]`).click();
-    await page.getByRole('heading',{name:'Sequenza macchina',exact:true}).waitFor();
+    await page.locator('#planning-selection .sequence-dock').waitFor();
     assert.ok(await page.locator(`.production-sequence-row[data-task="${futureTask.id}"]`).count());
-    await closeDialog();
+    await page.locator('#sequence-close').click();
   });
 
   await check('Inizio previsto passato e non avviato è segnalato nel piano e nella selezione',async()=>{
