@@ -69,6 +69,18 @@ const cell=(m,d)=>{const bands=c.effectiveShifts(d,m.id).map(([a,b])=>`<div clas
  const empty=!shown?`<div class="timeline-empty-period">Nessuna attività nel periodo selezionato.${first?` <button class="button secondary" data-focus-day="${first}">Vai alle attività pianificate</button>`:''}</div>`:'';
  return `${empty}<section class="temporal gantt-temporal resource-timeline${dates.length===1?' single-day':''}" data-time-scale="${scale}" style="width:${190+dates.length*span*scale}px"><div class="gantt-dates"><div>MACCHINA / SEQUENZA</div>${dates.map(d=>`<button class="day-heading ${dayClass(d)}" data-focus-day="${d}" style="width:${span*scale}px"><span class="day-name"><b>${esc(dayName(d))}</b> ${c.fmt(d+'T00:00').split(',')[0]}</span><div class="gantt-hours">${ticks.slice(0,-1).filter(v=>!multiDay||(v-lo)%240===0).map(v=>`<span style="left:${(v-lo)*scale}px">${clock(v)}</span>`).join('')}</div>${multiDay?dayLoad(d):''}</button>`).join('')}</div>${ms.map(m=>`<div class="gantt-row" data-resource="${m.id}">${header(m)}${dates.map(d=>cell(m,d)).join('')}</div>`).join('')}</section>`;
 }
+/**
+ * Posizione di inserimento in sequenza dal punto di rilascio. `spans` segue l'ordine della sequenza (senza l'attività
+ * trascinata); `left`/`right` sono nulli per le attività non visibili nel periodo. Il rilascio a sinistra del centro di
+ * un'attività la precede, a destra segue l'ultima visibile; oltre l'ultima visibile entra prima della prima nascosta.
+ */
+export function timelineDropTarget(spans,clientX){
+ const visible=spans.map((item,index)=>({...item,index})).filter(item=>item.left!=null);
+ const hit=visible.find(item=>clientX<(item.left+item.right)/2);
+ if(hit)return {beforeId:hit.id,boundaryX:hit.left};
+ if(visible.length){const last=visible.at(-1);return {beforeId:spans[last.index+1]?.id||'',boundaryX:last.right};}
+ return {beforeId:'',boundaryX:clientX};
+}
 export function clearTimeTips(){clearInterval(clockTimer);clockTimer=undefined;timeTipController?.abort();timeTipController=undefined;document.querySelector('#time-tooltip')?.remove();}
 export function bindTimeTips(c){
  clearTimeTips();timeTipController=new AbortController();const {signal}=timeTipController;
@@ -174,10 +186,8 @@ export function bindInsertionHints(c){
   if(horizontal){
    // Il rilascio sceglie la posizione nella sequenza, non l'orario: gli orari escono dalla compattazione.
    const row=cell.closest('.gantt-row'),queue=c.state.tasks.filter(t=>t.machineId===cell.dataset.dropMachine&&t.position!==null&&t.id!==taskId).sort((a,b)=>a.position-b.position);
-   const visible=queue.map((t,index)=>{const rects=[...row.querySelectorAll(`.time-block[data-task="${CSS.escape(t.id)}"]`)].map(b=>b.getBoundingClientRect());return rects.length?{id:t.id,index,left:Math.min(...rects.map(r=>r.left)),right:Math.max(...rects.map(r=>r.right))}:null;}).filter(Boolean);
-   const hit=visible.find(item=>event.clientX<(item.left+item.right)/2);let boundaryX=event.clientX;
-   if(hit){beforeId=hit.id;boundaryX=hit.left;}
-   else if(visible.length){const last=visible.at(-1);beforeId=queue[last.index+1]?.id||'';boundaryX=last.right;}
+   const spans=queue.map(t=>{const rects=[...row.querySelectorAll(`.time-block[data-task="${CSS.escape(t.id)}"]`)].map(b=>b.getBoundingClientRect());return {id:t.id,left:rects.length?Math.min(...rects.map(r=>r.left)):null,right:rects.length?Math.max(...rects.map(r=>r.right)):null};});
+   const target=timelineDropTarget(spans,event.clientX),boundaryX=target.boundaryX;beforeId=target.beforeId;
    hintCell=[...row.querySelectorAll('[data-drop-machine]')].find(item=>{const r=item.getBoundingClientRect();return boundaryX>=r.left&&boundaryX<=r.right;})||cell;
    position=boundaryX-hintCell.getBoundingClientRect().left;
   }else{

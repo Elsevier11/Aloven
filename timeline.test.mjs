@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {temporalPlan,timelineInsertionBefore} from './public/timeline.js';
+import {temporalPlan,timelineInsertionBefore,timelineDropTarget} from './public/timeline.js';
 
 test('inserimento usa preparazione e lavorazione insieme e la sequenza oltre il giorno visibile',()=>{
  const tasks=[
@@ -61,4 +61,26 @@ test('timeline evidenzia ogni segmento dell’attività selezionata senza cambia
   const widths=[...html.matchAll(/data-task="short"[^>]*style="[^"]*width:([\d.]+)px/g)].map(match=>Number(match[1]));
   assert.equal(widths.length,2);
   assert.ok(widths.every(width=>Math.abs(width-15*scale)<1e-9));
+});
+
+test('rilascio sul Gantt: la posizione in sequenza dipende dal centro delle attività, non da un orario',()=>{
+ const spans=[{id:'a',left:100,right:200},{id:'b',left:200,right:300},{id:'c',left:300,right:400}];
+ assert.deepEqual(timelineDropTarget(spans,10),{beforeId:'a',boundaryX:100},'prima della prima');
+ assert.deepEqual(timelineDropTarget(spans,149),{beforeId:'a',boundaryX:100},'metà sinistra di A: prima di A');
+ assert.deepEqual(timelineDropTarget(spans,150),{beforeId:'b',boundaryX:200},'dal centro in poi: dopo A, cioè prima di B');
+ assert.deepEqual(timelineDropTarget(spans,260),{beforeId:'c',boundaryX:300});
+ assert.deepEqual(timelineDropTarget(spans,350),{beforeId:'',boundaryX:400},'metà destra dell’ultima: in coda');
+ assert.deepEqual(timelineDropTarget(spans,9000),{beforeId:'',boundaryX:400},'oltre la fine: in coda');
+});
+
+test('rilascio sul Gantt: attività fuori dal periodo visibile, riga vuota e attività spezzate',()=>{
+ const spans=[{id:'a',left:100,right:200},{id:'hidden',left:null,right:null},{id:'later',left:null,right:null}];
+ assert.deepEqual(timelineDropTarget(spans,5000),{beforeId:'hidden',boundaryX:200},'oltre l’ultima visibile entra prima della prima nascosta, non in coda assoluta');
+ assert.deepEqual(timelineDropTarget(spans,160),{beforeId:'hidden',boundaryX:200},'metà destra di A: dopo A, prima della prima nascosta');
+ assert.deepEqual(timelineDropTarget(spans,110),{beforeId:'a',boundaryX:100});
+ assert.deepEqual(timelineDropTarget([],320),{beforeId:'',boundaryX:320},'riga vuota: prima posizione, punto del puntatore');
+ assert.deepEqual(timelineDropTarget([{id:'x',left:null,right:null}],320),{beforeId:'',boundaryX:320},'nessuna attività visibile');
+ // Un'attività su più giorni occupa da left del primo blocco a right dell'ultimo: il centro è quello dell'intero intervallo.
+ const split=[{id:'long',left:100,right:700},{id:'next',left:700,right:800}];
+ assert.equal(timelineDropTarget(split,350).beforeId,'long');assert.equal(timelineDropTarget(split,450).beforeId,'next');
 });

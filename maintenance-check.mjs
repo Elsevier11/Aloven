@@ -221,6 +221,32 @@ try{
   assert.deepEqual(afterRelease.planning.changedMaintenanceIds,[]);
   passed.push('Manutenzione senza attività resta in bozza fino al rilascio');
 
+  // Sequenza e manutenzione: il rilascio sceglie la posizione, le date escono dalla compattazione attorno al blocco.
+  await action({kind:'maintenance',machineId:machine.id,start:'2026-10-12T09:30',end:'2026-10-12T10:30',name:'Blocco dentro la sequenza'});
+  await page.reload();
+  await page.locator('.timeline-scroll').waitFor();
+  await page.locator('#date-start').fill('2026-10-12');
+  await page.locator('#date-start').dispatchEvent('change');
+  const [first,second,third]=tasks;
+  const dropCell=page.locator(`.temporal-cell[data-drop-machine="${machine.id}"][data-date="2026-10-12"]`).first();
+  await dropCell.scrollIntoViewIfNeeded();
+  const cellBox=await dropCell.boundingBox(),secondBox=await page.locator(`.time-block[data-task="${second.id}"]`).first().boundingBox();
+  assert.ok(cellBox&&secondBox,'Servono la cella e la barra della seconda attività');
+  await page.locator(`.time-block[data-task="${third.id}"]`).first().dragTo(dropCell,{sourcePosition:{x:6,y:12},targetPosition:{x:secondBox.x-cellBox.x+4,y:30}});
+  await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();
+  assert.ok(await page.locator('.change-list').getByText(second.title,{exact:true}).count(),'l’anteprima mostra l’attività che slitta');
+  await page.getByRole('button',{name:'Inserisci e ricompatta',exact:true}).click();
+  await page.locator('#modal').waitFor({state:'hidden'});
+  const around=await state();
+  const queueIds=around.tasks.filter(item=>item.machineId===machine.id&&item.position!==null).sort((a,b)=>a.position-b.position).map(item=>item.id);
+  assert.deepEqual(queueIds,[first.id,third.id,second.id],'l’attività trascinata entra prima della seconda');
+  assert.deepEqual(taskSnapshot(around,first.id),taskSnapshot(baseline,first.id),'la prima attività non cambia');
+  assert.deepEqual(taskSnapshot(around,third.id).segments.map(segment=>`${segment.start.slice(11)}→${segment.end.slice(11)}`),['09:00→09:30','10:30→11:00'],'la lavorazione si ferma sul blocco e riprende dopo');
+  assert.equal(taskSnapshot(around,second.id).start,'2026-10-12T11:00');
+  for(const item of tasks){const snapshot=taskSnapshot(around,item.id);assert.ok(!snapshot.segments.some(segment=>segment.start<'2026-10-12T10:30'&&segment.end>'2026-10-12T09:30'),'nessun segmento dentro la manutenzione');assert.equal(around.tasks.find(task=>task.id===item.id).fixedStart,null);}
+  assert.ok(await page.locator(`[data-maintenance-block][data-machine="${machine.id}"]`).count(),'il blocco resta visibile sulla riga');
+  passed.push('Rilascio nella sequenza attorno a una manutenzione: anteprima, lavorazione spezzata dal blocco, nessun orario fisso');
+
   assert.deepEqual(pageErrors,[]);
   const report={passed,pageErrors,geometries,maintenanceId,baseline:tasks.map(item=>({id:item.id,...taskSnapshot(baseline,item.id)})),inserted:tasks.map(item=>({id:item.id,...taskSnapshot(inserted,item.id)})),editedBlock:edited.calendar.maintenanceBlocks[0]};
   writeFileSync(path.join(artifacts,'maintenance-report.json'),JSON.stringify(report,null,2));
