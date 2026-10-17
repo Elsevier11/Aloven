@@ -38,3 +38,15 @@ test('vista: schede per macchina con in corso e prossime; escape dei testi; vuot
   assert.ok(html.includes('Nessuna attività in corso'));assert.ok(html.includes('Nessuna attività in programma'),'macchina senza prossime');
   assert.ok(repartoView(context([],[])).includes('Nessuna macchina configurata'));
 });
+
+test('righe di dettaglio: operatore e inizio insieme, fine e ritardo insieme, fermo in evidenza',async()=>{
+  const {detailLines}=await import('./public/reparto.js');
+  const mins=n=>`${n} min`;
+  const lines=detailLines({operator:'Mario Rossi',lines:['da 14:50','lavorazione 30 min su 2 h','fine 14/10 13:54'],delay:90,stop:''},{mins});
+  assert.deepEqual(lines.map(l=>l.text),['Operatore Mario Rossi · da 14:50','lavorazione 30 min su 2 h','Fine 14/10 13:54 · in ritardo di 90 min']);
+  assert.deepEqual(lines.map(l=>!!l.alert),[false,false,true]);
+  const stopped=detailLines({operator:'',lines:['fine 10:00'],delay:0,stop:'Fermo dalle 09:00 · Guasto'},{mins});
+  assert.deepEqual(stopped.map(l=>l.text),['Fine 10:00','Fermo dalle 09:00 · Guasto']);
+  assert.equal(stopped[1].alert,true);
+  assert.deepEqual(detailLines({operator:'',lines:[],delay:0,stop:''},{mins}),[]);
+});

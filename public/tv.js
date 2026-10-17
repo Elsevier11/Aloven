@@ -15,7 +15,7 @@ const mins = value => {
 export function tvCards(models) {
   return models.map(({cell: m, next, more}) => {
     const name = esc(m.machineName || m.machineId);
-    const progress = m.progress == null ? '' : `<div class="tv-progress" data-over="${m.progress > 100}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, m.progress)}"><span style="width:${Math.min(100, m.progress)}%"></span><b>${m.progress} %</b></div>`;
+    const progress = m.progress == null ? '' : `<div class="tv-progress" data-over="${m.progress > 100}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(100, m.progress)}"><span style="width:${Math.min(100, m.progress)}%"></span><b>${m.progress > 200 ? 'Oltre il previsto' : `${m.progress} %`}</b></div>`;
     const facts = [m.operator && `Operatore ${esc(m.operator)}`, ...m.lines.map(esc), m.delay > 0 ? `In ritardo di ${esc(mins(m.delay))}` : ''].filter(Boolean);
     const current = m.taskId
       ? `<p class="tv-task">${esc(m.title)}</p>${progress}<ul class="tv-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>`

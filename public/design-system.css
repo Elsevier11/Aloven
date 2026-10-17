@@ -263,12 +263,12 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .reparto-alert { color:#a52a1d; font-weight:650; }
 .reparto-none, .reparto-more { margin:0; font-size:12px; color:var(--mes-muted); }
 .reparto-next { margin:0; padding:0; list-style:none; display:grid; gap:2px; }
-.reparto-next button { display:flex; align-items:baseline; gap:8px; width:100%; padding:3px 4px; border:0; border-radius:4px; background:none; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+.reparto-next button { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; width:100%; padding:3px 4px; border:0; border-radius:4px; background:none; text-align:left; cursor:pointer; font:inherit; color:inherit; }
 .reparto-next button:hover, .reparto-current:focus-visible, .reparto-next button:focus-visible { background:#f1f6fd; outline:2px solid transparent; }
 .reparto-next button:focus-visible, .reparto-current:focus-visible { outline-color:var(--mes-blue); }
 .reparto-when { flex:none; min-width:78px; font-size:12px; color:var(--mes-muted); font-variant-numeric:tabular-nums; }
-.reparto-name { flex:1; min-width:0; overflow-wrap:anywhere; }
-.reparto-badge { flex:none; font-size:10px; padding:1px 6px; border-radius:999px; background:#fff3d6; color:#7a5200; white-space:nowrap; }
+.reparto-name { flex:1 1 120px; min-width:0; overflow-wrap:break-word; }
+.reparto-badge { flex:none; margin-left:86px; font-size:10px; padding:1px 6px; border-radius:999px; background:#fff3d6; color:#7a5200; white-space:nowrap; }
 @media(max-width:800px) { .reparto-grid { grid-template-columns:1fr; } }
 
 /* Maschere spostabili dall'intestazione. */
