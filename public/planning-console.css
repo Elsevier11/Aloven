@@ -369,6 +369,30 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .resource-timeline:not(.single-day) .time-block.fixed-start{padding-left:7px;box-shadow:inset 3px 0 0 rgba(255,255,255,.9)}
 .planning-workspace .resource-timeline:not(.single-day) .time-block .plan-warning{width:13px;height:13px;top:2px;right:2px;font-size:9px}
 
+/* Rilascio: attività nuove raggruppate per macchina, una riga ciascuna */
+.release-new{margin:6px 0;border:1px solid var(--mes-border);border-radius:8px;background:#fff}
+.release-new>summary{cursor:pointer;padding:8px 12px;font-size:13px}
+.release-new ul{margin:0;padding:0 12px 8px;list-style:none;font-size:12px}
+.release-new li{display:flex;gap:12px;padding:3px 0;border-top:1px solid var(--mes-border);font-variant-numeric:tabular-nums}
+.release-new li>span{flex:none;min-width:8.5em;color:var(--mes-muted)}
+/* Stampa del piano: solo il foglio, A4 orizzontale */
+#print-sheet{display:none}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body.printing-plan>*:not(#print-sheet){display:none!important}
+  body.printing-plan{background:#fff}
+  body.printing-plan #print-sheet{display:block;color:#000;font:11px/1.35 'Segoe UI',Arial,sans-serif}
+  #print-sheet h1{font-size:18px;margin:0 0 2px}
+  #print-sheet .print-meta{margin:0 0 10px;color:#444}
+  #print-sheet section{break-inside:avoid-page;margin-bottom:14px}
+  #print-sheet h2{font-size:14px;margin:0 0 4px;border-bottom:2px solid #000}
+  #print-sheet table{width:100%;border-collapse:collapse}
+  #print-sheet th,#print-sheet td{border:1px solid #888;padding:3px 5px;text-align:left;vertical-align:top}
+  #print-sheet th{background:#eee}
+}
+/* Consegna superata: filo rosso sul bordo basso del blocco, più il conteggio testuale nella barra */
+.planning-workspace .time-block.due-late{box-shadow:inset 0 -4px 0 #c0392b}
+.planning-workspace .period-due{color:#a52a1d;font-weight:650;font-size:12px;white-space:nowrap}
 /* Backlog vuoto: colonna stretta, così la Settimana ha più spazio */
 @media(min-width:801px){.planning-workspace .backlog.backlog-empty{width:150px}.planning-workspace .backlog.backlog-empty .search{display:none}}
 /* Rilascio non disponibile: il pulsante deve sembrare spento */

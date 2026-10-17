@@ -108,3 +108,13 @@ test('maintenanceReleaseChanges confronta solo gli ID dichiarati dal server', ()
     {id:'removed',kind:'removed',name:'Controllo',oldName:'Controllo',newName:'',oldMachineId:'M2',newMachineId:null,oldStart:'2026-10-15T08:00',newStart:null,oldEnd:'2026-10-15T09:00',newEnd:null},
   ]);
 });
+
+test('dueDelayDays: giorni oltre la consegna, zero se in tempo, senza data o già chiusa', async () => {
+  const { dueDelayDays } = await import('./public/planning-presentation.js');
+  assert.equal(dueDelayDays({ dueDate: '2026-10-20', end: '2026-10-22T10:00', status: 'planned' }), 2);
+  assert.equal(dueDelayDays({ dueDate: '2026-10-20', end: '2026-10-20T17:30', status: 'planned' }), 0);
+  assert.equal(dueDelayDays({ dueDate: '2026-10-20', end: '2026-10-19T08:00', status: 'planned' }), 0);
+  assert.equal(dueDelayDays({ end: '2026-10-22T10:00', status: 'planned' }), 0);
+  assert.equal(dueDelayDays({ dueDate: '2026-10-20', status: 'unplanned' }), 0);
+  assert.equal(dueDelayDays({ dueDate: '2026-10-20', end: '2026-10-25T10:00', status: 'completed' }), 0);
+});

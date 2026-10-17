@@ -22,6 +22,13 @@ export function taskBarReference(task = {}) {
   return value.length > 16 ? `${value.slice(0, 4)}…${value.slice(-8)}` : value;
 }
 
+// Giorni di ritardo previsti rispetto alla consegna indicata (0 se in tempo o se la consegna manca).
+export function dueDelayDays(task = {}) {
+  if (!task.dueDate || !task.end || ['completed', 'cancelled'].includes(task.status)) return 0;
+  const days = Math.round((Date.parse(String(task.end).slice(0, 10) + 'T00:00Z') - Date.parse(String(task.dueDate).slice(0, 10) + 'T00:00Z')) / 864e5);
+  return Number.isFinite(days) && days > 0 ? days : 0;
+}
+
 export function dispatchLabel(task = {}) {
   const state = task.planningState;
   if (state === 'released') return 'Inviata al reparto';
