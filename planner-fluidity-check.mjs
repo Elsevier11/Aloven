@@ -91,6 +91,9 @@ try{
   await check('Rilascio dentro la sequenza chiede conferma; Annulla non scrive',async()=>{
     const before=await state(),commitsBefore=report.requests.filter(request=>request.endpoint==='/api/commit').length,source=page.locator(`.backlog .task-card[data-task="${moverId}"]`);await holdDrag(source,cell,9*60+45);
     await page.locator('.drag-preview-footprint[data-validity="ready"]').first().waitFor();assert.equal(await page.locator('.insertion-hint.invalid').count(),0,'inserire nella sequenza non è un rifiuto');
+    assert.deepEqual(await page.locator('.gantt-row').evaluateAll(rows=>rows.filter(row=>row.classList.contains('drag-incompatible')).map(row=>row.dataset.resource).sort()),fixture.machines.map(item=>item.id).filter(id=>![machine.id,other.id].includes(id)).sort(),'si attenuano solo le macchine non compatibili');
+    assert.ok(await page.locator('.drag-preview-footprint[data-role="moved"]').count()>=1&&await page.locator('.drag-preview-footprint[data-role="shifted"]').count()>=1,'l’anteprima distingue l’attività spostata da quelle che slittano');
+    assert.ok(await page.locator('.time-block.preview-superseded').count()>=1,'le barre attuali delle attività che cambiano data sono attenuate');
     assert.match(await page.locator('.insertion-hint').innerText(),/^Prima di .+ · parte .+ · \d+ attività slitt(?:a|ano)$/,'l’etichetta dice dove entra, quando parte e quante attività slittano');
     assert.equal(await page.locator('[data-drag-mode]').count(),0,'l’interruttore di modalità non esiste più');
     await finishDrag();await page.getByRole('heading',{name:'La sequenza si ricompatta'}).waitFor();
@@ -98,6 +101,7 @@ try{
     assert.equal((await state()).revision,before.revision,'nessuna scrittura prima della scelta');
     await page.getByRole('button',{name:'Annulla',exact:true}).click();await page.locator('#modal').waitFor({state:'hidden'});
     assert.equal((await state()).revision,before.revision);assert.equal(report.requests.filter(request=>request.endpoint==='/api/commit').length,commitsBefore);
+    assert.equal(await page.locator('.gantt-row.drag-incompatible').count(),0,'finito il gesto nessuna macchina resta attenuata');assert.equal(await page.locator('.time-block.preview-superseded').count(),0);
   });
 
 

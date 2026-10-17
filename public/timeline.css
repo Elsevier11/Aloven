@@ -31,3 +31,14 @@
 .drag-preview-footprint[data-validity="invalid"]{border-color:var(--mes-red);background:color-mix(in srgb,var(--mes-red) 24%,transparent)}
 .touch-drag-ghost{padding:8px 12px;border-radius:6px;background:var(--mes-navy);color:white;font-size:12px;overflow-wrap:anywhere}
 .touch-drag-ghost[hidden]{display:none}
+/* Anteprima del rilascio: barre attuali attenuate, nuove nette (verde = attività spostata, blu = attività che slittano). */
+.time-block.preview-superseded{opacity:.35;filter:saturate(.35)}
+.drag-preview-footprint.run{display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;font-size:11px;font-weight:700;color:#fff;background:#1769b0d9}
+.drag-preview-footprint[data-role="moved"]{border-color:#158563}
+.drag-preview-footprint.run[data-role="moved"]{background:#158563e6}
+.drag-preview-footprint.run[data-validity="checking"]{background:#b87916b3}
+.drag-preview-footprint.run[data-validity="invalid"]{background:#b33d3dd9}
+/* Macchine incompatibili durante il trascinamento. */
+.gantt-row.drag-incompatible{opacity:.38;filter:grayscale(.6)}
+.gantt-row.drag-incompatible .temporal-cell{cursor:not-allowed}
+

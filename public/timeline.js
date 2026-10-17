@@ -119,17 +119,27 @@ function previewSegments(preview,action){
  for(const value of preview?.placements||preview?.changedTasks||preview?.changes||[])add(value,value.machineId,value.id||value.taskId);
  return groups;
 }
-function removePreviewFootprints(){document.querySelectorAll('.drag-preview-footprint').forEach(element=>element.remove());}
+function removePreviewFootprints(){document.querySelectorAll('.drag-preview-footprint').forEach(element=>element.remove());document.querySelectorAll('.time-block.preview-superseded').forEach(element=>element.classList.remove('preview-superseded'));}
+/** Durante il trascinamento attenua le macchine in cui l'attività non può andare; si azzera con clearDragRows. */
+export function markDragRows(tasks,taskId){
+ const task=taskId?tasks.find(item=>item.id===taskId):null,ids=task?(task.compatibleMachineIds?.length?task.compatibleMachineIds:[task.machineId]):null;
+ for(const row of document.querySelectorAll('.gantt-row[data-resource]'))row.classList.toggle('drag-incompatible',Boolean(ids)&&!ids.includes(row.dataset.resource));
+}
+export function clearDragRows(){markDragRows([],null);}
 function drawPreviewFootprints(preview,action){
  const existing=[...document.querySelectorAll('.drag-preview-footprint')];let index=0;
  for(const group of previewSegments(preview,action))for(const segment of group.segments||[]){
   for(const cell of document.querySelectorAll(`[data-drop-machine="${CSS.escape(group.machineId||action.machineId)}"]`)){
    const date=cell.dataset.date,dayStart=`${date}T00:00`,dayEnd=`${date}T24:00`,start=segment.start>dayStart?segment.start:dayStart,end=segment.end<dayEnd?segment.end:dayEnd;if(end<=start)continue;
    const startMinute=start===dayStart?0:minute(start.slice(11)),endMinute=end===dayEnd?1440:minute(end.slice(11)),left=(startMinute-Number(cell.dataset.lo))*Number(cell.dataset.scale),width=(endMinute-startMinute)*Number(cell.dataset.scale);
-   const footprint=existing[index++]||document.createElement('div');footprint.className=`drag-preview-footprint ${segment.kind==='setup'?'setup':'run'}`;footprint.dataset.previewTask=group.taskId||action.id;footprint.style.left=`${left}px`;footprint.style.width=`${Math.max(2,width)}px`;footprint.setAttribute('aria-hidden','true');if(footprint.parentElement!==cell)cell.append(footprint);
+   const footprint=existing[index++]||document.createElement('div');footprint.className=`drag-preview-footprint ${segment.kind==='setup'?'setup':'run'}`;footprint.dataset.previewTask=group.taskId||action.id;footprint.dataset.role=(group.taskId||action.id)===action.id?'moved':'shifted';
+   const owner=previewContext?.state?.tasks?.find(item=>item.id===(group.taskId||action.id));footprint.textContent=segment.kind==='run'&&owner&&width>=44?taskBarReference(owner):'';footprint.style.left=`${left}px`;footprint.style.width=`${Math.max(2,width)}px`;footprint.setAttribute('aria-hidden','true');if(footprint.parentElement!==cell)cell.append(footprint);
   }
  }
  for(const footprint of existing.slice(index))footprint.remove();
+ // Le barre attuali delle attività che cambiano data si attenuano: restano visibili le nuove, nette.
+ const changed=new Set(previewSegments(preview,action).map(group=>group.taskId||action.id));
+ for(const block of document.querySelectorAll('.time-block[data-task]'))block.classList.toggle('preview-superseded',changed.has(block.dataset.task));
 }
 function setHintState(entry,state,message){
  if(currentDragAction?.key!==entry.key||!entry.hint?.isConnected)return;
@@ -218,7 +228,7 @@ export function bindInsertionHints(c){
  document.addEventListener('drag',paintNativePointer,{signal,capture:true});document.addEventListener('dragenter',paintNativePointer,{signal,capture:true});
  const refreshGeometry=()=>{if(!lastPointer||!c.dragTaskId?.()||geometryFrame)return;geometryFrame=requestAnimationFrame(()=>{geometryFrame=undefined;if(!lastPointer||!c.dragTaskId?.())return;const cell=document.elementFromPoint(lastPointer.clientX,lastPointer.clientY)?.closest('[data-drop-machine]');if(cell)paint(cell,lastPointer,lastPointer.taskId);else clearInsertionHints();});};
  window.addEventListener('resize',refreshGeometry,{signal});document.addEventListener('scroll',refreshGeometry,{signal,capture:true});
- document.addEventListener('dragend',()=>{lastPointer=undefined;clearInsertionHints();clearDragPreview();},{signal});
+ document.addEventListener('dragend',()=>{lastPointer=undefined;clearInsertionHints();clearDragPreview();clearDragRows();},{signal});
  signal.addEventListener('abort',()=>{cancelAnimationFrame(geometryFrame);lastPointer=undefined;clearInsertionHints();clearDragPreview();},{once:true});
  insertionPainter=paint;
 }

@@ -407,3 +407,8 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .change-badge{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--mes-blue);color:#fff;font-size:11px;font-weight:600;vertical-align:1px}
 #sequence-totals{font-variant-numeric:tabular-nums}
 
+/* Suggerimento sul modello a sequenza, sopra l'elenco da pianificare. */
+.backlog .sequence-hint{display:flex;align-items:flex-start;gap:6px;margin:0 0 8px;padding:6px 8px;border-radius:6px;background:var(--mes-blue-soft);color:var(--mes-ink);font-size:12px;line-height:1.35}
+.backlog .sequence-hint span{flex:1}
+.backlog .sequence-hint .icon-button{min-width:22px;min-height:22px;width:22px;height:22px;padding:0;font-size:16px;line-height:1}
+

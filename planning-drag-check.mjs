@@ -77,11 +77,20 @@ try{
  await page.locator(`.time-block.run[data-task="${tasks[2].id}"]`).first().click();await page.locator('.selection-placement-box summary').evaluate(summary=>{if(!summary.parentElement.open)summary.click();});
  assert.deepEqual(await page.getByLabel('Inserisci attività').locator('option').evaluateAll(nodes=>nodes.map(n=>n.value)),['end','before','after']);assert.equal(await page.getByLabel('Data e ora di inizio').count(),0);
  await page.reload();await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');
+ // Suggerimento sul modello a sequenza: visibile la prima volta, nascondibile e ricordato; il comando annulla dice cosa annulla.
+ assert.match(await page.locator('#sequence-hint').innerText(),/posizione nella sequenza.*date si calcolano da sole/);
+ assert.match(await page.locator('#planning-undo').innerText(),/Annulla ultimo spostamento/);
+ await page.locator('#sequence-hint-close').click();assert.equal(await page.locator('#sequence-hint').count(),0);
+ await page.reload();await page.locator('.timeline-scroll').waitFor();assert.equal(await page.locator('#sequence-hint').count(),0,'il suggerimento nascosto resta nascosto');
+ await page.locator('#date-start').fill('2026-10-12');await page.locator('#date-start').dispatchEvent('change');
  // Pannello Sequenza: totale, maniglia visibile e azione «Togli» a parole.
  await page.locator(`[data-sequence="${other.id}"]`).click({force:true});await page.getByRole('heading',{name:'Sequenza macchina'}).waitFor();
  const totals=await page.locator('#sequence-totals').innerText();assert.match(totals,/^\d+ attività in coda · durata totale .+ · finisce .+$/,totals);
  assert.equal(await page.locator('.production-sequence-row:not(.locked) .sequence-position').first().evaluate(el=>getComputedStyle(el,'::before').content),'"⋮⋮"','la maniglia di trascinamento è visibile');
  assert.equal(await page.locator('.production-sequence-row [data-unplan-task]').first().innerText(),'Togli');
+ // Indicatore di rilascio nel pannello: dove entra l'attività e che le successive si ricalcolano.
+ await page.evaluate(()=>{const rows=[...document.querySelectorAll('.production-sequence-row')],data=new DataTransfer();rows.at(-1).dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:data}));const box=rows[0].getBoundingClientRect();document.querySelector('.production-sequence').dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:data,clientX:box.left+60,clientY:box.top+4}));});
+ assert.equal(await page.locator('.sequence-drop-marker').innerText(),'Inserisci qui · ricalcola le successive');
  await page.getByRole('button',{name:'Chiudi',exact:true}).first().click();await page.locator('#modal').waitFor({state:'hidden'});
  await page.getByRole('button',{name:'Settimana',exact:true}).click();
  mkdirSync('.artifacts',{recursive:true});
