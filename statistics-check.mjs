@@ -25,6 +25,8 @@ try {
  await page.getByRole('button',{name:'Aggiorna',exact:false}).click();
  const seededState=await (await page.request.get(base+'/api/state')).json();await page.waitForFunction(revision=>document.querySelector('.shell')?.dataset.revision===String(revision),seededState.revision);
  await page.locator('[data-nav="statistics"]').click();await page.locator('.statistics-chart-grid').waitFor();
+ // Il periodo predefinito è ora di 30 giorni: il test apre l'intero storico (dicembre 2025–settembre 2026).
+ await page.getByLabel('Dal',{exact:true}).fill('2025-12-01');await Promise.all([page.waitForResponse(r=>r.url().includes('/api/statistics?')&&r.url().includes('from=2025-12-01')),page.getByRole('button',{name:'Applica filtri'}).click()]);await page.locator('.statistics-chart-grid').waitFor();await page.waitForFunction(()=>!document.querySelector('.statistics-results[aria-busy="true"]'));
  const writes=[];page.on('request',request=>{if(request.url().startsWith(base+'/api/')&&!['GET','HEAD'].includes(request.method()))writes.push(request.method()+' '+request.url());});
  const report=await (await page.request.get(base+'/api/statistics')).json();
  assert.ok(report.totals.count>2000);assert.equal(report.monthly.length,10);assert.ok(report.speeds.length>0);assert.ok(report.dailyActivity.length>0);assert.equal(report.coverage.status,'complete');assert.equal(await page.locator('#statisticsTableDetails').getAttribute('open'),null);

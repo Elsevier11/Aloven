@@ -54,7 +54,7 @@
 .statistics-dashboard-tabs button{border:0;border-bottom:2px solid transparent;background:none;color:var(--mes-muted);padding:10px 14px;font-size:13px;font-weight:600;white-space:nowrap}
 .statistics-dashboard-tabs button[aria-pressed=true]{color:var(--mes-blue);border-bottom-color:var(--mes-blue)}
 .statistics-dashboard-summary{margin-bottom:16px}
-.statistics-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.statistics-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .statistics-kpi{position:relative;border:1px solid var(--mes-border);background:white;border-radius:8px;padding:14px 16px;text-align:left;min-height:108px;color:var(--mes-ink);box-shadow:0 2px 5px #142b4603}
 .statistics-kpi>span:first-child{display:block;font-size:12px;color:var(--mes-muted);line-height:1.4}
 .statistics-kpi strong{display:block;font-size:25px;letter-spacing:-.5px;margin:14px 0 4px;line-height:1.2;font-variant-numeric:tabular-nums}
