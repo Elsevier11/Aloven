@@ -45,7 +45,7 @@ try {
   await page.locator('[data-nav="tasks"]').click(); await page.locator('[data-mes-nav="quality"]').click(); await page.waitForTimeout(800); await shot('06-qualita');
   await page.locator('[data-mes-nav="traceability"]').click(); await page.waitForTimeout(500); await shot('07-tracciabilita');
   await page.locator('[data-nav-group="settings"]').click(); await page.waitForTimeout(500); await shot('08-calendario');
-  await page.goto(`${base}/reparto-tv`); await page.waitForTimeout(1500); await shot('09-monitor-tv');
+  await page.setViewportSize({width:1920,height:1080}); await page.goto(`${base}/reparto-tv`); await page.waitForTimeout(1500); await shot('09-monitor-tv');
   console.log(errors.length ? `Errori: ${errors.join(' | ')}` : 'Nessun errore di pagina o di rete');
 } finally {
   await browser?.close();

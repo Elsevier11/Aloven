@@ -78,6 +78,9 @@ try{
  assert.match(await tv.locator('.tv-top strong').innerText(),/1 in corso/);
  assert.equal(await tv.locator('.tv-progress').count(),1);
  assert.equal(await tv.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ // Tutte le macchine visibili senza scorrere, schede uguali tra loro
+ assert.equal(await tv.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true,'il monitor non deve scorrere');
+ {const boxes=await tv.locator('.tv-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {w:Math.round(r.width),h:Math.round(r.height),inside:r.top>=0&&r.bottom<=innerHeight+1&&r.left>=0&&r.right<=innerWidth+1,clipped:card.scrollHeight>card.clientHeight+1};}));assert.ok(boxes.every(b=>b.inside),'Una scheda esce dallo schermo');assert.ok(boxes.every(b=>b.w===boxes[0].w&&b.h===boxes[0].h),'Le schede devono avere la stessa dimensione');assert.ok(boxes.every(b=>!b.clipped),'Il contenuto di una scheda è tagliato');}
  await tv.screenshot({path:path.join('.artifacts','reparto-tv.png')});
  // senza sessione: invito ad accedere, nessun dato
  const anon=await browser.newContext();const anonPage=await anon.newPage();await anonPage.goto(base+'/reparto-tv');await anonPage.locator('.tv-message a').waitFor();
