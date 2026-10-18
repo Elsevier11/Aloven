@@ -25,7 +25,7 @@ export function tvCards(models) {
       : '<p class="tv-task tv-idle">Nessuna attività in corso</p>';
     const first = next[0], others = Math.max(0, next.length - 1) + (more || 0);
     const upcoming = first
-      ? `<p class="tv-next"><span class="tv-next-label">Prossima</span><span class="tv-next-when">${esc(first.start || '—')}</span><span class="tv-next-title">${esc(first.title)}</span>${others ? `<span class="tv-next-more">+${others} dopo</span>` : ''}</p>`
+      ? `<p class="tv-next"><span class="tv-next-label">Prossima</span><span class="tv-next-when">${esc(first.start || '—')}</span><span class="tv-next-title">${esc(first.product || first.title)}</span>${others ? `<span class="tv-next-more">+${others} dopo</span>` : ''}</p>`
       : '<p class="tv-next tv-none">Nessuna attività in programma</p>';
     return `<article class="tv-card" data-tone="${esc(m.tone)}" data-alert="${m.alert}">`
       + `<header><h2>${name}</h2><span class="tv-state">${esc(m.label)}</span></header>`

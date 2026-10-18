@@ -21,6 +21,7 @@ export function repartoModel(c, nowMs = serverClock(c.state.serverNow, c.receive
       next: queue.slice(0, NEXT_LIMIT).map(t => ({
         id: t.id,
         title: liveTitle(t),
+        product: t.productDescription || t.title,
         start: t.start ? endLabel(t.start, nowMs) : '',
         tone: dispatchTone(t),
         badge: dispatchTone(t) === 'released' ? '' : dispatchLabel(t),
@@ -63,7 +64,7 @@ export function repartoView(c) {
         + `<ul class="reparto-lines">${detailLines(m, c).map(l => `<li${l.alert ? ' class="reparto-alert"' : ''}>${c.esc(l.text)}</li>`).join('')}</ul>`
       : `<p class="reparto-none">Nessuna attività in corso</p>${m.stop ? `<p class="reparto-alert">${c.esc(m.stop)}</p>` : ''}`;
     const upcoming = next.length
-      ? `<ol class="reparto-next">${next.map(n => `<li><button type="button" data-reparto-task="${c.esc(n.id)}" title="${c.esc(n.title)}"><span class="reparto-when">${c.esc(n.start || '—')}</span><span class="reparto-name">${c.esc(n.title)}</span>${n.badge ? `<span class="reparto-badge" data-tone="${n.tone}">${c.esc(n.badge)}</span>` : ''}</button></li>`).join('')}</ol>${more ? `<p class="reparto-more">e altre ${more} in sequenza</p>` : ''}`
+      ? `<ol class="reparto-next">${next.map(n => `<li><button type="button" data-reparto-task="${c.esc(n.id)}" title="${c.esc(n.title)}"><span class="reparto-when">${c.esc(n.start || '—')}</span><span class="reparto-name">${c.esc(n.product || n.title)}</span>${n.badge ? `<span class="reparto-badge" data-tone="${n.tone}">${c.esc(n.badge)}</span>` : ''}</button></li>`).join('')}</ol>${more ? `<p class="reparto-more">e altre ${more} in sequenza</p>` : ''}`
       : '<p class="reparto-none">Nessuna attività in programma</p>';
     return `<article class="reparto-card" data-machine="${c.esc(m.machineId)}" data-tone="${m.tone}" data-alert="${m.alert}" aria-label="${c.esc(`${name}: ${m.label}`)}">`
       + `<header><h3>${c.esc(name.split(' · ')[0])}</h3><span class="live-state">${c.esc(m.label)}${m.since ? ` <small>da ${c.esc(m.since)}</small>` : ''}</span></header>`
