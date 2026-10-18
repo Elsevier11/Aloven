@@ -423,3 +423,14 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .sequence-dock .sequence-state,.sequence-dock .sequence-task-title{font-size:12px}
 .sequence-dock .sequence-tail{font-size:12px}
 @media(min-width:1500px){.planning-workspace .planner-area.has-dock .planner{margin-right:372px}}
+
+/* Riga macchina: link «fuori periodo» e strumenti condividono la stessa riga, senza sovrapporsi; il menù si apre verso sinistra e resta sopra le righe vicine. */
+.planning-workspace .resource-timeline .machine-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;margin-top:2px}
+.planning-workspace .resource-timeline .machine-foot:has(small) .machine-tools{position:static;margin-left:auto}
+.planning-workspace .resource-timeline .machine-actions>div{left:auto;right:0;top:calc(100% + 4px)}
+.planning-workspace .resource-timeline .gantt-row:has(.machine-actions[open]){position:relative;z-index:30}
+.planning-workspace .resource-timeline .machine-actions>div{flex-direction:column;flex-wrap:nowrap;gap:2px;width:150px;padding:4px}
+.planning-workspace .resource-timeline .machine-actions>div .button{width:100%;justify-content:flex-start;text-align:left;min-height:34px;padding:6px 10px;font-size:13px;font-weight:500;background:transparent;border-color:transparent;color:var(--mes-ink)}
+.planning-workspace .resource-timeline .machine-actions>div .button:hover,.planning-workspace .resource-timeline .machine-actions>div .button:focus-visible{background:#eef2f7}
+.planning-workspace .resource-timeline .machine-actions>div [data-stop-action="stop"]{color:#8d2f29}
+.planning-workspace .resource-timeline .machine-actions>div [data-stop-action="resume"]{color:var(--mes-blue);font-weight:600}
