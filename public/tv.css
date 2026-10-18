@@ -47,3 +47,4 @@ body.tv { margin:0; overflow:hidden; background:#0f1b2d; color:#f2f6fb; font-fam
 .tv-none { color:#b6c4d6; }
 .tv-message { margin:20vh auto; max-width:760px; padding:24px; text-align:center; font-size:28px; }
 .tv-message a { color:#8ec1ff; }
+.tv-next-customer { color:#b6c4d6; }

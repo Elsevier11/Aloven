@@ -283,3 +283,6 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .reparto-card .live-state small { color:inherit; }
 .reparto-next { grid-template-columns:minmax(0,1fr); }
 .reparto-next li { min-width:0; }
+.reparto-name { display:flex; flex-direction:column; }
+.reparto-name>span, .reparto-customer { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.reparto-customer { color:var(--mes-muted); font-size:11.5px; line-height:1.25; }
