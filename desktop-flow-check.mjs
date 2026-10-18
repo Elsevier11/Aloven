@@ -69,15 +69,15 @@ try{
     await edit.click();
     const name=page.getByLabel('Nome macchina');
     await name.fill(`${await name.inputValue()} prova`);
-    dialogAction='dismiss';
     await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
+    await page.locator('#modal .discard-confirm').waitFor();
+    assert.match(await page.locator('#modal .discard-confirm').textContent(),/modifiche non salvate/i);
+    await page.locator('#modal .discard-confirm').getByRole('button',{name:'Continua a modificare'}).click();
     assert.ok(await page.locator('#modal').evaluate(dialog=>dialog.open));
-    assert.equal(dialogs.length,before+1);
-    dialogAction='accept';
+    assert.equal(await page.locator('#modal .discard-confirm').count(),0);
     await page.keyboard.press('Escape');
+    await page.locator('#modal .discard-confirm').getByRole('button',{name:'Chiudi senza salvare'}).click();
     await page.locator('#modal').waitFor({state:'hidden'});
-    assert.equal(dialogs.length,before+2);
-    assert.match(dialogs.at(-1),/modifiche non salvate/i);
   });
 
   await test('errore di rete: invio singolo, chiusura bloccata e campi conservati',async()=>{
@@ -132,14 +132,13 @@ try{
     const to=page.getByLabel('Al',{exact:true});
     await to.fill('2030-01-02');
     const title=await page.locator('#modal h2').textContent();
-    dialogAction='dismiss';
-    const before=dialogs.length;
     await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
-    assert.equal(dialogs.length,before+1);
+    await page.locator('#modal .discard-confirm').waitFor();
+    await page.locator('#modal .discard-confirm').getByRole('button',{name:'Continua a modificare'}).click();
     assert.equal(await page.locator('#modal h2').textContent(),title);
     assert.ok(await page.locator('#modal').evaluate(dialog=>dialog.open));
-    dialogAction='accept';
     await page.locator('#modal').getByRole('button',{name:'Chiudi',exact:true}).click();
+    await page.locator('#modal .discard-confirm').getByRole('button',{name:'Chiudi senza salvare'}).click();
     await page.locator('#modal').waitFor({state:'hidden'});
   });
 

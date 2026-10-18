@@ -118,8 +118,9 @@ try{
   await page.getByLabel('Note',{exact:true}).waitFor();
   assert.equal(await page.getByLabel('Note',{exact:true}).inputValue(),'Nota da conservare dopo Annulla','Le note inserite sono andate perse');
   assert.equal(await page.getByLabel('Riferimento ordine').inputValue(),'ORD-CONSERVA-1','Il riferimento inserito è andato perso');
-  page.once('dialog',dialog=>{assert.match(dialog.message(),/modifiche non salvate/);dialog.accept();});// i dati ripristinati contano come non salvati
+  // i dati ripristinati contano come non salvati
   await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
+  await page.locator('#modal .discard-confirm').getByRole('button',{name:'Chiudi senza salvare'}).click();
   await page.locator('#modal').waitFor({state:'hidden'});
   await page.locator('#clear-task-filters').click();
 

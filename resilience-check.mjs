@@ -83,9 +83,8 @@ try{
     assert.ok(await page.locator('#modal').getByRole('button',{name:'Salva',exact:true}).isEnabled());
     assert.equal((await state()).revision,before.revision);
     await screenshot('offline-form-recoverable');
-    const discardConfirmation=new Promise((resolve,reject)=>page.once('dialog',async dialog=>{try{assert.match(dialog.message(),/modifiche non salvate/i);await dialog.accept();resolve();}catch(error){reject(error);}}));
     await page.locator('#modal').getByRole('button',{name:'Annulla',exact:true}).click();
-    await discardConfirmation;
+    await page.locator('#modal .discard-confirm').getByRole('button',{name:'Chiudi senza salvare'}).click();
     await page.locator('#modal').waitFor({state:'hidden'});
   });
 

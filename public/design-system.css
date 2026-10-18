@@ -278,6 +278,9 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 #modal .dialog-heading,#modal .dialog-header{cursor:move;user-select:none}
 #modal .dialog-heading button,#modal .dialog-header button{cursor:pointer}
 #modal.dragging{transition:none}
+/* Una maschera spostabile finisce anche su sfondi chiari: bordo e ombra la staccano, la barra tinta mostra dove afferrarla. */
+body:has(.shell) #modal{border:1px solid var(--mes-control-border);box-shadow:0 1px 3px #101b2d33,0 24px 64px #101b2d59}
+body:has(.shell) #modal .dialog-heading{background:#eef2f7;border-bottom:1px solid var(--mes-control-border);border-radius:9px 9px 0 0}
 @media(max-width:620px),(pointer:coarse){#modal .dialog-heading,#modal .dialog-header{cursor:auto}}
 .setup-suggestion{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:4px;font-size:12px;font-weight:400;color:var(--mes-muted)}
 .reparto-card .live-state small { color:inherit; }
@@ -286,3 +289,7 @@ button.live-cell:focus-visible { outline:2px solid var(--mes-blue); outline-offs
 .reparto-name { display:flex; flex-direction:column; }
 .reparto-name>span, .reparto-customer { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .reparto-customer { color:var(--mes-muted); font-size:11.5px; line-height:1.25; }
+/* Avviso interno «modifiche non salvate». */
+.discard-confirm{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 22px;background:#fff7e6;border-top:1px solid #f0d49a;color:var(--mes-ink);font-size:14px}
+.discard-confirm p{margin:0}
+.discard-confirm>div{display:flex;gap:8px;flex-wrap:wrap}

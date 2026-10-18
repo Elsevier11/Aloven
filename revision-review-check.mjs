@@ -68,7 +68,7 @@ try{
     // Annulla riporta alla scheda con i componenti e la consegna già inseriti, per verificarli o correggerli
     await modal.getByRole('heading',{name:'Nuova attività'}).waitFor();
     assert.equal(await modal.getByLabel('Componente 2').inputValue(),first);assert.equal(await modal.locator('input[name="quantity"]').inputValue(),'120');assert.equal(await modal.locator('input[name="dueDate"]').inputValue(),'2026-01-01');
-    page.once('dialog',dialog=>dialog.accept());await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.waitFor({state:'hidden'});
+    await modal.getByRole('button',{name:'Annulla',exact:true}).click();await modal.locator('.discard-confirm').getByRole('button',{name:'Chiudi senza salvare'}).click();await modal.waitFor({state:'hidden'});
   });
 
   await check('Festività italiane: annulla invariato, applica anno e conserva eccezione preesistente',async()=>{
