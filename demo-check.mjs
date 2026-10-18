@@ -98,11 +98,17 @@ try {
 
   // Tracciabilità: un lotto di componente condiviso da più lavorazioni
   const report = JSON.parse(readFileSync(path.join(dir, 'demo-seed-report.json'), 'utf8'));
-  const sample = report.demoExamples?.traceability?.componentLots?.[0];
+  const story = report.demoExamples?.traceability?.story;
+  assert.ok(story && story.customers >= 3, 'Manca la storia di tracciabilità con un lotto condiviso da più clienti');
+  const sample = {lot: story.componentLot, articleCode: story.articleCode, uses: story.uses};
   assert.ok(sample, 'Nessun lotto di componente condiviso trovato');
   const trace = await call('mario', `mes/trace?lot=${encodeURIComponent(sample.lot)}`);
   assert.equal(trace.status, 200, JSON.stringify(trace.data).slice(0, 200));
   assert.ok(JSON.stringify(trace.data).includes(sample.lot));
+  const forward = await call('mario', `mes/trace?lot=${encodeURIComponent(story.nonconformingLot)}`);
+  assert.equal(forward.status, 200);
+  assert.ok(JSON.stringify(forward.data).includes(story.componentLot), 'Il lotto non conforme deve rimandare al lotto di componente della storia');
+  assert.ok(state.executions.some(e => e.outputLot === story.nonconformingLot && e.qualityDisposition === 'pending'), 'Il lotto non conforme è tra le decisioni da prendere');
   ok(`tracciabilità: il lotto ${sample.lot} (${sample.articleCode}) risulta in ${sample.uses} lavorazioni`);
 
   // Scritture (sulla copia): assegnazione confermata, rilascio, avanzamento in reparto, fermo aperto

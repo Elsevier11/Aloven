@@ -57,8 +57,40 @@ const pad = (n, width = 2) => String(n).padStart(width, '0');
 const passwordHash = password => { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; };
 
 // ---- Anagrafiche di fantasia per la demo -------------------------------------------------------------------------
-const CUSTOMERS = ['Tessitura Moretti', 'Outdoor Italia', 'Nautica Adriatica', 'Casa Luce Srl', 'Auto Interni SpA', 'Arredo Design Srl',
-  'Calzaturificio Brenta', 'Divani & Co', 'Sport Tech Veneto', 'Medical Tex', 'Moda Lario', 'Tappezzeria Fontana'];
+// Settori dichiarati da Aloven (calzatura sportiva, ciclismo/outdoor, automotive, arredamento, boiler, medicale) con clienti di fantasia.
+const SECTOR_CUSTOMERS = {
+  calzatura: ['Calzaturificio Brenta', 'Calzaturificio Montello', 'Scarpe Piave Srl', 'Sport Shoes Veneto'],
+  sport: ['Outdoor Italia', 'Sport Tech Veneto', 'Ciclo Wear Treviso', 'Moda Lario', 'Caschi Piave Srl'],
+  automotive: ['Auto Interni SpA', 'Interni Veneta Auto'],
+  arredamento: ['Arredo Design Srl', 'Divani & Co', 'Casa Luce Srl', 'Tappezzeria Fontana', 'Tessitura Moretti'],
+  medicale: ['Medical Tex', 'Ortopedia Veneta'],
+  boiler: ['Termica Livenza Srl', 'Boiler Systems Veneto'],
+};
+// Tre processi (fiamma, HotMelt®, colla) su quattro linee; la calzatura è il settore principale.
+const PROFILES = {
+  'CNC-01': {typeId: 'fresatura', name: 'ACC-01 · Accoppiatrice HotMelt® (linea 1)', description: 'Accoppiatura con adesivo poliuretanico reattivo HotMelt®',
+    weights: {automotive: 45, sport: 30, arredamento: 10, boiler: 5, medicale: 10}},
+  'TOR-02': {typeId: 'tornitura', name: 'ACC-02 · Accoppiatrice a colla', description: 'Accoppiatura con resina adesiva (a colla)',
+    weights: {calzatura: 35, arredamento: 25, sport: 25, medicale: 10, boiler: 5}},
+  'LAS-03': {typeId: 'taglio', name: 'ACC-03 · Accoppiatrice a fiamma', description: 'Accoppiatura a fiamma di tessuti sintetici e schiume',
+    weights: {calzatura: 70, arredamento: 12, sport: 13, automotive: 5}},
+  'ACC-04': {typeId: 'fresatura', name: 'ACC-04 · Accoppiatrice HotMelt® (linea 2)', description: 'Accoppiatura con adesivo poliuretanico reattivo HotMelt®, seconda linea',
+    weights: {automotive: 35, calzatura: 25, sport: 20, medicale: 10, boiler: 10}},
+};
+const TYPE_NAMES = {fresatura: 'Accoppiatura HotMelt®', tornitura: 'Accoppiatura a colla', taglio: 'Accoppiatura a fiamma'};
+const PRODUCT_RENAMES = {'Laminato isolante tecnico': 'Copertura isolante per boiler', 'Composito isolante flessibile': 'Isolante per accumulo acqua sanitaria',
+  'Barriera termica tessile': 'Rivestimento isolante per pompe di calore'};
+const sectorOf = description => {
+  const d = String(description).toLowerCase();
+  if (/nautic|filtr/.test(d)) return null;                                   // fuori dai settori di Aloven
+  if (/boiler|isolante|pompe di calore|accumulo/.test(d)) return 'boiler';
+  if (/tomaia|calzatura/.test(d)) return 'calzatura';
+  if (/sanitar|medical|ortoped/.test(d)) return 'medicale';
+  if (/casco/.test(d)) return 'sport';
+  if (/sedile|pannello porta|cielo vettura|bagagliaio|auto|vettura|fonoassorb|acustic/.test(d)) return 'automotive';
+  if (/arredo|velluto|ciniglia|imbott|tenda|contract|ignifug|jacquard/.test(d)) return 'arredamento';
+  return 'sport';
+};
 const LOT_PREFIX = {'CNC-01': 'HM', 'TOR-02': 'FW', 'LAS-03': 'FL', 'ACC-04': 'PW'};
 const ACCOUNTS = [
   {role: 'admin', roleLabel: 'Amministratore', id: makeId(), name: 'Amministratore', username: 'admin', password: 'Admin-Demo-2026'},
@@ -99,19 +131,27 @@ const articles = new Map(db.prepare('SELECT * FROM articles').all().map(x => [x.
 const scraps = db.prepare('SELECT * FROM scrapReasons WHERE active=1').all();
 const stopReasons = db.prepare('SELECT * FROM machineStopReasons WHERE active=1').all();
 if (!machines.length || !scraps.length || !stopReasons.length) throw new Error('Servono macchine e causali attive.');
+if (machines.some(m => !PROFILES[m.id])) throw new Error('Linea senza profilo: aggiorna PROFILES.');
 
 // Modelli di lavorazione: una per combinazione macchina/componenti/prodotto già presente nel database di partenza.
-const templates = [];
+const templates = [], sectorByProduct = new Map();
 {
   const seen = new Set();
   for (const task of db.prepare('SELECT * FROM tasks ORDER BY rowid').all()) {
-    const key = [task.machineId, task.component1ArticleId, task.component2ArticleId, task.productArticleId].join('|');
+    const key = [task.component1ArticleId, task.component2ArticleId, task.productArticleId].join('|');
     if (seen.has(key) || ![task.component1ArticleId, task.component2ArticleId, task.productArticleId].every(id => articles.has(id))) continue;
+    if (PRODUCT_RENAMES[task.productDescription]) task.productDescription = PRODUCT_RENAMES[task.productDescription];
+    const sector = sectorOf(task.productDescription);
+    if (!sector) continue;
+    sectorByProduct.set(task.productArticleId, sector);
     seen.add(key); templates.push(task);
   }
 }
-if (machines.some(m => !templates.some(t => t.machineId === m.id))) throw new Error('Mancano lavorazioni modello per una macchina.');
-const poolOf = machineId => templates.filter(t => t.machineId === machineId);
+const templatesBySector = sector => templates.filter(t => sectorByProduct.get(t.productArticleId) === sector);
+const weightedPick = weights => { const entries = Object.entries(weights).filter(([sector]) => templatesBySector(sector).length); const total = entries.reduce((sum, [, w]) => sum + w, 0); let r = random() * total; for (const [sector, w] of entries) { r -= w; if (r < 0) return sector; } return entries.at(-1)[0]; };
+/** Una lavorazione modello adatta alla linea: il settore è scelto con i pesi della linea, il processo è quello della linea. */
+const pickModel = machine => { const profile = PROFILES[machine.id]; const sector = weightedPick(profile.weights); return {...pick(templatesBySector(sector)), machineId: machine.id, typeId: profile.typeId}; };
+const customerFor = model => pick(SECTOR_CUSTOMERS[sectorByProduct.get(model.productArticleId)] || SECTOR_CUSTOMERS.arredamento);
 
 // ---- Calendario: lunedì–venerdì 7:30–12:00 e 12:30–16:00, festività e chiusure aziendali --------------------------------
 let calendar = JSON.parse(meta('calendar'));
@@ -137,6 +177,10 @@ try {
   setMeta('releasedMaintenanceBlocks', '[]');
   setMeta('calendar', JSON.stringify(calendar));
   db.exec(`UPDATE machines SET anchor='${FROM}T07:30'`);
+  for (const [id, profile] of Object.entries(PROFILES)) db.prepare('UPDATE machines SET name=?, description=? WHERE id=?').run(profile.name, profile.description, id);
+  for (const [id, name] of Object.entries(TYPE_NAMES)) db.prepare('UPDATE types SET name=? WHERE id=?').run(name, id);
+  db.prepare("DELETE FROM types WHERE id='textile-polvere'").run();
+  for (const [from, to] of Object.entries(PRODUCT_RENAMES)) db.prepare("UPDATE articles SET description=? WHERE kind='product' AND description=?").run(to, from);
   for (const account of ACCOUNTS) insert('users', {id: account.id, name: account.name, username: account.username, password: passwordHash(account.password), role: account.role});
 
   // ---- Generazione --------------------------------------------------------------------------------------------------
@@ -148,11 +192,12 @@ try {
 
   function componentLot(code, day, forceNew = false) {
     let entry = lotPool.get(code);
-    if (!entry || entry.remaining <= 0 || forceNew) {
-      entry = {lot: `L${day.slice(2, 4)}${day.slice(5, 7)}-${code}-${pad(++lotCounter % 100)}`, remaining: integer(3, 7)};
+    const stale = entry && (Date.parse(`${day}T12:00Z`) - Date.parse(`${entry.last}T12:00Z`)) / 864e5 > 21;
+    if (!entry || entry.remaining <= 0 || forceNew || stale) {
+      entry = {lot: `L${day.slice(2, 4)}${day.slice(5, 7)}-${code}-${pad(++lotCounter % 100)}`, remaining: integer(3, 7), last: day};
       lotPool.set(code, entry);
     }
-    entry.remaining--; return entry.lot;
+    entry.remaining--; entry.last = day; return entry.lot;
   }
   const orderLabel = () => { orderCounter++; orderShare = random() < 0.3 ? 1 : 0; return `OC-26${pad(orderCounter - 3100, 4)}`; };
   let sharedOrder = null;
@@ -161,7 +206,7 @@ try {
   /** Attività completata con consuntivo, eventi, lotti ed eventuale fermo. Restituisce il nuovo cursore, o null se non entra. */
   function createCompleted(machine, machineIndex, day, cursor, until, forced = {}) {
     const cal = calendarFor(machine.id);
-    const model = forced.model || pick(poolOf(machine.id));
+    const model = forced.model || pickModel(machine);
     const seq = ++counts.tasks;
     const setup = forced.setup ?? integer(12, 35), run = forced.run ?? (seq % 47 === 0 ? integer(280, 370) : integer(52, 116));
     const planned = scheduleTask({setupMinutes: setup, runMinutes: run}, cursor, cal);
@@ -187,7 +232,7 @@ try {
     const task = {...model, id, title, setupMinutes: setup, runMinutes: run, status: 'completed', position: positions.get(machine.id),
       start: planned.start, end: planned.end, segments: JSON.stringify(planned.segments), notes: '', quantity, calculationMode: 'manual',
       effectiveSetupMinutes: setup, outputLot, orderReference: orderFor(), erpReference: random() < 0.5 ? `ERP-${integer(41000, 48999)}` : null,
-      customer: pick(CUSTOMERS), dueDate, compatibleMachineIds: JSON.stringify([machine.id]), preferredMachineId: null,
+      customer: customerFor(model), dueDate, compatibleMachineIds: JSON.stringify([machine.id]), preferredMachineId: null,
       releasedPayload: null, releasedVersion: null, fixedStart: null, setupOverrideMinutes: null};
     positions.set(machine.id, positions.get(machine.id) + 1);
     insert('tasks', task); counts.completed++;
@@ -302,8 +347,28 @@ try {
     }
   }
 
+  // Storia per la demo: un lotto di componente usato da più clienti nelle ultime tre settimane; la sua ultima lavorazione è non conforme e da decidere
+  let story = null;
+  {
+    const windowStart = timestamp(`${addDay(DEMO_DAY, -21)}T00:00`), recentStart = timestamp(`${addDay(DEMO_DAY, -5)}T00:00`);
+    const hero = db.prepare(`SELECT l.lot, l.articleCode, count(DISTINCT l.taskId) uses, count(DISTINCT t.customer) customers, round(sum(l.quantity)) quantity,
+        min(substr(e.runEndedAt,1,10)) fromDay, max(substr(e.runEndedAt,1,10)) toDay, max(e.runEndedAt) lastEnd
+      FROM executionLots l JOIN execution e ON e.taskId = l.taskId JOIN tasks t ON t.id = l.taskId
+      WHERE e.runEndedAt >= ? GROUP BY l.lot, l.articleCode HAVING uses >= 4 AND lastEnd >= ? ORDER BY customers DESC, uses DESC, l.lot LIMIT 1`).get(windowStart, recentStart);
+    if (hero) {
+      const last = db.prepare(`SELECT e.taskId, e.outputLot, e.taskTitle FROM executionLots l JOIN execution e ON e.taskId = l.taskId WHERE l.lot = ? AND e.runEndedAt >= ? ORDER BY e.runEndedAt DESC LIMIT 1`).get(hero.lot, recentStart);
+      db.prepare("DELETE FROM qualityDecisions WHERE taskId = ?").run(last.taskId);
+      db.prepare("UPDATE execution SET qualityStatus = 'nonconforming', qualityDisposition = 'pending', qualityNotes = ?, qualityChecks = ? WHERE taskId = ?")
+        .run('Adesione insufficiente sul bordo: verificare il lotto di materiale.', JSON.stringify({appearance: 'pass', bonding: 'fail'}), last.taskId);
+      const customers = db.prepare('SELECT DISTINCT t.customer FROM executionLots l JOIN tasks t ON t.id = l.taskId JOIN execution e ON e.taskId = l.taskId WHERE l.lot = ? ORDER BY t.customer').all(hero.lot).map(x => x.customer);
+      story = {componentLot: hero.lot, articleCode: hero.articleCode, article: articles.get(db.prepare('SELECT id FROM articles WHERE code = ?').get(hero.articleCode)?.id)?.description ?? null,
+        uses: hero.uses, customers: hero.customers, customerNames: customers, quantity: hero.quantity, fromDay: hero.fromDay, toDay: hero.toDay,
+        nonconformingLot: last.outputLot, nonconformingTitle: last.taskTitle};
+    }
+  }
+
   // 2. Attività del 22/10: quattro in corso (una per macchina), un fermo aperto, pianificate e da assegnare
-  const modelFor = (machineId, indexOffset = 0) => poolOf(machineId)[(indexOffset + integer(0, 6)) % poolOf(machineId).length];
+  const modelFor = machineId => pickModel(machines.find(m => m.id === machineId));
   let futureLot = 500;
   function newTask(machine, model, extra = {}) {
     const run = extra.run ?? integer(70, 200), setup = extra.setup ?? integer(12, 35);
@@ -312,7 +377,7 @@ try {
       status: 'unplanned', position: null, start: null, end: null, segments: '[]', notes: extra.notes ?? '',
       quantity: extra.quantity === undefined ? Math.round(run * machine.speed * (0.9 + random() * 0.2)) : extra.quantity, calculationMode: 'manual',
       effectiveSetupMinutes: null, outputLot: lot, orderReference: orderLabel(), erpReference: random() < 0.5 ? `ERP-${integer(41000, 48999)}` : null,
-      customer: extra.customer ?? pick(CUSTOMERS), dueDate: extra.dueDate === undefined ? addDay(DEMO_DAY, integer(4, 24)) : extra.dueDate,
+      customer: extra.customer ?? customerFor(model), dueDate: extra.dueDate === undefined ? addDay(DEMO_DAY, integer(4, 24)) : extra.dueDate,
       compatibleMachineIds: JSON.stringify(extra.compatible || [machine.id]), preferredMachineId: extra.preferred ?? null,
       releasedPayload: null, releasedVersion: null, fixedStart: null, setupOverrideMinutes: null, ...(extra.override || {})};
   }
@@ -451,7 +516,7 @@ try {
   const sharedLot = db.prepare(`SELECT l.lot, l.articleCode, count(DISTINCT l.taskId) uses FROM executionLots l JOIN execution e ON e.taskId = l.taskId
     WHERE e.runEndedAt >= ? GROUP BY l.lot, l.articleCode HAVING uses >= 4 ORDER BY uses DESC, l.lot LIMIT 3`).all(recentFrom);
   const finishedLot = db.prepare("SELECT outputLot, taskTitle FROM execution WHERE phase='completed' AND outputLot IS NOT NULL ORDER BY runEndedAt DESC LIMIT 3").all();
-  summary.demoExamples = {traceability: {componentLots: sharedLot, finishedLots: finishedLot}};
+  summary.demoExamples = {traceability: {story, componentLots: sharedLot, finishedLots: finishedLot}};
   writeFileSync(path.join(OUT, 'demo-accounts.json'), JSON.stringify(ACCOUNTS.map(({roleLabel, name, username, password}) => ({role: roleLabel, name, username, password})), null, 2));
   writeFileSync(path.join(OUT, 'demo-seed-report.json'), JSON.stringify({simulated: true, ...summary}, null, 2));
   console.log(JSON.stringify(summary, null, 2));

@@ -58,13 +58,13 @@
   <div class="box">
     <h2>Numeri da citare</h2>
     <div class="kpi">
-      <span>Lavorazioni nello storico</span><b>2.633 (3/11/2025 → 21/10)</b>
-      <span>Ultimi 30 giorni</span><b>259 lavorazioni</b>
-      <span>Produzione buona</span><b>217.944 m</b>
+      <span>Lavorazioni nello storico</span><b>2.614 (3/11/2025 → 21/10)</b>
+      <span>Ultimi 30 giorni</span><b>254 lavorazioni</b>
+      <span>Produzione buona</span><b>211.049 m</b>
       <span>Scarto</span><b>1,9 %</b>
-      <span>Puntualità</span><b>90 % (media ritardo 2,2 gg)</b>
-      <span>Fermi macchina</span><b>11,7 h (40 fermi)</b>
-      <span>Ore lavorate / previste</span><b>397,7 / 383,8 h</b>
+      <span>Puntualità</span><b>89 % (media ritardo 2,2 gg)</b>
+      <span>Fermi macchina</span><b>8,3 h (27 fermi)</b>
+      <span>Ore lavorate / previste</span><b>392,0 / 376,2 h</b>
     </div>
   </div>
 </div>
@@ -75,6 +75,7 @@
     <h2><span class="n">1</span>Prima di iniziare</h2>
     <ul>
       <li>Avvia <code>avvia-aloven.bat</code>, ricarica la pagina (Ctrl+F5) ed entra come <b>mario</b> (pulsante «Usa»).</li>
+      <li>Le quattro linee, come i tre processi di Aloven: <b>ACC-01 e ACC-04 HotMelt®, ACC-02 a colla, ACC-03 a fiamma</b>. Nomi e mix sono di esempio, da adattare con loro.</li>
       <li>Gli stati «in corso» valgono alle 9:30: se parti molto più tardi, «Adesso in reparto» cambia.</li>
     </ul>
   </section>
@@ -87,11 +88,11 @@
       <li><b>Assegnare:</b> trascina una scheda da «Da pianificare» (30) sul pannello <b>Sequenza</b> (pulsante sotto il nome della macchina). Nessuna conferma: compare «Fatto…» con <b>Annulla</b>.</li>
       <li><b>Casi pronti (cerca il codice TP):</b>
         <ul>
-          <li><code>TP-26-0549</code> Tessuto arredo: senza quantità né consegna → avviso.</li>
-          <li><code>TP-26-0556</code> Pannello borsa strutturato: due componenti uguali → avviso.</li>
-          <li><code>TP-26-0561</code> Composito tecnico impermeabile: consegna 21/10 già passata.</li>
+          <li><code>TP-26-0549</code> Copertura isolante per boiler: senza quantità né consegna → avviso.</li>
+          <li><code>TP-26-0556</code> Pannello fonoassorbente contract: due componenti uguali → avviso.</li>
+          <li><code>TP-26-0561</code> Isolante per accumulo acqua sanitaria: consegna 21/10 già passata.</li>
           <li><code>TP-26-0547</code> (ACC-04, consegna 24/10) e <code>TP-26-0552</code> (ACC-01, 25/10): consegne ravvicinate.</li>
-          <li><code>TP-26-0515</code> Supporto tomaia (ACC-02, già pianificata) ha l'inizio fissato lunedì 26/10 alle 7:30: spostarla nella sequenza chiede conferma.</li>
+          <li><code>TP-26-0515</code> Laminato tomaia ammortizzato (ACC-02, già pianificata) ha l'inizio fissato lunedì 26/10 alle 7:30: spostarla nella sequenza chiede conferma.</li>
         </ul>
       </li>
       <li>Su ACC-04 usa <b>Riallinea…</b> (da adesso o da data e ora). Passa il mouse su una barra per il dettaglio.</li>
@@ -101,7 +102,7 @@
   <section>
     <h2><span class="n">3</span>In reparto e monitor <small>2 minuti</small></h2>
     <ul>
-      <li><b>In reparto:</b> ACC-01 produzione (62 %), ACC-02 attrezzaggio, ACC-03 in pausa, ACC-04 ferma e in ritardo di 5 minuti.</li>
+      <li><b>In reparto:</b> ACC-01 in produzione, ACC-02 in attrezzaggio, ACC-03 in pausa, ACC-04 ferma e in ritardo di 5 minuti.</li>
       <li><b>Apri il monitor a schermo intero</b> (link in alto): per il reparto, con le prossime attività.</li>
     </ul>
   </section>
@@ -123,7 +124,7 @@
   <section>
     <h2><span class="n">5</span>Qualità <small>Attività → Verifiche qualità · 1 minuto</small></h2>
     <ul>
-      <li><b>5 da decidere</b> (3 non conformi, 2 da verificare). Apri <i>Laminato guscio tecnico · HM-261021-2</i> e mostra le decisioni possibili: rilasciare, scartare, rilavorare.</li>
+      <li><b>5 da decidere</b> (2 non conformi, 3 da verificare). Apri <i>Laminato tomaia ammortizzato · FL-261021-2</i> e mostra le decisioni possibili: rilasciare, scartare, rilavorare.</li>
       <li>Collega al punto 6: lo stesso lotto è quello cercato in tracciabilità.</li>
     </ul>
   </section>
@@ -132,12 +133,12 @@
     <h2><span class="n">6</span>Tracciabilità <small>Attività → Tracciabilità · 2 minuti</small></h2>
     <p style="margin:0 0 2px"><b>Storia:</b> un lotto è non conforme: a quali altri clienti è arrivata la stessa materia prima?</p>
     <ul>
-      <li>Cerca il lotto prodotto <code>HM-261021-2</code> (Laminato guscio tecnico, Moda Lario, <b>non conforme</b>).</li>
-      <li>Tra i componenti compare la membrana TPU. Cerca ora il lotto di componente:<br>
-        <span class="lot">L2609-MEM-TPU-30-97</span></li>
-      <li>Risultato: <b>7 lavorazioni, 7 clienti, 4.349 m</b>, dal 25/9 al 21/10, tutte su ACC-01 (<i>Membrana TPU traspirante 30 µm</i>, codice <code>MEM-TPU-30</code>).</li>
+      <li>Cerca il lotto prodotto <code>FL-261021-2</code> (Laminato tomaia ammortizzato, <b>non conforme</b>).</li>
+      <li>Tra i componenti compare la maglia spacer per calzatura. Cerca ora il lotto di componente:<br>
+        <span class="lot">L2610-TES-007-06</span></li>
+      <li>Risultato: <b>5 lavorazioni, 3 calzaturifici, 3.851 m</b>, dal 2/10 al 21/10 (<i>Maglia spacer calzatura</i>, codice <code>TES-007</code>).</li>
     </ul>
-    <p style="margin:3px 0 0;font-size:9.2pt;color:var(--muted)">Alternativa: lotto prodotto <code>FW-261022-1</code>, finito stamattina su ACC-02 (Telone tecnico laminato).</p>
+    <p style="margin:3px 0 0;font-size:9.2pt;color:var(--muted)">Alternativa: lotto prodotto <code>FW-261022-1</code>, finito stamattina su ACC-02 (Palmo guanto rinforzato).</p>
   </section>
 
   <section>
@@ -145,7 +146,7 @@
     <ul>
       <li>Periodo predefinito: ultimi 30 giorni. Per l'anno intero imposta «Dal» al <b>3/11/2025</b>.</li>
       <li>Schede: Panoramica, Produzione, Qualità e scarti, Macchine. <b>Esporta Excel</b> in alto a destra.</li>
-      <li>Da dire: puntualità 90 % (26 consegne in ritardo su 259), fermi 11,7 h, lavorazione +3,6 % sul previsto.</li>
+      <li>Da dire: puntualità 89 % (27 consegne in ritardo su 254), fermi 8,3 h, lavorazione +4,2 % sul previsto.</li>
     </ul>
   </section>
 
