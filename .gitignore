@@ -2,3 +2,4 @@ data/
 *.log
 test-data/
 .artifacts/
+.demo-build/

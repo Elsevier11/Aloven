@@ -28,3 +28,14 @@
 .timeline-draft-note{font-size:12px;color:#536a82;background:#f4f8fd;border:1px solid #d8e5f2;border-radius:7px;padding:10px 13px;margin-bottom:12px}
 
 #toast.has-action{pointer-events:auto}#toast .toast-action{margin-left:10px;padding:2px 8px;border:1px solid #ffffff80;border-radius:5px;background:transparent;color:white;font:inherit;font-weight:700;cursor:pointer}#toast .toast-action:hover{background:#ffffff26}
+
+/* Account dimostrativi nella pagina di accesso */
+.demo-accounts{margin-top:18px;padding:12px 14px;border:1px dashed #b7c7d8;border-radius:8px;background:#f8fafc;font-size:13px}
+.demo-accounts h3{margin:0 0 8px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.demo-accounts table{width:100%;border-collapse:collapse}
+.demo-accounts th{font-size:12px;text-align:left;color:var(--muted);padding:2px 6px 4px 0}
+.demo-accounts td{padding:3px 6px 3px 0;vertical-align:middle}
+.demo-accounts code{font-size:12px;background:#eef3f8;padding:1px 5px;border-radius:4px}
+.demo-accounts .button{min-height:28px;padding:2px 10px;font-size:12px}
+
+.auth-form:has(#demo-accounts){flex-direction:column}.demo-accounts{width:min(420px,100%)}

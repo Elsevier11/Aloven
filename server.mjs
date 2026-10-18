@@ -417,6 +417,8 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='POST') {if(req.headers['x-aloven-request']!=='1')fail('Richiesta non autorizzata.',403);if(req.headers.origin&&req.headers.origin!==`${process.env.COOKIE_SECURE==='1'?'https':'http'}://${req.headers.host}`)fail('Origine non autorizzata.',403);}
     const user=session(req);const payload=req.method==='POST'?await body(req):{};
+    // Account dimostrativi mostrati nella pagina di accesso: solo se esiste data/demo-accounts.json (creato da seed-demo.mjs); cancellando il file spariscono.
+    if(url.pathname==='/api/demo-accounts'&&req.method==='GET') {let accounts=[];try{const parsed=JSON.parse(readFileSync(path.join(dataDir,'demo-accounts.json'),'utf8'));if(Array.isArray(parsed))accounts=parsed.map(item=>({role:String(item.role||''),name:String(item.name||''),username:String(item.username||''),password:String(item.password||'')}));}catch{}send(res,200,{accounts});return;}
     if(url.pathname==='/api/session'&&req.method==='GET') {send(res,200,{user,needsSetup:!db.prepare('SELECT 1 FROM users LIMIT 1').get()});return;}
     if(url.pathname==='/api/setup'&&req.method==='POST') {
       if(db.prepare('SELECT 1 FROM users LIMIT 1').get())fail('Configurazione già completata.',409);
