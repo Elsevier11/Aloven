@@ -54,7 +54,7 @@ export function repartoView(c) {
   const late = models.filter(m => m.cell.delay > 0).length;
   const summary = `${running} in corso${stopped ? ` · ${stopped} ${stopped === 1 ? 'ferma' : 'ferme'}` : ''}${late ? ` · ${late} in ritardo` : ''}`;
   const cards = models.map(({cell: m, next, more}) => {
-    const machine = c.machine(m.machineId), color = c.machineColor(c.state, m.machineId);
+    const machine = c.machine(m.machineId);
     const name = machine?.name || m.machineId;
     const tip = [m.title, ...m.lines, m.stop, m.delay > 0 ? `In ritardo di ${c.mins(m.delay)}` : ''].filter(Boolean).join(' · ');
     const current = m.taskId
@@ -63,10 +63,10 @@ export function repartoView(c) {
         + `<ul class="reparto-lines">${detailLines(m, c).map(l => `<li${l.alert ? ' class="reparto-alert"' : ''}>${c.esc(l.text)}</li>`).join('')}</ul>`
       : `<p class="reparto-none">Nessuna attività in corso</p>${m.stop ? `<p class="reparto-alert">${c.esc(m.stop)}</p>` : ''}`;
     const upcoming = next.length
-      ? `<ol class="reparto-next">${next.map(n => `<li><button type="button" data-reparto-task="${c.esc(n.id)}"><span class="reparto-when">${c.esc(n.start || '—')}</span><span class="reparto-name">${c.esc(n.title)}</span>${n.badge ? `<span class="reparto-badge" data-tone="${n.tone}">${c.esc(n.badge)}</span>` : ''}</button></li>`).join('')}</ol>${more ? `<p class="reparto-more">e altre ${more} in sequenza</p>` : ''}`
+      ? `<ol class="reparto-next">${next.map(n => `<li><button type="button" data-reparto-task="${c.esc(n.id)}" title="${c.esc(n.title)}"><span class="reparto-when">${c.esc(n.start || '—')}</span><span class="reparto-name">${c.esc(n.title)}</span>${n.badge ? `<span class="reparto-badge" data-tone="${n.tone}">${c.esc(n.badge)}</span>` : ''}</button></li>`).join('')}</ol>${more ? `<p class="reparto-more">e altre ${more} in sequenza</p>` : ''}`
       : '<p class="reparto-none">Nessuna attività in programma</p>';
     return `<article class="reparto-card" data-machine="${c.esc(m.machineId)}" data-tone="${m.tone}" data-alert="${m.alert}" aria-label="${c.esc(`${name}: ${m.label}`)}">`
-      + `<header><i class="live-dot" style="background:${c.esc(color)}"></i><h3>${c.esc(name.split(' · ')[0])}</h3><span class="live-state">${c.esc(m.label)}${m.since ? ` <small>da ${c.esc(m.since)}</small>` : ''}</span></header>`
+      + `<header><h3>${c.esc(name.split(' · ')[0])}</h3><span class="live-state">${c.esc(m.label)}${m.since ? ` <small>da ${c.esc(m.since)}</small>` : ''}</span></header>`
       + `<section aria-label="In corso"><h4>In corso</h4>${current}</section>`
       + `<section aria-label="Prossime attività"><h4>Prossime</h4>${upcoming}</section></article>`;
   }).join('');
