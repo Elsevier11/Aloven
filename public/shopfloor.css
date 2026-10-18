@@ -37,3 +37,12 @@ body:has(.shop-shell) #modal label{font-size:13px;line-height:1.45}body:has(.sho
 .shop-task{display:flex;flex-direction:column}
 .shop-task>.eyebrow{order:1}.shop-task>h2{order:2}.shop-task>.shop-actions{order:3;margin:8px 0 18px}.shop-task>.material-details{order:4}.shop-task>.shop-target{order:5}.shop-task>.shop-notes{order:6}.shop-task>.shop-timers{order:7}.shop-task>.notice{order:8}.shop-task>.shop-performance{order:9}
 @media(min-width:751px){.shop-task>.material-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:12px 0}.shop-task>.material-details>h3{grid-column:1/-1}.shop-task>.material-details>div{min-width:0;border-top:1px solid var(--mes-border,#e8ecf2)}.shop-task>.material-details>div+div{border-left:1px solid var(--mes-border,#e8ecf2)}.shop-task>.material-details strong,.shop-task>.material-details p{overflow-wrap:anywhere}}
+
+/* Schermi molto larghi (monitor 4K, postazioni a distanza): senza scala il contenuto resta una colonna centrale con testi minuscoli. */
+@media(min-width:2200px){.shop-header,.shop-workspace{zoom:1.3}}
+@media(min-width:2800px){.shop-header,.shop-workspace{zoom:1.6}}
+@media(min-width:3400px){.shop-header,.shop-workspace{zoom:1.9}}
+@media(min-width:3800px){.shop-header,.shop-workspace{zoom:2.2}}
+/* Testi di supporto mai sotto i 12 px. */
+.shop-shell .eyebrow,.shop-header .brand span{font-size:12px}
+.shop-live,.next-phases span,.next-product,.shop-toolbar label{font-size:12px}
