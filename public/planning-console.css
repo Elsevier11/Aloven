@@ -434,3 +434,16 @@ body:has(.shell) #modal:has(.sequence-dialog){width:min(1180px,calc(100vw - 32px
 .planning-workspace .resource-timeline .machine-actions>div .button:hover,.planning-workspace .resource-timeline .machine-actions>div .button:focus-visible{background:#eef2f7}
 .planning-workspace .resource-timeline .machine-actions>div [data-stop-action="stop"]{color:#8d2f29}
 .planning-workspace .resource-timeline .machine-actions>div [data-stop-action="resume"]{color:var(--mes-blue);font-weight:600}
+
+/* Piano compatto: la riga macchina è alta quanto serve (nome, poi codice · fuori periodo · strumenti su una sola riga) e l'intestazione lascia spazio alle macchine. */
+.planning-workspace .resource-timeline .gantt-row>.temporal-cell{height:auto;min-height:76px}
+.planning-workspace .resource-timeline .temporal-machine{min-height:76px;padding:6px 10px}
+.planning-workspace .resource-timeline .time-block{top:14px;height:48px}
+.planning-workspace .resource-timeline .machine-foot{margin:2px 0 0 16px;gap:2px 8px;flex-wrap:wrap}
+.planning-workspace .resource-timeline .machine-foot .machine-code{margin:0}
+.planning-workspace .resource-timeline .machine-foot small{margin:0}
+.planning-workspace .resource-timeline .machine-foot .machine-tools{position:static;margin-left:auto}
+.planning-workspace .resource-timeline .direct-sequence{margin-top:0}
+.planning-workspace .gantt-dates>.day-heading{min-height:0;padding:3px 0 4px}
+.live-strip[data-collapsed=true]>header{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 10px}
+.live-strip[data-collapsed=true]>header h2{grid-column:auto}
