@@ -7,52 +7,54 @@
 <style>
   :root{--ink:#17202e;--muted:#5a6a7c;--line:#d5deea;--blue:#1d4ed8;--soft:#eef3fb;--amber:#fff6e5;--amber-line:#e8c98a;--green:#e9f6ef}
   *{box-sizing:border-box}
-  body{margin:0;padding:10mm 12mm;font:8.9pt/1.28 "Segoe UI",Arial,sans-serif;color:var(--ink);background:#fff}
-  header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:9px}
+  body{margin:0;padding:10mm 12mm;font:9.6pt/1.35 "Segoe UI",Arial,sans-serif;color:var(--ink);background:#fff}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:10px}
   h1{margin:0;font-size:18pt;letter-spacing:-.3px}
   header p{margin:2px 0 0;color:var(--muted);font-size:9.5pt}
-  header .clock{font-size:11pt;font-weight:700;text-align:right;white-space:nowrap}
-  h2{margin:0 0 3px;font-size:10.6pt;display:flex;gap:6px;align-items:baseline}
-  h2 small{font-weight:600;color:var(--muted);font-size:8.8pt}
-  h2 .n{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--ink);color:#fff;font-size:8.5pt}
-  section{break-inside:avoid;margin:0 0 5px}
-  ul{margin:0;padding-left:15px}li{margin:0 0 1.5px}
-  code{font:9pt Consolas,monospace;background:#eef1f5;padding:0 3px;border-radius:3px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
-  .top{display:grid;grid-template-columns:1.3fr 1fr;gap:12px;margin-bottom:7px}
+  h2{margin:0 0 4px;font-size:11.2pt;display:flex;gap:7px;align-items:baseline}
+  h2 small{font-weight:600;color:var(--muted);font-size:9pt}
+  h2 .n{display:inline-grid;place-items:center;flex:none;width:19px;height:19px;border-radius:50%;background:var(--ink);color:#fff;font-size:9pt}
+  section{break-inside:avoid;margin:0 0 9px}
+  ul{margin:0;padding-left:16px}li{margin:0 0 2px}
+  code{font:9pt Consolas,monospace;background:#eef1f5;padding:0 3px;border-radius:3px;white-space:nowrap}
+  .menu{display:inline-block;background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600;white-space:nowrap}
+  .path{margin:0 0 4px;color:var(--muted);font-size:9.2pt}
+  .top{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:10px}
   .box{border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:#fff}
   .box h2{font-size:9.4pt;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-  table{width:100%;border-collapse:collapse;font-size:9pt}td code{white-space:nowrap}
+  table{width:100%;border-collapse:collapse;font-size:9pt}
   th{text-align:left;color:var(--muted);font-weight:600;padding:1px 4px 2px 0;font-size:8.6pt}
   td{padding:1.5px 4px 1.5px 0;border-top:1px solid var(--line)}
   .kpi{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:9pt}
   .kpi b{font-variant-numeric:tabular-nums}
-  .trace{background:var(--amber);border:1.5px solid var(--amber-line);border-radius:7px;padding:7px 10px}
-  .trace .lot{display:inline-block;font:700 12pt Consolas,monospace;background:#fff;border:1px solid var(--amber-line);border-radius:5px;padding:1px 7px;margin:2px 0}
-  .note{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:9.4pt;margin:0 0 8px}
-  .steps{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 9px;font-size:9pt}
-  .steps span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
-  footer{margin-top:6px;color:var(--muted);font-size:8.6pt;border-top:1px solid var(--line);padding-top:4px}
+  .say{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 8px;margin:4px 0 0}
+  .key{background:var(--amber);border:1.5px solid var(--amber-line);border-radius:7px;padding:7px 10px}
+  .key h2{margin-bottom:3px}
+  .ok{background:var(--green);border:1px solid #bfe0cd;border-radius:6px;padding:4px 8px;margin:4px 0 0}
+  .flow{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 10px;font-size:9pt}
+  .flow span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+  footer{margin-top:6px;color:var(--muted);font-size:8.8pt;border-top:1px solid var(--line);padding-top:4px}
   @media print{body{padding:0}@page{size:A4;margin:9mm 10mm}}
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>Guida demo Aloven</h1>
-    <p>Giovedì 22 ottobre 2026 · dati simulati fermi alle <b>9:30</b> · 15 minuti in tutto: 1 · 4 · 2 · 2 · 1 · 2 · 2 · 1</p>
-  </div>
-  <div class="clock">Accesso: pulsante «Usa»<br>nella pagina di accesso</div>
+  <div><h1>Guida demo Aloven</h1><p>Giovedì 22 ottobre 2026 · dati simulati fermi alle 9:30 · uso interno (contiene le password demo)</p></div>
+  <div class="clock">Filo del racconto</div>
 </header>
+
+<div class="flow">
+  <span>1 Il lavoro da pianificare</span><span>2 Prepara periodo</span><span>3 Anteprima e avvisi</span><span>4 Salva nella bozza</span><span>5 Rilascia</span><span>6 Il reparto lo vede</span><span>7 L'operatore lo esegue</span><span>8 Qualità e tracciabilità</span><span>9 Statistiche e calendario</span>
+</div>
 
 <div class="top">
   <div class="box">
-    <h2>Account</h2>
+    <h2>Account (pulsante «Usa» nella pagina di accesso)</h2>
     <table>
       <tr><th>Ruolo</th><th>Utente</th><th>Password</th></tr>
-      <tr><td>Pianificatore <small style="color:var(--muted)">· piano, qualità, statistiche</small></td><td><code>mario</code></td><td><code>Pianifica-Demo-2026</code></td></tr>
-      <tr><td>Amministratore <small style="color:var(--muted)">· utenti, registro</small></td><td><code>admin</code></td><td><code>Admin-Demo-2026</code></td></tr>
-      <tr><td>Operatore <small style="color:var(--muted)">· console di reparto</small></td><td><code>operatore1/2/3</code></td><td><code>Operatore-Demo-2026</code></td></tr>
+      <tr><td>Pianificatore · piano, qualità, statistiche</td><td><code>mario</code></td><td><code>Pianifica-Demo-2026</code></td></tr>
+      <tr><td>Amministratore · utenti, registro</td><td><code>admin</code></td><td><code>Admin-Demo-2026</code></td></tr>
+      <tr><td>Operatore · console di reparto</td><td><code>operatore1/2/3</code></td><td><code>Operatore-Demo-2026</code></td></tr>
     </table>
   </div>
   <div class="box">
@@ -62,108 +64,117 @@
       <span>Ultimi 30 giorni</span><b>254 lavorazioni</b>
       <span>Produzione buona</span><b>211.049 m</b>
       <span>Scarto</span><b>1,9 %</b>
-      <span>Puntualità</span><b>89 % (media ritardo 2,2 gg)</b>
+      <span>Puntualità</span><b>89 % (ritardo medio 2,2 gg)</b>
       <span>Fermi macchina</span><b>8,3 h (27 fermi)</b>
-      <span>Ore lavorate / previste</span><b>392,0 / 376,2 h</b>
     </div>
   </div>
 </div>
 
-<div class="grid">
-<div>
-  <section>
-    <h2><span class="n">1</span>Prima di iniziare</h2>
-    <ul>
-      <li>Avvia <code>avvia-aloven.bat</code>, ricarica la pagina (Ctrl+F5) ed entra come <b>mario</b> (pulsante «Usa»).</li>
-      <li>Le quattro linee, come i tre processi di Aloven: <b>ACC-01 e ACC-04 HotMelt®, ACC-02 a colla, ACC-03 a fiamma</b>. Nomi e mix sono di esempio, da adattare con loro.</li>
-      <li>Gli stati «in corso» valgono alle 9:30: se parti molto più tardi, «Adesso in reparto» cambia.</li>
-    </ul>
-  </section>
+<section>
+  <h2><span class="n">0</span>Prima di iniziare</h2>
+  <ul>
+    <li>Avvia <code>avvia-aloven.bat</code>, ricarica la pagina (Ctrl+F5) ed entra come <code>mario</code> con «Usa».</li>
+    <li>Le quattro linee, come i processi di Aloven: ACC-01 e ACC-04 HotMelt®, ACC-02 a colla, ACC-03 a fiamma. Nomi e mix sono di esempio, da adattare con loro.</li>
+    <li>Gli stati «in corso» valgono alle 9:30: se parti molto più tardi, «Adesso in reparto» cambia.</li>
+    <li>La demo <b>scrive dati</b> (bozza e rilascio). Se la ripeti, riparti dallo stato iniziale (vedi fondo pagina).</li>
+  </ul>
+</section>
 
-  <section>
-    <h2><span class="n">2</span>Piano <small>Pianificazione · 4 minuti</small></h2>
-    <ul>
-      <li><b>Giorno:</b> «Adesso in reparto» dice 4 in corso · 1 ferma · 1 in ritardo. <b>ACC-04 è ferma</b> (guasto dalle 8:42): compare «Piano da verificare».</li>
-      <li><b>Settimana:</b> piano 22–28/10 già rilasciato (21/10 16:20); manutenzione ACC-03 martedì 27/10, 12:30–14:30.</li>
-      <li><b>Assegnare:</b> trascina una scheda da «Da pianificare» (30) sul pannello <b>Sequenza</b> (pulsante sotto il nome della macchina). Nessuna conferma: compare «Fatto…» con <b>Annulla</b>.</li>
-      <li><b>Casi pronti (cerca il codice TP):</b>
-        <ul>
-          <li><code>TP-26-0549</code> Copertura isolante per boiler: senza quantità né consegna → avviso.</li>
-          <li><code>TP-26-0556</code> Pannello fonoassorbente contract: due componenti uguali → avviso.</li>
-          <li><code>TP-26-0561</code> Isolante per accumulo acqua sanitaria: consegna 21/10 già passata.</li>
-          <li><code>TP-26-0547</code> (ACC-04, consegna 24/10) e <code>TP-26-0552</code> (ACC-01, 25/10): consegne ravvicinate.</li>
-          <li><code>TP-26-0515</code> Laminato tomaia ammortizzato (ACC-02, già pianificata) ha l'inizio fissato lunedì 26/10 alle 7:30: spostarla nella sequenza chiede conferma.</li>
-        </ul>
-      </li>
-      <li>Su ACC-04 usa <b>Riallinea…</b> (da adesso o da data e ora). Passa il mouse su una barra per il dettaglio.</li>
-    </ul>
-  </section>
+<section class="key">
+  <h2><span class="n">1</span>Il lavoro da pianificare <small>Pianificazione</small></h2>
+  <p class="path">Menu a sinistra → <span class="menu">Pianificazione</span> → vista <span class="menu">Giorno</span></p>
+  <ul>
+    <li>Fascia «Adesso in reparto»: 4 in corso · 1 ferma · 1 in ritardo. <b>ACC-04 è ferma</b> (guasto dalle 8:42) e compare «Piano da verificare».</li>
+    <li>Il piano 22–28/10 è già rilasciato (21/10 16:20). C'è una manutenzione su ACC-03 martedì 27/10, 12:30–14:30.</li>
+    <li>In «Da pianificare» ci sono <b>30 attività</b> senza data né sequenza: è il lavoro appena arrivato.</li>
+    <li class="say" style="list-style:none;margin-left:-16px">Da dire: «Il pianificatore non assegna una scheda alla volta: sceglie un periodo e il sistema propone il piano».</li>
+  </ul>
+</section>
 
-  <section>
-    <h2><span class="n">3</span>In reparto e monitor <small>2 minuti</small></h2>
-    <ul>
-      <li><b>In reparto:</b> ACC-01 in produzione, ACC-02 in attrezzaggio, ACC-03 in pausa, ACC-04 ferma e in ritardo di 5 minuti.</li>
-      <li><b>Apri il monitor a schermo intero</b> (link in alto): per il reparto, con le prossime attività.</li>
-    </ul>
-  </section>
+<section class="key">
+  <h2><span class="n">2</span>Prepara periodo <small>Pianificazione</small></h2>
+  <p class="path">Vista <span class="menu">Settimana</span> → pulsante <span class="menu">Prepara periodo</span> (barra in alto, accanto a «Consegne»)</p>
+  <ul>
+    <li><b>Dal / Al:</b> scegli una settimana libera, per esempio <b>2/11 – 8/11</b> (la prova ha inserito 30 attività).</li>
+    <li><b>Macchine incluse:</b> lasciale tutte spuntate. ACC-04 resta inclusa: è voluto, serve al punto 3.</li>
+    <li><b>Attività:</b> sono tutte spuntate e ordinate per consegna. Mostra la ricerca (prodotto, ordine o cliente) e «Seleziona tutte le attività visibili».</li>
+    <li><b>«Usa anche gli spazi liberi tra le attività già pianificate»:</b> lascia spuntato.</li>
+    <li>Premi <span class="menu">Calcola proposta</span>.</li>
+  </ul>
+</section>
 
+<section class="key">
+  <h2><span class="n">3</span>Anteprima e avvisi <small>sul calendario</small></h2>
+  <p class="path">Compare la fascia azzurra «Anteprima della proposta» sopra il calendario</p>
+  <ul>
+    <li>Le barre <b>tratteggiate</b> non sono ancora salvate. Fascia: «30 attività inserite · spazi liberi usati». Se premi <span class="menu">Annulla</span> non resta nulla.</li>
+    <li>Premi <span class="menu">Dettagli</span>: «Controlla la proposta» mostra attività incluse, rimaste fuori (con il motivo) e il <b>carico risultante</b> per macchina.</li>
+    <li>In alto a destra il segnale arancione <b>«Piano da verificare · 1 macchina»</b> aprendolo elenca le attività di <b>ACC-04</b> con «Macchina ferma: piano da verificare alla ripresa».</li>
+    <li class="say" style="list-style:none;margin-left:-16px">Da dire: «Il sistema non è cieco: sa che ACC-04 è ferma e ti avvisa. Le date di quella macchina vanno riviste quando riparte. Il piano si compone da solo, ma lo controlla chi lo conosce».</li>
+  </ul>
+</section>
 
-</div>
+<section>
+  <h2><span class="n">4</span>Salva nella bozza <small>Pianificazione</small></h2>
+  <p class="path">Fascia azzurra → <span class="menu">Conferma e salva nella bozza</span></p>
+  <ul>
+    <li>Le attività diventano barre piene e compare «Stai modificando la bozza».</li>
+    <li>Il bordo macchina e l'operatore <b>non vedono ancora nulla</b>: prima ordina e controlla.</li>
+    <li>Un ritocco a mano: trascina una barra, oppure su ACC-04 menu azioni della macchina → <span class="menu">Riallinea…</span> (da adesso o da data e ora).</li>
+  </ul>
+</section>
 
-<div>
-  <section>
-    <h2><span class="n">4</span>Operatore <small>console touch · 2 minuti</small></h2>
-    <ul>
-      <li>Esci, entra come <b>operatore2</b> (Giulia Ferrari) e scegli la macchina in alto.</li>
-      <li><b>ACC-02:</b> attrezzaggio dalle 9:05 → fine attrezzaggio → produzione.</li>
-      <li><b>ACC-03:</b> in pausa → riprendi. <b>ACC-04:</b> la ripresa è <u>bloccata</u> finché il fermo è aperto.</li>
-      <li><b>ACC-01:</b> «Dichiara e completa» chiede quantità e lotti.</li>
-    </ul>
-  </section>
+<section>
+  <h2><span class="n">5</span>Rilascia <small>Pianificazione</small></h2>
+  <p class="path">Pannello «Stato del piano» → <span class="menu">Rilascia modifiche</span> (<span class="menu">Rilascia piano</span> se non è mai stato rilasciato)</p>
+  <ul>
+    <li>Il riepilogo elenca le modifiche rispetto al piano rilasciato. Confermando, il piano passa al reparto e viene registrata una versione con data e autore.</li>
+    <li class="say" style="list-style:none;margin-left:-16px">Da dire: «Bozza e rilascio sono separati: puoi lavorare sul piano senza disturbare il reparto».</li>
+  </ul>
+</section>
 
-  <section>
-    <h2><span class="n">5</span>Qualità <small>Attività → Verifiche qualità · 1 minuto</small></h2>
-    <ul>
-      <li><b>5 da decidere</b> (2 non conformi, 3 da verificare). Apri <i>Laminato tomaia ammortizzato · FL-261021-2</i> e mostra le decisioni possibili: rilasciare, scartare, rilavorare.</li>
-      <li>Collega al punto 6: lo stesso lotto è quello cercato in tracciabilità.</li>
-    </ul>
-  </section>
+<section>
+  <h2><span class="n">6</span>Il reparto lo vede <small>In reparto e monitor</small></h2>
+  <p class="path">Menu a sinistra → <span class="menu">In reparto</span> → link <span class="menu">Apri il monitor a schermo intero</span></p>
+  <ul>
+    <li>ACC-01 in produzione, ACC-02 in attrezzaggio, ACC-03 in pausa, ACC-04 ferma e in ritardo, ciascuna con le prossime attività.</li>
+    <li>Il monitor a schermo intero (da mettere su una TV di reparto) mostra, sotto il codice, il nome della macchina, per esempio «Accoppiatrice HotMelt® (linea 2)».</li>
+  </ul>
+</section>
 
-  <section class="trace">
-    <h2><span class="n">6</span>Tracciabilità <small>Attività → Tracciabilità · 2 minuti</small></h2>
-    <p style="margin:0 0 2px"><b>Storia:</b> un lotto è non conforme: a quali altri clienti è arrivata la stessa materia prima?</p>
-    <ul>
-      <li>Cerca il lotto prodotto <code>FL-261021-2</code> (Laminato tomaia ammortizzato, <b>non conforme</b>).</li>
-      <li>Tra i componenti compare la maglia spacer per calzatura. Cerca ora il lotto di componente:<br>
-        <span class="lot">L2610-TES-007-06</span></li>
-      <li>Risultato: <b>5 lavorazioni, 3 calzaturifici, 3.851 m</b>, dal 2/10 al 21/10 (<i>Maglia spacer calzatura</i>, codice <code>TES-007</code>).</li>
-    </ul>
-    <p style="margin:3px 0 0;font-size:9.2pt;color:var(--muted)">Alternativa: lotto prodotto <code>FW-261022-1</code>, finito stamattina su ACC-02 (Palmo guanto rinforzato).</p>
-  </section>
+<section>
+  <h2><span class="n">7</span>L'operatore lo esegue <small>Bordo macchina</small></h2>
+  <p class="path">Esci (in basso a sinistra) → entra come <code>operatore2</code> (Giulia Ferrari) → console touch, macchina scelta in alto</p>
+  <ul>
+    <li><b>ACC-02:</b> attrezzaggio dalle 9:05 → fine attrezzaggio → produzione.</li>
+    <li><b>ACC-03:</b> in pausa → riprendi.</li>
+    <li><b>ACC-04:</b> la ripresa è <b>bloccata</b> finché il fermo è aperto (coerente con l'avviso del punto 3).</li>
+    <li><b>ACC-01:</b> «Dichiara e completa» chiede quantità e lotti.</li>
+  </ul>
+</section>
 
-  <section>
-    <h2><span class="n">7</span>Statistiche <small>2 minuti</small></h2>
-    <ul>
-      <li>Periodo predefinito: ultimi 30 giorni. Per l'anno intero imposta «Dal» al <b>3/11/2025</b>.</li>
-      <li>Schede: Panoramica, Produzione, Qualità e scarti, Macchine. <b>Esporta Excel</b> in alto a destra.</li>
-      <li>Da dire: puntualità 89 % (27 consegne in ritardo su 254), fermi 8,3 h, lavorazione +4,2 % sul previsto.</li>
-    </ul>
-  </section>
+<section>
+  <h2><span class="n">8</span>Qualità e tracciabilità <small>Attività</small></h2>
+  <p class="path">Rientra come <code>mario</code> → <span class="menu">Attività</span> → <span class="menu">Verifiche qualità</span>, poi <span class="menu">Tracciabilità</span></p>
+  <ul>
+    <li><b>Verifiche qualità:</b> 5 da decidere (2 non conformi, 3 da verificare). Apri <b>Laminato tomaia ammortizzato · FL-261021-2</b> e mostra le scelte: rilasciare, scartare, rilavorare.</li>
+    <li><b>Tracciabilità:</b> cerca il lotto prodotto <code>FL-261021-2</code> (non conforme). Tra i componenti c'è la maglia spacer per calzatura: cerca ora il lotto di componente <code>L2610-TES-007-06</code>.</li>
+    <li>Risultato: <b>5 lavorazioni, 3 calzaturifici, 3.851 m</b>, dal 2/10 al 21/10 (codice TES-007).</li>
+    <li class="say" style="list-style:none;margin-left:-16px">Da dire: «Un lotto è non conforme: in pochi secondi so a quali clienti è arrivata la stessa materia prima». In alternativa: lotto <code>FW-261022-1</code>, finito stamattina su ACC-02.</li>
+  </ul>
+</section>
 
-  <section>
-    <h2><span class="n">8</span>Calendario <small>Configurazione · 1 minuto</small></h2>
-    <ul>
-      <li>Orario unico lunedì–venerdì: <b>7:30–12:00 e 12:30–16:00</b>; sabato e domenica chiusi.</li>
-      <li><b>Imposta periodo:</b> per esempio un sabato lavorativo o una chiusura. «Aggiungi festività italiane» è già applicato.</li>
-    </ul>
-  </section>
+<section>
+  <h2><span class="n">9</span>Statistiche e calendario</h2>
+  <p class="path"><span class="menu">Statistiche</span> (menu a sinistra) · poi <span class="menu">Configurazione</span> → Calendario</p>
+  <ul>
+    <li><b>Statistiche:</b> periodo predefinito ultimi 30 giorni (per l'anno intero «Dal» = 3/11/2025). Schede: Panoramica, Produzione, Qualità e scarti, Macchine. Esporta Excel in alto a destra. Da dire: puntualità 89 % (27 consegne in ritardo su 254), fermi 8,3 h, lavorazione +4,2 % sul previsto.</li>
+    <li><b>Calendario:</b> orario unico lunedì–venerdì 7:30–12:00 e 12:30–16:00, sabato e domenica chiusi. «Imposta periodo» per un sabato lavorativo o una chiusura; le festività italiane sono già applicate.</li>
+  </ul>
+</section>
 
-  <section class="note">
-    <b>Dopo la demo:</b> spegni il server e lancia <code>node seed-demo.mjs --apply</code> per ripartire dallo stato di partenza (copia di sicurezza automatica in <code>data/backups</code>).
-  </section>
-</div>
-</div>
-
-<footer>Account e password sono visibili in pagina solo se esiste <code>data/demo-accounts.json</code> (cancellalo per toglierli).</footer>
+<footer>
+  <b>Dopo la demo:</b> spegni il server e lancia <code>node seed-demo.mjs --apply</code> per tornare allo stato di partenza (copia di sicurezza automatica in <code>data/backups</code>). Il salvataggio nella bozza e il rilascio dei punti 4 e 5 modificano i dati: senza ripristino la proposta non si può rifare con gli stessi 30 lavori.
+</footer>
 </body>
 </html>
