@@ -26,7 +26,8 @@ body.tv { margin:0; overflow:hidden; background:#0f1b2d; color:#f2f6fb; font-fam
 .tv-card[data-tone=ready] { --tone:#8394a8; --bg:#26354a; }
 .tv-card[data-tone=stopped] { --tone:#ff5a4a; --bg:#4a1c22; box-shadow:0 0 0 calc(var(--s)*.3) #ff5a4a55; }
 .tv-card header { display:flex; align-items:center; justify-content:space-between; gap:calc(var(--s)*1.5); }
-.tv-card h2 { margin:0; font-size:calc(var(--s)*6.6); line-height:1; }
+.tv-card h2 { margin:0; min-width:0; font-size:calc(var(--s)*6.6); line-height:1; }
+.tv-card h2 small { display:block; margin-top:calc(var(--s)*.7); font-size:calc(var(--s)*3); font-weight:500; color:#b6c4d6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .tv-state { padding:calc(var(--s)*.5) calc(var(--s)*1.8); border-radius:999px; background:var(--tone); color:#0f1b2d; font-weight:800; font-size:calc(var(--s)*3.4); white-space:nowrap; }
 .tv-task { margin:0; font-size:calc(var(--s)*3.9); line-height:1.15; font-weight:650; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .tv-idle { color:#b6c4d6; font-weight:500; }

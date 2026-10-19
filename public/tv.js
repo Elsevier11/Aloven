@@ -28,7 +28,7 @@ export function tvCards(models) {
       ? `<p class="tv-next"><span class="tv-next-label">Prossima</span><span class="tv-next-when">${esc(first.start || '—')}</span><span class="tv-next-title">${esc(first.product || first.title)}${first.customer ? `<span class="tv-next-customer"> · ${esc(first.customer)}</span>` : ''}</span>${others ? `<span class="tv-next-more">+${others} dopo</span>` : ''}</p>`
       : '<p class="tv-next tv-none">Nessuna attività in programma</p>';
     return `<article class="tv-card" data-tone="${esc(m.tone)}" data-alert="${m.alert}">`
-      + `<header><h2>${name}</h2><span class="tv-state">${esc(m.label)}</span></header>`
+      + `<header><h2>${name}${m.machineDesc ? `<small>${esc(m.machineDesc)}</small>` : ''}</h2><span class="tv-state">${esc(m.label)}</span></header>`
       + (m.stop ? `<p class="tv-stop">${esc(m.stop)}</p>` : '')
       + current
       + upcoming
@@ -40,7 +40,9 @@ function render() {
   if (!state) return;
   const models = repartoModel({state, receivedAt, mins, machine: id => state.machines?.find(x => x.id === id)}).map(model => {
     const machine = state.machines?.find(x => x.id === model.cell.machineId);
-    model.cell.machineName = (machine?.name || model.cell.machineId).split(' · ')[0];
+    const [code, ...desc] = (machine?.name || model.cell.machineId).split(' · ');
+    model.cell.machineName = code;
+    model.cell.machineDesc = desc.join(' · ');
     return model;
   });
   const running = models.filter(m => m.cell.taskId).length, stopped = models.filter(m => m.cell.state === 'stopped').length, late = models.filter(m => m.cell.delay > 0).length;
