@@ -91,6 +91,13 @@ Esempio esplicitamente richiesto: ordinamento per **spessore crescente dei prodo
 
 Non implementare ora algoritmi, campo spessore obbligatorio globale o assegnazioni automatiche. Quando si affronterà il tema, definire compatibilità macchina, priorità, consegne, dipendenze tra fasi, attività bloccate e conferma del piano proposto prima del salvataggio.
 
+**Ipotesi di criteri e filtri (19 ottobre 2026) — solo ipotesi, nulla implementato.** Raccolte e documentate per il cliente in `presentazione/Aloven-ipotesi-di-sequenza.html` (+ PDF), da discutere con il titolare. Oggi «Prepara periodo» ordina solo per consegna e poi titolo.
+- *Con i dati già presenti:* consegna; cliente/ordine; tipologia di lavorazione; meno cambi di attrezzaggio (regole di attrezzaggio esistenti); materiale in comune; riempimento degli spazi liberi (già disponibile come opzione).
+- *Con un dato in più, obbligatorio solo sulle macchine che usano il criterio:* spessore crescente/decrescente (unità e origine da definire); larghezza; colore (dal chiaro allo scuro); priorità commerciale; famiglia di adesivo.
+- *Sul piano:* macchine meno flessibili per prime; carico bilanciato (oggi escluso: la scelta resta al pianificatore); dipendenza fra fasi dello stesso ordine.
+- *Filtri richiesti dall'utente per elenchi da 200 attività:* consegna entro una data (primo da aggiungere), cliente/ordine, tipologia, macchina di destinazione, attività con avvisi, in ritardo o con consegna ravvicinata. Oggi esiste solo la ricerca per testo.
+- *Modello d'uso previsto:* criterio principale + spareggio, anche per macchina, sempre con anteprima e conferma prima del salvataggio.
+
 ## Quantità degli esempi — 9 ottobre 2026
 
 Completate le quantità ordine mancanti su 64 attività dimostrative già presenti nel DB. Formula: runMinutes × velocità macchina, escludendo attrezzaggio e pause di calendario. Le quattro macchine demo sono a 10 m/min: 180 minuti corrispondono a 1.800 m. Storico statistico già dotato di quantità, valori inseriti dall'utente, tempi, sequenze, date e consuntivi preservati. Backup in data/backups prima dell'aggiornamento; verifica atomica dei campi delle attività, dei consuntivi e delle relazioni. Script ripetibile seed-demo-quantities.mjs, non eseguito automaticamente all'avvio. Controllo finale: nessuna attività senza quantità e nessun esempio aggiornato incoerente con la velocità macchina.

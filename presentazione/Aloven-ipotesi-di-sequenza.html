@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aloven · Ipotesi di sequenza delle attività</title>
+<style>
+:root{--navy:#101B2D;--ink:#172033;--muted:#58667B;--line:#E3E8F0;--bg:#F5F7FA;--white:#fff;--blue:#2767ED;--blue-soft:#E9F0FE;--green:#1B7F55;--green-soft:#E5F4EC;--amber:#8A5A00;--amber-soft:#FFF3DC;--amber-line:#E8C584;--violet:#5A43B8;--violet-soft:#EFEBFB;--font:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.55;font-size:16px;-webkit-font-smoothing:antialiased}
+.wrap{width:min(980px,100% - 40px);margin-inline:auto}
+header.hero{background:linear-gradient(160deg,#101B2D 0%,#17243A 100%);color:#fff;padding:36px 0 40px}
+.logo{display:block;width:fit-content;background:#fff;border-radius:10px;padding:8px 14px}
+.logo img{height:44px;width:auto;display:block}
+.tag{display:inline-block;margin-top:28px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9FB6E6;font-weight:700}
+h1{font-size:clamp(28px,4.4vw,42px);line-height:1.1;margin:10px 0 14px;letter-spacing:-.02em}
+.lead{font-size:18px;color:#C9D5EA;max-width:62ch;margin:0}
+.chip{display:inline-block;margin-top:20px;border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;background:rgba(237,157,36,.14);border:1px solid rgba(237,157,36,.5);color:#FFD28A}
+section{padding:34px 0}
+section.alt{background:var(--white)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--blue);margin:0 0 6px}
+h2{font-size:clamp(22px,3vw,30px);line-height:1.2;margin:0 0 10px;letter-spacing:-.01em}
+h3{font-size:18px;margin:0 0 6px}
+p{margin:0 0 10px}
+.intro{color:var(--muted);max-width:70ch;font-size:17px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 16px;break-inside:avoid}
+section.alt .card{background:var(--bg)}
+.card h3{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card p{font-size:14.5px;color:var(--muted);margin:0 0 6px}
+.card p b{color:var(--ink)}
+.badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.b-have{background:var(--green-soft);color:var(--green)}
+.b-data{background:var(--amber-soft);color:var(--amber)}
+.b-plan{background:var(--violet-soft);color:var(--violet)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:12px 0 0;font-size:14px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14.5px}
+th{background:var(--blue-soft);text-align:left;padding:8px 12px;font-size:13px}
+td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.flow div{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14.5px;break-inside:avoid}
+.flow b{display:block;margin-bottom:4px;color:var(--blue)}
+.note{background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:12px;padding:12px 16px;margin-top:14px;font-size:15px}
+.ask li{margin-bottom:6px}
+footer{padding:22px 0 34px;color:var(--muted);font-size:13px}
+@media print{body{background:#fff;font-size:12.4px}header.hero{padding:22px 0 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}.logo img{height:36px}.tag{margin-top:16px}h1{font-size:26px}.lead{font-size:14px}section{padding:16px 0}section.alt{background:#fff}.badge,th,.note,.flow b{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.flow div{break-inside:avoid}@page{size:A4;margin:10mm}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <span class="logo"><img src="data:image/png;base64,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" alt="Aloven · Accoppiatura dal 1985"></span>
+  <span class="tag">Pianificazione della produzione</span>
+  <h1>Come ordinare le attività sulle macchine</h1>
+  <p class="lead">Un elenco di criteri possibili per decidere quali lavorazioni mettere per prime su ogni macchina. Sono idee da discutere insieme, non funzioni già realizzate.</p>
+  <span class="chip">Proposta · da validare con voi</span>
+</div></header>
+
+<section>
+<div class="wrap">
+  <p class="eyebrow">Da dove partiamo</p>
+  <h2>Oggi il piano si prepara per periodo</h2>
+  <p class="intro">Con <b>Prepara periodo</b> il pianificatore sceglie le date, le macchine e le attività. Il sistema le dispone rispettando turni, chiusure, tempi di attrezzaggio e macchine compatibili, e mostra una <b>anteprima</b> sul calendario. Nulla viene salvato finché il pianificatore non conferma, e il reparto vede il piano solo quando viene rilasciato.</p>
+  <p class="intro">Il criterio usato oggi è uno solo: le attività con la consegna più vicina vanno per prime. Le ipotesi qui sotto servono a renderlo scelto da voi, anche macchina per macchina.</p>
+</div>
+</section>
+
+<section class="alt">
+<div class="wrap">
+  <p class="eyebrow">Il catalogo delle ipotesi</p>
+  <h2>Criteri per decidere l'ordine</h2>
+  <p class="intro">Ogni criterio dice <b>che cosa mette per prima</b> e <b>quale informazione serve</b>. Alcuni si possono usare subito con i dati già presenti, altri richiedono un campo in più.</p>
+  <div class="legend"><span><span class="badge b-have">Dati già presenti</span> si può usare con quello che il sistema conosce</span><span><span class="badge b-data">Serve un dato</span> richiede un campo nuovo sull'attività</span><span><span class="badge b-plan">Sul piano</span> riguarda l'insieme delle macchine</span></div>
+
+  <div class="cards">
+    <div class="card"><h3>Per data di consegna <span class="badge b-have">Dati già presenti</span></h3><p>Prima le attività con la consegna più vicina.</p><p><b>A cosa serve:</b> rispettare le date promesse ai clienti. È il criterio di oggi.</p></div>
+    <div class="card"><h3>Per cliente o per ordine <span class="badge b-have">Dati già presenti</span></h3><p>Le attività dello stesso ordine o dello stesso cliente restano vicine.</p><p><b>A cosa serve:</b> completare un ordine in blocco e spedire insieme.</p></div>
+    <div class="card"><h3>Per tipo di lavorazione <span class="badge b-have">Dati già presenti</span></h3><p>Le attività dello stesso processo (fiamma, hot melt, colla) una dietro l'altra.</p><p><b>A cosa serve:</b> evitare di cambiare processo a ogni lavorazione.</p></div>
+    <div class="card"><h3>Meno cambi di attrezzaggio <span class="badge b-have">Dati già presenti</span></h3><p>Si sceglie la successione che costa meno minuti di preparazione tra un'attività e la seguente, usando le regole di attrezzaggio già inserite.</p><p><b>A cosa serve:</b> ridurre i tempi in cui la macchina aspetta.</p></div>
+    <div class="card"><h3>Per materiale in comune <span class="badge b-have">Dati già presenti</span></h3><p>Le attività che usano lo stesso componente o articolo vicine tra loro.</p><p><b>A cosa serve:</b> meno cambi di materia prima.</p></div>
+
+    <div class="card"><h3>Per spessore crescente o decrescente <span class="badge b-data">Serve un dato</span></h3><p>Si parte dai prodotti più sottili e si sale (o il contrario).</p><p><b>Dato necessario:</b> lo spessore del prodotto, con unità di misura da concordare. Obbligatorio solo sulle macchine dove si usa questo criterio.</p><p><b>A cosa serve:</b> ridurre le regolazioni tra spessori molto diversi.</p></div>
+    <div class="card"><h3>Per larghezza del materiale <span class="badge b-data">Serve un dato</span></h3><p>Le attività con la stessa larghezza o larghezze simili una dietro l'altra.</p><p><b>Dato necessario:</b> larghezza o altezza utile.</p><p><b>A cosa serve:</b> meno cambi di rotolo e di regolazione.</p></div>
+    <div class="card"><h3>Per colore, dal chiaro allo scuro <span class="badge b-data">Serve un dato</span></h3><p>Si parte dai colori chiari e si passa progressivamente agli scuri.</p><p><b>Dato necessario:</b> colore o tinta.</p><p><b>A cosa serve:</b> ridurre pulizie e lavaggi tra un colore e l'altro.</p></div>
+    <div class="card"><h3>Per priorità commerciale <span class="badge b-data">Serve un dato</span></h3><p>Cliente strategico o ordine urgente prima degli altri, anche a scapito della data.</p><p><b>Dato necessario:</b> una priorità indicata a mano sull'attività.</p></div>
+    <div class="card"><h3>Per famiglia di adesivo <span class="badge b-data">Serve un dato</span></h3><p>Le attività con lo stesso adesivo o con lo stesso trattamento insieme.</p><p><b>Dato necessario:</b> famiglia di adesivo, se diversa dal tipo di lavorazione.</p></div>
+
+    <div class="card"><h3>Riempire i buchi <span class="badge b-have">Già disponibile</span></h3><p>Le attività corte vanno negli spazi liberi tra quelle già pianificate, restando ferme alla data scelta.</p><p><b>A cosa serve:</b> non lasciare la macchina ferma tra due attività fisse.</p></div>
+    <div class="card"><h3>Prima le macchine meno flessibili <span class="badge b-plan">Sul piano</span></h3><p>Si riempiono per prime le macchine che hanno poche alternative, poi quelle più versatili.</p><p><b>A cosa serve:</b> non occupare una macchina flessibile con lavori che potrebbero andare solo su una specifica.</p></div>
+    <div class="card"><h3>Carico bilanciato tra macchine <span class="badge b-plan">Sul piano</span></h3><p>Le attività compatibili con più macchine sono distribuite in modo che le ore previste siano simili.</p><p><b>Nota:</b> oggi la scelta resta sempre al pianificatore.</p></div>
+    <div class="card"><h3>Prima fase, poi seconda <span class="badge b-plan">Sul piano</span></h3><p>Per un ordine con due lavorazioni su macchine diverse, la seconda parte solo dopo la fine prevista della prima.</p><p><b>A cosa serve:</b> evitare piani in cui la seconda fase parte prima di avere il materiale.</p></div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+  <p class="eyebrow">Per scegliere meglio le attività</p>
+  <h2>Filtri per selezionare le attività da pianificare</h2>
+  <p class="intro">Con 200 attività da assegnare non conviene sceglierle una per una. Prima di calcolare la proposta il pianificatore potrebbe restringere l'elenco.</p>
+  <table>
+    <tr><th>Filtro</th><th>Esempio</th></tr>
+    <tr><td><b>Consegna richiesta entro una data</b></td><td>Solo le attività da consegnare entro il 15 novembre.</td></tr>
+    <tr><td><b>Cliente o ordine</b></td><td>Tutte le attività di un cliente, oppure di un singolo ordine.</td></tr>
+    <tr><td><b>Tipo di lavorazione</b></td><td>Solo quelle a fiamma, oppure solo quelle hot melt.</td></tr>
+    <tr><td><b>Macchina di destinazione</b></td><td>Solo quelle che possono andare su ACC-03.</td></tr>
+    <tr><td><b>Con avvisi</b></td><td>Quelle con dati mancanti (senza quantità o senza consegna) da sistemare prima.</td></tr>
+    <tr><td><b>In ritardo o con consegna ravvicinata</b></td><td>Le attività la cui consegna è già passata o è nei prossimi giorni.</td></tr>
+  </table>
+  <p class="intro" style="margin-top:10px">Oggi nell'elenco c'è la ricerca per prodotto, ordine o cliente. Il filtro per data di consegna è il primo che proponiamo di aggiungere.</p>
+</div>
+</section>
+
+<section class="alt">
+<div class="wrap">
+  <p class="eyebrow">Come potrebbe funzionare</p>
+  <h2>Il pianificatore sceglie, il sistema propone, il pianificatore conferma</h2>
+  <div class="flow">
+    <div><b>Si sceglie il criterio</b>Un criterio principale e, se serve, uno di spareggio. Per esempio: consegna, poi spessore crescente.</div>
+    <div><b>Per macchina</b>Ogni macchina può avere il suo criterio: per esempio spessore su una linea hot melt, consegna sulla linea a colla.</div>
+    <div><b>Il sistema propone</b>Dispone le attività rispettando turni, chiusure, attrezzaggi e compatibilità, e mostra l'anteprima sul calendario.</div>
+    <div><b>Si controlla</b>Si vedono le attività inserite, quelle rimaste fuori (con il motivo) e il carico di ogni macchina.</div>
+    <div><b>Si conferma</b>Solo dopo la conferma la proposta entra nella bozza. Il reparto la vede quando viene rilasciata.</div>
+  </div>
+  <div class="note"><b>Esempio.</b> Su una linea con attività di spessore 0,8 · 2,5 · 1,2 · 4,0 mm, il criterio «spessore crescente» le ordina così: 0,8 → 1,2 → 2,5 → 4,0. Se una consegna è urgente, il pianificatore può sempre spostarla a mano, e il sistema avvisa se l'operazione causa un ritardo. I valori sono solo un esempio.</div>
+  <p class="intro" style="margin-top:12px">Un criterio che richiede un dato in più (per esempio lo spessore) lo rende obbligatorio <b>solo per le attività delle macchine in cui viene usato</b>, non per tutto il sistema.</p>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+  <p class="eyebrow">Per arrivare a una scelta</p>
+  <h2>Cosa ci serve da voi</h2>
+  <ul class="ask">
+    <li><b>Quale criterio conta di più</b> per ciascun processo (fiamma, hot melt, colla): la consegna, il cambio di attrezzaggio o una caratteristica del prodotto.</li>
+    <li><b>Quali caratteristiche del prodotto</b> influiscono davvero sui tempi di una macchina (spessore, larghezza, colore, adesivo) e con quale valore si indicano.</li>
+    <li><b>Quando una consegna prevale</b> su un criterio di efficienza: un ordine urgente deve sempre passare davanti?</li>
+    <li><b>Quante attività</b> si pianificano di solito in una volta, per dimensionare i filtri.</li>
+  </ul>
+</div>
+</section>
+
+<footer><div class="wrap">Documento di lavoro per la discussione. I criteri indicati come «Serve un dato» e «Sul piano» non sono ancora realizzati. Il sistema non assegna né sposta attività senza la conferma del pianificatore.</div></footer>
+</body>
+</html>
