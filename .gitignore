@@ -3,3 +3,6 @@ data/
 test-data/
 .artifacts/
 .demo-build/
+
+# Progetto separato, ha un proprio repository
+Slido/
